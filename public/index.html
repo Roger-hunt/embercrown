@@ -3058,44 +3058,49 @@ function togglePause() {
 const keys = {}, mouse = { x: 0, y: 0, down: false }, act = { atk: false, q: false, e: false, u: false, dodge: false, jump: false }, taps = {};
 const stick = { id: null, ox: 0, oy: 0, dx: 0, dz: 0 };
 const pad = { lx: 0, ly: 0, rx: 0, ry: 0, prev: [] };
-let padMode = false, padIdx = -1;
+let padMode = false, padIdx = -1, padWasPlay = false;
 function setPad(on) {
   if (padMode === on) return;
   padMode = on;
   document.body.classList.toggle('pad', on);
   if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
   syncStickVis();
-  if (typeof renderControlGuide === 'function') renderControlGuide();
+  if (typeof renderControlGuide === 'function' && !$('pause').hidden) renderControlGuide();
   if (on && inPlay()) showErr(t('已接入蓝牙手柄（Xbox 键位）', 'Bluetooth gamepad connected (Xbox layout)'));
+}
+function padActive(g) {
+  for (let j = 0, n = Math.min(4, g.axes.length); j < n; j++) if (Math.abs(g.axes[j]) >= 0.18) return true;
+  for (let j = 0, n = Math.min(18, g.buttons.length); j < n; j++) { const b = g.buttons[j]; if (b && (b.pressed || b.value > 0.35)) return true; }
+  return false;
 }
 function pickGamepad(list) {
   if (!list) return null;
+  const cur = padIdx >= 0 ? list[padIdx] : null;
+  const curOk = cur && cur.connected && cur.axes.length >= 2 && cur.buttons.length >= 6;
+  if (curOk && padActive(cur)) return cur;
   let std = null, any = null;
   for (let i = 0; i < list.length; i++) {
     const g = list[i];
     if (!g || !g.connected || g.axes.length < 2 || g.buttons.length < 6) continue;
     if (!any) any = g;
     if (!std && g.mapping === 'standard') std = g;
-    const active = g.axes.some(a => Math.abs(a) >= 0.18) || g.buttons.some(b => b && (b.pressed || b.value > 0.35));
-    if (active) { padIdx = g.index; return g; }
+    if (g !== cur && padActive(g)) { padIdx = g.index; return g; }
   }
-  const cur = padIdx >= 0 ? list[padIdx] : null;
-  if (cur && cur.connected && cur.axes.length >= 2 && cur.buttons.length >= 6) return cur;
-  return std || any;
+  return curOk ? cur : (std || any);
 }
-let gpFocusEl = null, gpLastScr = null, gpStickDir = null, gpStickHold = 0;
+let gpFocusEl = null, gpLastScr = null, gpStickDir = null, gpStickHold = 0, gpSuppressed = false;
 function clearGpFocus() {
   if (gpFocusEl) { gpFocusEl.classList.remove('gp-focus'); gpFocusEl = null; }
   gpLastScr = null;
 }
-document.addEventListener('pointerdown', clearGpFocus);
+document.addEventListener('pointerdown', () => { gpSuppressed = true; clearGpFocus(); });
 function activeMenuScreen() {
   const rp = $('rosterPanel');
   if (rp && !rp.hidden) return rp;
   const ids = ['pause', 'upgrade', 'over', 'mpEnd', 'lobbyCreate', 'lobbyDiff', 'lobbyJoin', 'lobbyRooms', 'lobby', 'menu', 'gate'];
   for (const id of ids) {
     const el = $(id);
-    if (el && !el.hidden && !el.classList.contains('hidden')) return el;
+    if (el && !el.hidden) return el;
   }
   return null;
 }
@@ -3103,7 +3108,7 @@ function gpMenuItems(scr) {
   const sel = scr.id === 'upgrade' ? '.boon' : 'button:not([hidden]):not(:disabled), input:not([hidden]):not(:disabled), #roomList li';
   const out = [];
   for (const el of scr.querySelectorAll(sel)) {
-    if (!el.hidden && el.offsetParent !== null) out.push(el);
+    if (!el.hidden && !el.disabled && el.closest('[hidden]') === null) out.push(el);
   }
   return out;
 }
@@ -3115,9 +3120,10 @@ function gpMenuNav(dt, lx, ly, down, edge) {
     if (gpFocusEl) gpFocusEl.classList.remove('gp-focus');
     gpFocusEl = el;
     gpFocusEl.classList.add('gp-focus');
-    gpFocusEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (scr.id === 'lobbyRooms' || scr.id === 'rosterPanel') gpFocusEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
-  let dir = edge(12) ? 'U' : edge(13) ? 'D' : edge(14) ? 'L' : edge(15) ? 'R' : null;
+  const du = edge(12), dd = edge(13), dl = edge(14), dr = edge(15);
+  let dir = du ? 'U' : dd ? 'D' : dl ? 'L' : dr ? 'R' : null;
   if (!dir) {
     let sdir = null;
     if (Math.abs(ly) > 0.55 || Math.abs(lx) > 0.55) {
@@ -3128,7 +3134,11 @@ function gpMenuNav(dt, lx, ly, down, edge) {
       else { gpStickHold -= dt; if (gpStickHold <= 0) { gpStickHold = 0.14; dir = sdir; } }
     } else { gpStickDir = null; gpStickHold = 0; }
   }
-  const needFocus = scr !== gpLastScr || !gpFocusEl || !gpFocusEl.isConnected || !scr.contains(gpFocusEl) || gpFocusEl.hidden || gpFocusEl.disabled || gpFocusEl.offsetParent === null;
+  const e0 = edge(0), e1 = edge(1);
+  if (dir || e0 || e1) gpSuppressed = false;
+  if (scr !== gpLastScr) gpSuppressed = false;
+  if (gpSuppressed) return;
+  const needFocus = scr !== gpLastScr || !gpFocusEl || !gpFocusEl.isConnected || gpFocusEl.hidden || gpFocusEl.disabled || !scr.contains(gpFocusEl);
   if (needFocus || dir) {
     gpLastScr = scr;
     const items = gpMenuItems(scr);
@@ -3146,6 +3156,7 @@ function gpMenuNav(dt, lx, ly, down, edge) {
       for (const el of items) {
         if (el === gpFocusEl) continue;
         const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
         const dx = (r.left + r.width / 2) - fx, dy = (r.top + r.height / 2) - fy;
         const main = dx * vx + dy * vy;
         if (main <= 4) continue;
@@ -3161,12 +3172,12 @@ function gpMenuNav(dt, lx, ly, down, edge) {
       if (best && best !== gpFocusEl) { sfx.ui(); setFocus(best); }
     }
   }
-  if (edge(0) && gpFocusEl) {
+  if (e0 && gpFocusEl) {
     if (gpFocusEl.tagName === 'INPUT') gpFocusEl.focus();
     else gpFocusEl.click();
     return;
   }
-  if (edge(1) && scr.id !== 'upgrade') {
+  if (e1 && scr.id !== 'upgrade') {
     const backMap = { rosterPanel: 'rpClose', pause: 'btnResume', lobbyRooms: 'btnRoomsBack', lobbyCreate: 'btnCreateBack', lobbyDiff: 'btnDiffBack', lobbyJoin: 'btnJoinBack', lobby: 'btnLobbyBack', over: 'btnMenu', mpEnd: 'btnEndLeave' };
     const bId = backMap[scr.id];
     const bEl = bId && $(bId);
@@ -3179,6 +3190,7 @@ function pollGamepad(dt) {
   if (!gp) {
     pad.lx = pad.ly = pad.rx = pad.ry = 0;
     if (padMode) for (const k in act) act[k] = false;
+    padWasPlay = false;
     return;
   }
   const dz = v => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
@@ -3198,10 +3210,11 @@ function pollGamepad(dt) {
     if (pickIdx >= 0 && game.boonPicks[pickIdx]) { chooseBoon(game.boonPicks[pickIdx]); return; }
   }
   if (!inPlay()) {
+    if (padWasPlay) { padWasPlay = false; if (padMode) for (const k in act) act[k] = false; }
     if (padMode) gpMenuNav(dt, lx, ly, down, edge);
     return;
   }
-  clearGpFocus();
+  if (gpFocusEl) clearGpFocus();
   if (edge(6)) cycleTarget();
   if (rx || ry) {
     ctl.camYaw -= rx * 2.7 * dt;
@@ -3212,9 +3225,10 @@ function pollGamepad(dt) {
   for (const k in map) {
     const cur = map[k], was = !!pad.prev['a_' + k];
     pad.prev['a_' + k] = cur;
-    if (padMode) act[k] = cur;
-    if (cur && !was) taps[k] = true;
+    if (padMode) act[k] = padWasPlay ? cur : false;
+    if (padWasPlay && cur && !was) taps[k] = true;
   }
+  padWasPlay = true;
 }
 window.addEventListener('gamepadconnected', e => {
   if (e.gamepad) padIdx = e.gamepad.index;

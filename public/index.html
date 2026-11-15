@@ -641,6 +641,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 .gate-card input:focus-visible{outline:none;border-color:var(--gold)}
 .gate-card .go{align-self:stretch}
 .lang-btn{min-width:56px;font-weight:800;letter-spacing:.04em}
+.gp-focus{outline:3px solid var(--gold)!important;outline-offset:2px;box-shadow:0 0 0 5px rgba(255,194,61,.32)!important}
 .gate-top{display:flex;align-items:center;justify-content:space-between;width:100%}
 .menu-eyebrow-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
@@ -1913,7 +1914,7 @@ const ENEMY = {
     fire: (e, a) => { spawnProj({ team: 1, kind: 'orb', x: e.x, z: e.z, a, speed: 7, dmg: e.dmg, life: 4, r: 0.4, homing: 1.3 }); sfx.cast(); } },
   ogre: { name: '碎岩食人魔', hp: 700, speed: 3.6, r: 1.7, h: 4.3, dmg: 24, mass: 14, boss: true, build: buildOgre, ai: aiOgre, style: 'smash', blood: 0xc7906a },
   lich: { name: '枯冠巫妖', hp: 820, speed: 3.2, r: 1.1, h: 3.5, dmg: 15, mass: 10, boss: true, build: buildLich, ai: aiLich, style: 'cast', floaty: true, blood: 0x5fe0a5 },
-  blackKnight: { name: '「黑暗骑士」格雷塔', quote: '老鼠，你竟敢破坏我的大门。', cine: true, hp: 760, speed: 4.5, r: 1.2, h: 3.6, dmg: 22, mass: 11, boss: true, build: buildBlackKnight, ai: aiBlackKnight, style: 'melee', blood: 0x8a1c2e },
+  blackKnight: { name: '「黑暗骑士」格雷塔', quote: '老鼠，你竟敢破坏我的大门。', voice: 'greta_yell.mp3', cine: true, hp: 760, speed: 4.5, r: 1.2, h: 3.6, dmg: 22, mass: 11, boss: true, build: buildBlackKnight, ai: aiBlackKnight, style: 'melee', blood: 0x8a1c2e },
 };
 
 const BOONS = [
@@ -2248,6 +2249,7 @@ function bossYell(e) {
   feedEl.appendChild(fd); while (feedEl.childElementCount > 4) feedEl.firstChild.remove();
   setTimeout(() => fd.remove(), 6500);
   showSayBubble(e, ld.quote, 4.8);
+  if (e.d.voice && !muted) { try { const a = new Audio(e.d.voice); a.volume = 0.95; a.play().catch(() => {}); } catch (err) {} }
 }
 // 首领登场演出：闸门升起 → 首领从闸门阴影中缓缓走出（共 10 秒，期间玩家禁止攻击、首领无敌）
 const CINE_DUR = 10;
@@ -3070,6 +3072,87 @@ function pickGamepad(list) {
   if (cur && cur.connected && cur.axes.length >= 2 && cur.buttons.length >= 6) return cur;
   return std || any;
 }
+let gpFocusEl = null, gpStickDir = null, gpStickHold = 0;
+function clearGpFocus() {
+  if (gpFocusEl) { gpFocusEl.classList.remove('gp-focus'); gpFocusEl = null; }
+}
+document.addEventListener('pointerdown', clearGpFocus);
+function activeMenuScreen() {
+  const rp = $('rosterPanel');
+  if (rp && !rp.hidden && getComputedStyle(rp).display !== 'none') return rp;
+  const ids = ['pause', 'upgrade', 'over', 'mpEnd', 'lobbyCreate', 'lobbyDiff', 'lobbyJoin', 'lobbyRooms', 'lobby', 'menu', 'gate'];
+  for (const id of ids) {
+    const el = $(id);
+    if (el && !el.hidden && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none') return el;
+  }
+  return null;
+}
+function gpMenuNav(dt, lx, ly, down, edge) {
+  const scr = activeMenuScreen();
+  if (!scr) { clearGpFocus(); return; }
+  const sel = scr.id === 'upgrade' ? '.boon' : 'button:not([hidden]):not(:disabled), input:not([hidden]):not(:disabled), #roomList li';
+  const items = [...scr.querySelectorAll(sel)].filter(el => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  });
+  if (!items.length) { clearGpFocus(); return; }
+  const setFocus = el => {
+    if (gpFocusEl === el) return;
+    if (gpFocusEl) gpFocusEl.classList.remove('gp-focus');
+    gpFocusEl = el;
+    gpFocusEl.classList.add('gp-focus');
+    gpFocusEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  if (!gpFocusEl || !items.includes(gpFocusEl)) {
+    const pref = items.find(el => el.classList.contains('primary') || el.classList.contains('on')) || items[0];
+    setFocus(pref);
+  }
+  let dir = edge(12) ? 'U' : edge(13) ? 'D' : edge(14) ? 'L' : edge(15) ? 'R' : null;
+  if (!dir) {
+    let sdir = null;
+    if (Math.abs(ly) > 0.55 || Math.abs(lx) > 0.55) {
+      sdir = Math.abs(ly) >= Math.abs(lx) ? (ly < 0 ? 'U' : 'D') : (lx < 0 ? 'L' : 'R');
+    }
+    if (sdir) {
+      if (sdir !== gpStickDir) { gpStickDir = sdir; gpStickHold = 0.35; dir = sdir; }
+      else { gpStickHold -= dt; if (gpStickHold <= 0) { gpStickHold = 0.14; dir = sdir; } }
+    } else { gpStickDir = null; gpStickHold = 0; }
+  }
+  if (dir) {
+    const fr = gpFocusEl.getBoundingClientRect();
+    const fx = fr.left + fr.width / 2, fy = fr.top + fr.height / 2;
+    const vx = dir === 'L' ? -1 : dir === 'R' ? 1 : 0;
+    const vy = dir === 'U' ? -1 : dir === 'D' ? 1 : 0;
+    let best = null, bestScore = Infinity;
+    for (const el of items) {
+      if (el === gpFocusEl) continue;
+      const r = el.getBoundingClientRect();
+      const dx = (r.left + r.width / 2) - fx, dy = (r.top + r.height / 2) - fy;
+      const main = dx * vx + dy * vy;
+      if (main <= 4) continue;
+      const cross = Math.abs(dx * vy - dy * vx);
+      const score = main + cross * 2.5;
+      if (score < bestScore) { bestScore = score; best = el; }
+    }
+    if (!best) {
+      const idx = items.indexOf(gpFocusEl);
+      const step = (dir === 'R' || dir === 'D') ? 1 : -1;
+      best = items[(idx + step + items.length) % items.length];
+    }
+    if (best && best !== gpFocusEl) { sfx.ui(); setFocus(best); }
+  }
+  if (edge(0) && gpFocusEl) {
+    if (gpFocusEl.tagName === 'INPUT') gpFocusEl.focus();
+    else gpFocusEl.click();
+    return;
+  }
+  if (edge(1) && scr.id !== 'upgrade') {
+    const backMap = { rosterPanel: 'rpClose', pause: 'btnResume', lobbyRooms: 'btnRoomsBack', lobbyCreate: 'btnCreateBack', lobbyDiff: 'btnDiffBack', lobbyJoin: 'btnJoinBack', lobby: 'btnLobbyBack', over: 'btnMenu', mpEnd: 'btnEndLeave' };
+    const bId = backMap[scr.id];
+    const bEl = bId && $(bId);
+    if (bEl && !bEl.hidden && !bEl.disabled) { sfx.ui(); bEl.click(); }
+  }
+}
 function pollGamepad(dt) {
   const list = navigator.getGamepads ? navigator.getGamepads() : null;
   const gp = pickGamepad(list);
@@ -3089,13 +3172,16 @@ function pollGamepad(dt) {
   pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry;
   if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); return; }
   if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); return; }
-  if (edge(12) && (game.state === 'playing' || game.state === 'mp')) { toggleChar(); return; }
+  if (inPlay() && edge(12)) { toggleChar(); return; }
   if (game.state === 'upgrade' && game.boonPicks && game.boonPicks.length) {
     const pickIdx = edge(2) ? 0 : edge(3) ? 1 : edge(1) ? 2 : -1;
-    if (pickIdx >= 0 && game.boonPicks[pickIdx]) chooseBoon(game.boonPicks[pickIdx]);
+    if (pickIdx >= 0 && game.boonPicks[pickIdx]) { chooseBoon(game.boonPicks[pickIdx]); return; }
+  }
+  if (!inPlay()) {
+    if (padMode) gpMenuNav(dt, lx, ly, down, edge);
     return;
   }
-  if (!inPlay()) return;
+  clearGpFocus();
   if (edge(6)) cycleTarget();
   if (rx || ry) {
     ctl.camYaw -= rx * 2.7 * dt;

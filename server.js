@@ -20,15 +20,19 @@ const { WebSocketServer } = require('ws');
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const ADMIN_PORT = Number(process.env.ADMIN_PORT) || 3001;
-const ADMIN_HOST = process.env.ADMIN_HOST || '0.0.0.0';
+const ADMIN_HOST = process.env.ADMIN_HOST || '127.0.0.1';
 const TRUST_PROXY = process.env.TRUST_PROXY === '1';
 const PUBLIC = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'telemetry.db');
 const SEC_LOG = process.env.SEC_LOG || path.join(DATA_DIR, 'security.log');
 const DEBUG_ON = process.env.DEBUG === '1' || process.env.LOG_LEVEL === 'debug';
-const DEMO_PASS = String(process.env.DEMO_PASS || 'changeme').trim();
+const ENV_DEMO_PASS = String(process.env.DEMO_PASS || '').trim();
+const DEMO_PASS_AUTO = !ENV_DEMO_PASS;
+const DEMO_PASS = ENV_DEMO_PASS || crypto.randomBytes(9).toString('base64url');
 const PASS_HASH = crypto.createHash('sha256').update(DEMO_PASS).digest();
+const SESSION_KEY = crypto.randomBytes(32);
+const SESSION_TTL_MS = 24 * 3600 * 1000;
 const ADMIN_TOKEN = String(process.env.ADMIN_TOKEN || '').trim();
 const ADMIN_HASH = ADMIN_TOKEN ? crypto.createHash('sha256').update(ADMIN_TOKEN).digest() : null;
 const MAX_PLAYERS = 8;
@@ -89,12 +93,28 @@ function checkSecret(v, hash) {
 }
 const checkPass = v => checkSecret(v, PASS_HASH);
 const checkAdmin = v => checkSecret(v, ADMIN_HASH);
+function issueSessionToken() {
+  const exp = String(Date.now() + SESSION_TTL_MS);
+  const sig = crypto.createHmac('sha256', SESSION_KEY).update(exp).digest('base64url');
+  return exp + '.' + sig;
+}
+function verifySessionToken(tok) {
+  if (typeof tok !== 'string') return false;
+  const dot = tok.indexOf('.');
+  if (dot <= 0) return false;
+  const exp = tok.slice(0, dot), sig = tok.slice(dot + 1);
+  if (!/^\d+$/.test(exp) || Number(exp) <= Date.now()) return false;
+  const expected = crypto.createHmac('sha256', SESSION_KEY).update(exp).digest('base64url');
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 const authFailures = new Map();
 function clientIp(req) {
   let raw = (req.socket && req.socket.remoteAddress) || 'unknown';
   if (TRUST_PROXY && req.headers) {
     const xff = req.headers['x-forwarded-for'];
-    raw = (typeof xff === 'string' && xff.split(',')[0].trim()) || req.headers['x-real-ip'] || raw;
+    const parts = typeof xff === 'string' ? xff.split(',').map(s => s.trim()).filter(Boolean) : [];
+    raw = (parts.length && parts[parts.length - 1]) || req.headers['x-real-ip'] || raw;
   }
   return String(raw).replace(/^::ffff:/, '').slice(0, 64);
 }
@@ -214,10 +234,11 @@ function logAccess(o) {
     try { fs.appendFileSync(SEC_LOG, ts + ' [FAIL2BAN] EVENT=' + ev + ' HOST=' + ip + ' PATH=' + (o.path || '-') + '\n'); } catch (e) {}
   }
 }
-const HONEYPOT_RE = /^\/(\.env|\.git|\.svn|\.aws|\.ssh|\.DS_Store|wp-admin|wp-login|wp-content|wp-includes|xmlrpc\.php|phpmyadmin|pma|myadmin|admin\.php| administrator|shell|cmd|eval-stdin|vendor\/phpunit|actuator|cgi-bin|solr|jenkins|manager\/html|config\.php| config\.json|backup|dump\.sql|db\.sql|id_rsa|etc\/passwd|proc\/self|trap-admin)/i;
+const HONEYPOT_RE = /^\/(?:\.env|\.git|\.svn|\.aws|\.ssh|\.DS_Store|wp-admin|wp-login(?:\.php)?|wp-content|wp-includes|xmlrpc\.php|phpmyadmin|pma|myadmin|admin\.php|administrator|shell|cmd|eval-stdin|vendor\/phpunit|actuator|cgi-bin|solr|jenkins|manager\/html|config\.php|config\.json|backup|dump\.sql|db\.sql|id_rsa|etc\/passwd|proc\/self|trap-admin)(?:$|\/)/i;
 function handleHoneypot(req, res, p, ip, ua) {
   for (let i = 0; i < 10; i++) recordAuthFail(ip);
-  logAccess({ ip, ua, event: 'honeypot_hit', method: req.method, path: p, status: 403, detail: { headers: req.headers } });
+  const h = req.headers || {};
+  logAccess({ ip, ua, event: 'honeypot_hit', method: req.method, path: p, status: 403, detail: { host: cleanText(h.host, 120), ref: cleanText(h.referer, 180), xff: cleanText(h['x-forwarded-for'], 120) } });
   logDebug('WARN', 'honeypot', '蜜罐捕获可疑扫描请求', { ip, method: req.method, path: p, ua });
   setTimeout(() => {
     if (res.destroyed) return;
@@ -293,14 +314,15 @@ const server = http.createServer((req, res) => {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > 512) req.destroy(); });
     req.on('end', () => {
-      let pass = '';
-      try { pass = String(JSON.parse(body).pass || ''); } catch (e) {}
-      const ok = checkPass(pass);
+      let pass = '', tok = '';
+      try { const j = JSON.parse(body); pass = String(j.pass || ''); tok = String(j.token || ''); } catch (e) {}
+      const tokOk = tok ? verifySessionToken(tok) : false;
+      const ok = tokOk || checkPass(pass);
       logAccess({ ip, ua, event: ok ? 'auth_ok' : 'auth_fail', method: 'POST', path: '/auth', status: ok ? 200 : 401 });
       if (!ok) { recordAuthFail(ip); logDebug('WARN', 'auth', '口令验证失败', { ip }); }
       else logDebug('INFO', 'auth', '口令验证通过', { ip });
       res.writeHead(ok ? 200 : 401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(ok ? { ok: true } : { ok: false, msg: '口令错误，请重试' }));
+      res.end(JSON.stringify(ok ? { ok: true, token: tokOk ? tok : issueSessionToken() } : { ok: false, msg: '口令错误，请重试' }));
     });
     return;
   }
@@ -309,8 +331,8 @@ const server = http.createServer((req, res) => {
     let players = 0; for (const r of rooms.values()) players += r.players.filter(q => !q.bot).length;
     res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: true, rooms: rooms.size, players }));
   }
-  if (p === '/rooms') {                                // 对战大厅的房间列表（需口令校验）
-    if (isRateLimited(ip) || !checkPass(req.headers['x-demo-pass'])) {
+  if (p === '/rooms') {                                // 对战大厅的房间列表（需口令或短期令牌校验）
+    if (isRateLimited(ip) || (!verifySessionToken(req.headers['x-demo-token']) && !checkPass(req.headers['x-demo-pass']))) {
       if (!isRateLimited(ip)) recordAuthFail(ip);
       logAccess({ ip, ua, event: 'rooms_denied', method: req.method, path: '/rooms', status: 401 });
       res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -325,11 +347,16 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('404'); }
+    const etag = 'W/"' + st.size.toString(16) + '-' + Math.floor(st.mtimeMs).toString(16) + '"';
+    if (req.headers['if-none-match'] === etag) {
+      res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'no-cache' });
+      return res.end();
+    }
     if (p === '/index.html' && req.method === 'GET') {
       logAccess({ ip, ua, event: 'http_visit', method: 'GET', path: '/', status: 200 });
       logDebug('DEBUG', 'http', '访问首页', { ip, ua });
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'Cache-Control': 'no-cache' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'ETag': etag, 'Cache-Control': 'no-cache' });
     if (req.method === 'HEAD') return res.end();
     fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
   });
@@ -855,7 +882,7 @@ wss.on('connection', (ws, req) => {
       if (b & 8) p.chargeTgId = m.tg | 0;
       p.pend |= b;
     } else if (m.t === 'join' && !ws.player) {
-      if (isRateLimited(ip) || !checkPass(m.pass)) {
+      if (isRateLimited(ip) || (!verifySessionToken(m.token) && !checkPass(m.pass))) {
         recordAuthFail(ip);
         logAccess({ ip, ua, event: 'ws_auth_fail', status: 4001 });
         logDebug('WARN', 'ws', 'WebSocket join 口令错误', { ip });
@@ -936,7 +963,7 @@ const adminServer = http.createServer((req, res) => {
   if (p !== '/' && p !== '/admin' && p !== '/admin/stats') { res.writeHead(404); return res.end('404'); }
   const authHdr = req.headers.authorization || '';
   const bearer = authHdr.startsWith('Bearer ') ? authHdr.slice(7) : '';
-  const token = req.headers['x-admin-token'] || bearer || u.searchParams.get('token') || '';
+  const token = req.headers['x-admin-token'] || bearer || '';
   if (isRateLimited(ip) || !checkAdmin(token)) {
     if (!isRateLimited(ip)) recordAuthFail(ip);
     logAccess({ ip, ua, event: 'admin_denied', method: req.method, path: p, status: 401 });
@@ -966,10 +993,11 @@ adminServer.on('error', err => logDebug('ERROR', 'server', '管理端口启动�
 
 server.listen(PORT, HOST, () => {
   sampleLoad();
-  logDebug('INFO', 'server', '烬冠竞技场 DEMO 服务器已启动', { port: PORT, adminPort: ADMIN_PORT, host: HOST, db: DB_PATH, maxPlayers: MAX_PLAYERS, botFill: BOT_FILL });
+  logDebug('INFO', 'server', '烬冠竞技场 DEMO 服务器已启动', { port: PORT, adminPort: (ADMIN_PORT > 0 && ADMIN_HASH) ? ADMIN_PORT : 0, adminHost: ADMIN_HOST, host: HOST, db: DB_PATH, maxPlayers: MAX_PLAYERS, botFill: BOT_FILL });
+  if (DEMO_PASS_AUTO) logDebug('WARN', 'auth', '未配置 DEMO_PASS 环境变量，本次启动已生成临时随机口令: ' + DEMO_PASS);
   for (const list of Object.values(os.networkInterfaces())) for (const i of list || []) if (i.family === 'IPv4' && !i.internal) console.log('  局域网： http://' + i.address + ':' + PORT);
 });
-if (ADMIN_PORT > 0) adminServer.listen(ADMIN_PORT, ADMIN_HOST);
+if (ADMIN_PORT > 0 && ADMIN_HASH) adminServer.listen(ADMIN_PORT, ADMIN_HOST);
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => {
   logDebug('INFO', 'server', '收到退出信号 ' + sig + '，正在关闭服务器');
   for (const ws of wss.clients) ws.close(1001);

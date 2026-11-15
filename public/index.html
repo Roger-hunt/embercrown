@@ -2842,7 +2842,7 @@ function clearWorld() {
   numsEl.innerHTML = ''; game.shake = 0; game.hitstop = 0;
 }
 function startGame() {
-  if (!demoPass) { lockGate('请先输入访问口令'); return; }
+  if (!demoToken) { lockGate(t('请先输入访问口令', 'Please enter the access passcode first')); return; }
   if (touchMode) enterMobileFs(false);
   audioInit(); mpLeave(); clearWorld();
   if (preview) { scene.remove(preview.rig.root); preview = null; }
@@ -3391,7 +3391,7 @@ function showLobbyStep(step) {
   else if (step === 'join') $('inJoinRoom').focus();
 }
 function openLobby() {
-  if (!demoPass) { lockGate('请先输入访问口令'); return; }
+  if (!demoToken) { lockGate(t('请先输入访问口令', 'Please enter the access passcode first')); return; }
   audioInit(); sfx.ui(); renderLobbyCls(); show('menu', false); showLobbyStep('main');
 }
 function renderLobbyCls() {
@@ -3409,8 +3409,8 @@ function renderLobbyCls() {
 function closeLobby() { showLobbyStep(null); }
 function loadRooms() {
   if (location.protocol === 'file:') return renderRooms(null);
-  fetch('rooms', { cache: 'no-store', headers: { 'X-Demo-Pass': demoPass } })
-    .then(r => { if (r.status === 401) { lockGate('访问口令已失效，请重新输入'); throw new Error('401'); } return r.json(); })
+  fetch('rooms', { cache: 'no-store', headers: { 'X-Demo-Token': demoToken } })
+    .then(r => { if (r.status === 401) { lockGate(t('访问口令已失效，请重新输入', 'Session expired, please re-enter passcode')); throw new Error('401'); } return r.json(); })
     .then(renderRooms).catch(() => renderRooms(null));
 }
 function renderRooms(list) {
@@ -3435,38 +3435,39 @@ function renderRooms(list) {
     ul.appendChild(li);
   }
 }
-let demoPass = '';
+let demoToken = '';
 function showGateErr(msg) { const el = $('gateErr'); el.textContent = msg || ''; el.hidden = !msg; }
 function lockGate(msg) {
-  demoPass = '';
-  try { sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
+  demoToken = '';
+  try { sessionStorage.removeItem('embercrown-demo-token'); sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
   closeLobby(); show('hud', false); show('menu', false); show('gate', true);
   if (msg) showGateErr(msg);
   $('inPass').focus();
 }
-function submitGate(silentPass) {
-  const pass = (typeof silentPass === 'string' ? silentPass : $('inPass').value).trim();
-  if (!pass) { if (typeof silentPass !== 'string') showGateErr('请输入访问口令'); return; }
-  if (location.protocol === 'file:') { showGateErr('请通过服务器地址打开本页（http://...）'); return; }
+function submitGate(silentToken) {
+  const isSilent = typeof silentToken === 'string';
+  const pass = isSilent ? '' : $('inPass').value.trim();
+  if (!isSilent && !pass) { showGateErr(t('请输入访问口令', 'Please enter the passcode')); return; }
+  if (location.protocol === 'file:') { showGateErr(t('请通过服务器地址打开本页（http://...）', 'Please open this page via the server URL (http://...)')); return; }
   showGateErr('');
-  fetch('auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pass }) })
-    .then(r => r.json().then(d => ({ ok: r.ok && d.ok, msg: d.msg })))
+  fetch('auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isSilent ? { token: silentToken } : { pass }) })
+    .then(r => r.json().then(d => ({ ok: r.ok && d.ok, token: d.token || '', msg: d.msg })))
     .then(res => {
-      if (!res.ok) {
-        if (typeof silentPass === 'string') try { sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
-        else showGateErr(res.msg || '口令错误');
+      if (!res.ok || !res.token) {
+        if (isSilent) try { sessionStorage.removeItem('embercrown-demo-token'); sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
+        else showGateErr(res.msg || t('口令错误', 'Invalid passcode'));
         return;
       }
-      demoPass = pass;
-      try { sessionStorage.setItem('embercrown-demo-pass', pass); } catch (e) {}
+      demoToken = res.token;
+      try { sessionStorage.setItem('embercrown-demo-token', demoToken); sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
       audioInit(); sfx.ui();
       show('gate', false); show('menu', true);
     })
-    .catch(() => { if (typeof silentPass !== 'string') showGateErr('无法连接服务器验证口令'); });
+    .catch(() => { if (!isSilent) showGateErr(t('无法连接服务器验证口令', 'Unable to reach server for verification')); });
 }
 function mpConnect(roomArg, botsArg, diffArg, createArg) {
   audioInit();
-  if (!demoPass) { lockGate('请先输入访问口令'); return; }
+  if (!demoToken) { lockGate(t('请先输入访问口令', 'Please enter the access passcode first')); return; }
   if (net.ws) return;
   if (location.protocol === 'file:') { mpStatus('联机对战要通过服务器打开本页：在项目目录运行 npm start，再访问 http://localhost:3000', true); return; }
   const room = (typeof roomArg === 'string' ? roomArg : '').trim().slice(0, 12);
@@ -3478,12 +3479,12 @@ function mpConnect(roomArg, botsArg, diffArg, createArg) {
   try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); }
   catch (e) { mpStatus('连不上服务器，请确认服务器已经启动。', true); return; }
   net.ws = ws; net.joined = false; net.full = false;
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', cls: selCls, pass: demoPass, room, bots, diff, create }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', cls: selCls, token: demoToken, room, bots, diff, create }));
   ws.onmessage = ev => {
     if (net.ws !== ws) return;
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (m.t === 'welcome') mpStart(m);
-    else if (m.t === 'denied') { net.full = true; ws.close(); lockGate(m.msg || '访问口令错误'); }
+    else if (m.t === 'denied') { net.full = true; ws.close(); lockGate(m.msg || t('访问口令错误', 'Invalid or expired session')); }
     else if (m.t === 'noroom') { net.full = true; mpStatus(m.msg || '该房间不存在或已结束，请检查房间号。', true); ws.close(); }
     else if (m.t === 'full') { net.full = true; mpStatus('房间已满，请稍后再试。', true); ws.close(); }
     else if (!net.joined) return;
@@ -3968,7 +3969,7 @@ function frame(now) {
 buildArena();
 if (window.matchMedia && matchMedia('(pointer: coarse)').matches) setTouch();
 applyI18n(); setPreview(selCls); requestAnimationFrame(frame);
-try { const saved = sessionStorage.getItem('embercrown-demo-pass'); if (saved) submitGate(saved); } catch (e) {}
+try { const saved = sessionStorage.getItem('embercrown-demo-token'); if (saved) submitGate(saved); } catch (e) {}
 window.__arenaCtl = ctl;
 window.__arena = { info: renderer.info, cam: camera, net, game, get player() { return player; }, startGame, spawnEnemy, hurtEnemy, openUpgrade, keys, mouse, aim };
 })();

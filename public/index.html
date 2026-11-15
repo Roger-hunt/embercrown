@@ -216,14 +216,15 @@ h1{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(34px,6v
 .menu-bottom{margin-top:auto;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;pointer-events:none}
 .menu-bottom>*{pointer-events:auto}
 .heroes{display:grid;grid-template-columns:repeat(3,minmax(130px,176px));gap:9px;flex:0 1 auto}
-.hero-row{display:flex;align-items:center;gap:9px;text-align:left;padding:8px 12px 8px 9px;background:rgba(35,26,51,.78);border:2.5px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);backdrop-filter:blur(3px);transition:transform .08s,border-color .08s}
+.hero-row{display:flex;align-items:center;gap:9px;text-align:left;padding:8px 12px 8px 9px;background:rgba(35,26,51,.78);border:2.5px solid var(--ink);border-radius:14px;box-shadow:0 4px 0 var(--ink);backdrop-filter:blur(3px);transition:transform .08s,border-color .08s;overflow:hidden}
+.hero-row>div:last-child{min-width:0;flex:1}
 .hero-row:hover{transform:translateY(-2px)}
 .hero-row[aria-pressed="true"]{background:var(--plate-2);border-color:var(--gold);box-shadow:0 0 0 2px rgba(255,194,61,.35),0 4px 0 var(--ink)}
-.hero-row .rune{width:36px;height:40px;background:var(--muted)}
+.hero-row .rune{width:36px;height:40px;background:var(--muted);flex:none}
 .hero-row .rune .ic{width:19px;height:19px}
 .hero-row[aria-pressed="true"] .rune{background:var(--gold)}
-.hn{font-family:var(--f-display);font-size:17px;line-height:1.15;white-space:nowrap}
-.hr{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.hn{font-family:var(--f-display);font-size:17px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hr{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .menu-go{display:flex;gap:10px;align-items:center;flex:none}
 .go{align-self:flex-start;padding:10px 26px 12px;font-family:var(--f-display);font-size:24px;color:var(--ink);background:var(--gold);border:3px solid var(--ink);border-radius:15px;box-shadow:0 5px 0 var(--ink);white-space:nowrap}
 .go:hover{background:#ffd266}
@@ -717,7 +718,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
     <div class="plate card gate-card">
       <div class="gate-top"><div class="eyebrow" id="gateEyebrow">受邀体验版 · DEMO</div><button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button></div>
       <h2 id="gateH">烬冠竞技场</h2>
-      <p id="gateP">请输入访问口令进入游戏（代号与房间由系统自动分配）。</p>
+      <p id="gateP">请输入访问口令进入游戏</p>
       <input id="inPass" type="password" maxlength="32" placeholder="输入访问口令" autocomplete="off" spellcheck="false">
       <p class="hint bad" id="gateErr" hidden></p>
       <button class="go" id="btnGate">验证并进入</button>
@@ -751,7 +752,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
   <div id="lobby" class="screen center" hidden>
     <div class="plate card lobby">
       <h2>对战大厅</h2>
-      <p>8 人自由混战，先拿到 15 次击杀获胜 · 代号与房间号由系统自动分配</p>
+      <p>8 人自由混战，先拿到 15 次击杀获胜</p>
       <div class="lobby-cls" id="lobbyCls"></div>
       <div class="lobby-actions">
         <button type="button" class="lobby-act primary" id="btnQuick"><b>快速匹配</b><span>选择难度后自动匹配或开启战局</span></button>
@@ -954,7 +955,7 @@ const EN_DATA = {
   diff: { easy: 'Easy', normal: 'Normal', hard: 'Hard' },
   cls: {
     knight: {
-      name: 'Ironvow Knight', tag: 'Knight', rune: 'K', role: 'Melee · Bulwark (26% Armor)',
+      name: 'Ironvow Knight', tag: 'Knight', rune: 'K', role: 'Melee · Bulwark',
       blurb: 'Heavy plate and shield; 26% damage reduction and Whirlwind lifesteal.',
       atkName: 'Slash', atkDesc: 'Wide cleave in front, generating Rage on hit',
       mastery: 'Slash arc +25%',
@@ -966,7 +967,7 @@ const EN_DATA = {
       ult: { name: 'Skyfall Blade', desc: 'Cast 0.95s on target area; a giant blade crashes down, dealing heavy damage and stun' },
     },
     ranger: {
-      name: 'Verdant Ranger', tag: 'Ranger', rune: 'R', role: 'Ranged · Agile (10% Armor)',
+      name: 'Verdant Ranger', tag: 'Ranger', rune: 'R', role: 'Ranged · Agile',
       blurb: 'Arrows always fly faster than footsteps.',
       atkName: 'Shot', atkDesc: 'Fires an arrow that pierces one enemy',
       mastery: '+1 extra arrow per shot',
@@ -978,7 +979,7 @@ const EN_DATA = {
       ult: { name: 'Arrow Storm', desc: 'Cast 1.05s on target area for a massive sustained arrow storm' },
     },
     mage: {
-      name: 'Ember Mage', tag: 'Mage', rune: 'M', role: 'Caster · Burst (10% Ward)',
+      name: 'Ember Mage', tag: 'Mage', rune: 'M', role: 'Caster · Burst',
       blurb: 'What fire can solve needs no extra words.',
       atkName: 'Fireball', atkDesc: 'Explodes on impact, hitting nearby enemies',
       mastery: 'Fireball blast radius +35%',
@@ -1830,7 +1831,7 @@ const ICONS = {
   heal: '<path d="M9.5 3.5h5v6h6v5h-6v6h-5v-6h-6v-5h6z"/>',
 };
 const icon = id => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + (ICONS[id] || '') + '</svg>';
-const runeIcon = r => icon(r === '骑' ? 'slash' : r === '游' ? 'shoot' : r === '法' ? 'fire' : 'foe');
+const runeIcon = r => icon((r === '骑' || r === 'K') ? 'slash' : (r === '弓' || r === '游' || r === 'R') ? 'shoot' : (r === '焰' || r === '法' || r === 'M') ? 'fire' : 'foe');
 const RES = {
   rage: { name: '怒气', start: 20, decay: 2, calm: 6.5 },
   energy: { name: '能量', start: 100, regen: 9.0 },
@@ -1840,21 +1841,21 @@ const ZCOL = { rain: 0x9fe870, storm: 0x9fe870, meteor: 0xff8a2f, inferno: 0xff8
 // cost: [1 普攻, 2, 3, 4 大招] 的资源消耗；ult：4 号键，先用鼠标选范围，再站定读条
 const CLASSES = {
   knight: {
-    id: 'knight', name: '铁誓骑士', tag: '骑士', rune: '骑', role: '近战 · 坚韧（26% 护甲减伤）', blurb: '重甲剑盾，一步不退；自带 26% 伤害减免与旋风斩吸血。', pips: [5, 4, 2],
+    id: 'knight', name: '铁誓骑士', tag: '骑士', rune: '骑', role: '近战 · 坚韧', blurb: '重甲剑盾，一步不退；自带 26% 伤害减免与旋风斩吸血。', pips: [5, 4, 2],
     hp: 215, armor: 0.74, speed: 6.8, atkCd: 0.41, atkDur: 0.22, style: 'melee', build: buildKnight, atkName: '挥砍', atkIco: 'slash', atkDesc: '宽幅扇形斩击面前敌人，命中获得大量怒气',
     mastery: '挥砍范围 +25%', move: { name: '冲锋', ico: 'dash', desc: '优先锁定当前目标突进，无目标时朝面向冲锋，撞晕沿途敌人、短暂免伤并获得 25 怒气', cd: 5, kind: 'charge' }, res: 'rage', cost: [0, 0, 20, 35],
     skills: [{ name: '盾牌猛击', ico: 'bash', desc: '用重盾猛砸面前敌人，造成高额伤害、击晕并获得 15 怒气', cd: 5.2 }, { name: '旋风斩', ico: 'spin', desc: '横扫周身所有敌人，造成重创并根据命中数量回复生命', cd: 7.5 }],
     ult: { name: '天降神剑', ico: 'blade', desc: '选定范围后快速读条 0.95 秒，巨剑坠落重创并强晕敌人', cd: 20, cast: 0.95, range: 15, kind: 'blade', zone: { r: 5, delay: 0.45, dmg: 165, stun: 1.8 } },
   },
   ranger: {
-    id: 'ranger', name: '翠林游侠', tag: '游侠', rune: '弓', role: '远程 · 迅捷（10% 护甲减伤）', blurb: '箭总比敌人的脚步快。', pips: [3, 5, 5],
+    id: 'ranger', name: '翠林游侠', tag: '游侠', rune: '弓', role: '远程 · 迅捷', blurb: '箭总比敌人的脚步快。', pips: [3, 5, 5],
     hp: 140, armor: 0.90, speed: 7.1, atkCd: 0.36, atkDur: 0.14, style: 'bow', build: buildRanger, atkName: '射击', atkIco: 'shoot', atkDesc: '射出可穿透一个敌人的利箭',
     mastery: '每次射击多射 1 支箭', move: { name: '翻滚', ico: 'roll', desc: '朝移动方向翻滚闪避，期间短暂无敌并解除减速', cd: 2.8, kind: 'roll' }, res: 'energy', cost: [0, 25, 30, 45],
     skills: [{ name: '扇形齐射', ico: 'fan', desc: '一次射出一排穿透箭，命中敌人造成减速', cd: 6.5 }, { name: '箭雨', ico: 'rain', desc: '在目标处降下箭雨，持续伤害并减速', cd: 8.5 }],
     ult: { name: '万箭风暴', ico: 'storm', desc: '选定范围后读条 1.05 秒，大范围箭矢风暴持续倾泻', cd: 21, cast: 1.05, range: 19, kind: 'storm', zone: { r: 6, delay: 0.4, dmg: 20, ticks: 8, interval: 0.3, slow: 1.3 } },
   },
   mage: {
-    id: 'mage', name: '余烬法师', tag: '法师', rune: '焰', role: '法术 · 爆发（10% 奥术护盾）', blurb: '火能解决的事，不必多说。', pips: [3, 3, 5],
+    id: 'mage', name: '余烬法师', tag: '法师', rune: '焰', role: '法术 · 爆发', blurb: '火能解决的事，不必多说。', pips: [3, 3, 5],
     hp: 136, armor: 0.90, speed: 6.6, atkCd: 0.46, atkDur: 0.2, style: 'cast', build: buildMage, atkName: '火球', atkIco: 'fire', atkDesc: '命中后爆炸，波及周围敌人',
     mastery: '火球爆炸范围 +35%', move: { name: '闪现', ico: 'blink', desc: '朝移动方向瞬间传送并解除控制与减速', cd: 6.5, kind: 'blink', dist: 7.2 }, res: 'mana', cost: [0, 20, 30, 45],
     skills: [{ name: '冰霜新星', ico: 'nova', desc: '冻结身边一圈敌人', cd: 7.5 }, { name: '陨石术', ico: 'meteor', desc: '片刻后陨石砸在目标处，范围巨额伤害', cd: 9.2 }],
@@ -3293,7 +3294,7 @@ function applyI18n() {
   const setH = (sel, zh, en) => { const el = document.querySelector(sel); if (el) el.innerHTML = t(zh, en); };
   setQ('#gateEyebrow', '受邀体验版 · DEMO', 'INVITE PREVIEW · DEMO');
   setQ('#gateH', '烬冠竞技场', 'Embercrown Arena');
-  setQ('#gateP', '请输入访问口令进入游戏（代号与房间由系统自动分配）。', 'Enter access passcode to join (codename and room are auto-assigned).');
+  setQ('#gateP', '请输入访问口令进入游戏', 'Enter access passcode to join');
   $('inPass').placeholder = t('输入访问口令', 'Enter passcode');
   setQ('#btnGate', '验证并进入', 'Verify & Enter');
   setH('#menuEyebrow', '单人闯关 · 8 人联机混战 <span id="best"></span>', 'Solo Waves · 8-Player FFA <span id="best"></span>');
@@ -3301,7 +3302,7 @@ function applyI18n() {
   setQ('#btnStart', '单人闯关', 'Solo Waves');
   setQ('#btnOnline', '联机对战', 'Online FFA');
   setQ('#lobby h2', '对战大厅', 'Battle Lobby');
-  setQ('#lobby > .card > p', '8 人自由混战，先拿到 15 次击杀获胜 · 代号与房间号由系统自动分配', '8-player free-for-all, first to 15 kills wins · Codename & room auto-assigned');
+  setQ('#lobby > .card > p', '8 人自由混战，先拿到 15 次击杀获胜', '8-player free-for-all, first to 15 kills wins');
   setH('#btnQuick', '<b>快速匹配</b><span>选择难度后自动匹配或开启战局</span>', '<b>Quick Match</b><span>Auto-match or open a room by difficulty</span>');
   setH('#btnOpenRooms', '<b>房间列表 <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>浏览并加入正在激战的活跃房间</span>', '<b>Room List <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>Browse and join active rooms</span>');
   setH('#btnOpenCreate', '<b>创建房间</b><span>自定义 Bot 数量与难度开新局</span>', '<b>Create Room</b><span>Customize bot count and difficulty</span>');

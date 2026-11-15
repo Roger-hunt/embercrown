@@ -607,6 +607,25 @@ body.rot90 #rosterPanel{width:min(480px,92%);max-height:82%}
 .ptool svg{width:17px;height:17px;fill:currentColor;flex:none}
 .ptool:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
 .ptool.off{color:var(--muted)}
+body.pad #stick,body.pad #rotTip{display:none!important}
+body.pad.touch .hud-bottom{position:static;height:auto;pointer-events:none}
+body.pad.touch #castBar{position:static;left:auto;bottom:auto;transform:none;width:min(300px,70vw)}
+body.pad.touch .skills{position:static;display:flex;gap:5px;width:auto;height:auto;padding:5px;background:rgba(35,26,51,.82);border:3px solid var(--ink);border-radius:12px;box-shadow:0 0 0 2px #7d6a3a,0 4px 0 var(--ink);transform:none}
+body.pad.touch .skills::before{display:none}
+body.pad.touch .slot{position:relative;left:auto!important;right:auto!important;top:auto!important;bottom:auto!important;width:54px;height:54px;border-radius:8px;overflow:hidden;border:2px solid #0e0a17;box-shadow:inset 0 0 0 2px rgba(255,241,210,.18)}
+body.pad.touch .slot.touch-only{display:none}
+body.pad.touch .slot .key{display:block;font-size:11px}
+body.pad.touch .slot .ico{margin-top:-10px}
+body.pad.touch .slot .ic{width:30px;height:30px}
+body.pad.touch .slot .sname{left:0;right:0;bottom:0;transform:none;border-radius:0;border:none;box-shadow:none;background:rgba(20,12,34,.72);font-size:9.5px;padding:0}
+body.pad.touch .slot[data-k="atk"]::after{display:none}
+.pad-guide{width:100%;max-width:520px;padding:10px 12px;border-radius:12px;background:rgba(20,12,34,.72);border:2px solid rgba(255,194,61,.32);text-align:left;display:grid;gap:6px}
+.pad-guide-h{display:flex;align-items:center;justify-content:space-between;font-family:var(--f-display);font-size:14px;color:var(--gold)}
+.pad-guide-h small{font-family:var(--f-body);font-size:11px;color:var(--muted);font-weight:400}
+.pad-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:4px 10px;font-size:12px;color:var(--cream)}
+.pad-grid span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.pad-grid kbd{display:inline-block;min-width:26px;padding:1px 6px;border-radius:6px;background:var(--plate-2);border:1.5px solid var(--ink);font-family:var(--f-num);font-size:11px;color:var(--gold);text-align:center}
+@media (max-height:540px){.pad-guide{padding:7px 10px;gap:4px}.pad-grid{font-size:11px;gap:3px 8px}}
 #gate{z-index:20}
 #gate::before{background:rgba(16,11,28,.9);backdrop-filter:blur(6px)}
 .gate-card{width:min(400px,92vw);gap:12px}
@@ -828,6 +847,23 @@ body.rot90 #rosterPanel{width:min(480px,92%);max-height:82%}
       <div class="pause-tools">
         <button type="button" class="ptool" id="btnFs" aria-label="全屏横屏"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 3v-3h2v5h-5v-2h3z"/></svg><span>全屏横屏</span></button>
         <button type="button" class="ptool" id="btnSound" aria-label="开关声音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h4.5L14 4.5v15l-5.5-5H4v-5zm12.8-2.3a6.8 6.8 0 0 1 0 9.6l-1.5-1.5a4.7 4.7 0 0 0 0-6.6l1.5-1.5z"/></svg><span>音效：开</span></button>
+      </div>
+      <div class="pad-guide">
+        <div class="pad-guide-h"><span>蓝牙手柄键位（标准 Xbox 手柄）</span><small>接入自动隐藏虚拟按键</small></div>
+        <div class="pad-grid">
+          <span><kbd>左摇杆</kbd>移动</span>
+          <span><kbd>右摇杆</kbd>视角转向</span>
+          <span><kbd>X / RT</kbd>普通攻击</span>
+          <span><kbd>Y</kbd>1 号技能</span>
+          <span><kbd>B</kbd>2 号技能</span>
+          <span><kbd>RB</kbd>终极大招</span>
+          <span><kbd>LB</kbd>位移/冲锋</span>
+          <span><kbd>A</kbd>跳跃</span>
+          <span><kbd>LT</kbd>切换目标</span>
+          <span><kbd>View</kbd>排行榜</span>
+          <span><kbd>D-Pad ↑</kbd>个人属性</span>
+          <span><kbd>Menu</kbd>暂停/菜单</span>
+        </div>
       </div>
       <div class="row">
         <button class="go" id="btnResume">继续战斗</button>
@@ -2511,7 +2547,7 @@ function buildSkillBar(d = player.def) {
   slots = defs.map(([k, key, ico, name], i) => {
     const s = document.createElement('div'); s.className = 'slot' + (k === 'jump' ? ' touch-only' : ''); s.dataset.k = k;
     s.innerHTML = '<span class="key"></span><span class="ico"></span><span class="sname"></span><i class="cd"></i><span class="sec"></span>';
-    s.children[0].textContent = key; s.children[1].innerHTML = icon(ico); s.children[2].textContent = name;
+    s.children[0].textContent = padMode ? ({ atk: 'X', q: 'Y', e: 'B', u: 'RB', dodge: 'LB', jump: 'A' }[k] || key) : key; s.children[1].innerHTML = icon(ico); s.children[2].textContent = name;
     const c = tint[k] || (d.id === 'knight' ? ['#b0483f', '#4a1f26'] : d.id === 'ranger' ? ['#4f9f5f', '#1f4a2c'] : ['#5b6fd6', '#262a6a']);
     s.style.setProperty('--c1', c[0]); s.style.setProperty('--c2', c[1]);
     const cost = i < 4 ? d.cost[i] : 0; s.title = name + (cost ? '（' + cost + ' ' + RES[d.res].name + '）' : '');
@@ -2650,7 +2686,7 @@ function setPreview(id) {
 }
 function syncStickVis() {
   const el = $('stick'); if (!el) return;
-  const showStick = touchMode && (game.state === 'playing' || game.state === 'mp');
+  const showStick = touchMode && !padMode && (game.state === 'playing' || game.state === 'mp');
   el.hidden = !showStick;
   if (!showStick || stick.id === null) { el.style.left = ''; el.style.top = ''; el.firstElementChild.style.transform = ''; }
 }
@@ -2801,6 +2837,60 @@ function togglePause() {
    两个鼠标键一起按：前进；空格跳；1–5 动作条；Tab / 左键点击选目标；4 进入选范围，左键确认、右键或 Esc 取消。 */
 const keys = {}, mouse = { x: 0, y: 0, down: false }, act = { atk: false, q: false, e: false, u: false, dodge: false, jump: false }, taps = {};
 const stick = { id: null, ox: 0, oy: 0, dx: 0, dz: 0 };
+const pad = { lx: 0, ly: 0, rx: 0, ry: 0, prev: [] };
+let padMode = false;
+function setPad(on) {
+  if (padMode === on) return;
+  padMode = on;
+  document.body.classList.toggle('pad', on);
+  if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
+  syncStickVis();
+  if (on && inPlay()) showErr('已接入蓝牙手柄（Xbox 键位）');
+}
+function pollGamepad(dt) {
+  const list = navigator.getGamepads ? navigator.getGamepads() : null;
+  let gp = null;
+  if (list) for (let i = 0; i < list.length; i++) {
+    const g = list[i];
+    if (g && g.connected && g.axes.length >= 2 && g.buttons.length >= 8) { gp = g; break; }
+  }
+  if (!gp) {
+    pad.lx = pad.ly = pad.rx = pad.ry = 0;
+    for (const k in act) act[k] = false;
+    return;
+  }
+  const dz = v => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;
+  const lx = dz(gp.axes[0] || 0), ly = dz(gp.axes[1] || 0);
+  const rx = dz(gp.axes[2] || 0), ry = dz(gp.axes[3] || 0);
+  const down = i => { const b = gp.buttons[i]; return !!b && (b.pressed || b.value > 0.35); };
+  const edge = i => { const cur = down(i), was = !!pad.prev[i]; pad.prev[i] = cur; return cur && !was; };
+  let anyBtn = false;
+  for (let i = 0; i < Math.min(16, gp.buttons.length); i++) if (down(i)) { anyBtn = true; break; }
+  if (!padMode && (anyBtn || lx || ly || rx || ry)) setPad(true);
+  pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry;
+  if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); return; }
+  if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); return; }
+  if (edge(12) && (game.state === 'playing' || game.state === 'mp')) { toggleChar(); return; }
+  if (!inPlay()) return;
+  if (edge(6)) cycleTarget();
+  if (rx || ry) {
+    ctl.camYaw -= rx * 2.7 * dt;
+    ctl.pitch = clamp(ctl.pitch + ry * 1.9 * dt, 0.12, 1.38);
+    lookPauseT = performance.now() + 1800;
+  }
+  const map = { atk: down(2) || down(7), q: down(3), e: down(1), u: down(5), dodge: down(4), jump: down(0) };
+  for (const k in map) {
+    const cur = map[k], was = !!pad.prev['a_' + k];
+    pad.prev['a_' + k] = cur;
+    if (padMode) act[k] = cur;
+    if (cur && !was) taps[k] = true;
+  }
+}
+window.addEventListener('gamepadconnected', () => setPad(true));
+window.addEventListener('gamepaddisconnected', () => {
+  const list = navigator.getGamepads ? navigator.getGamepads() : [];
+  if (![...list].some(g => g && g.connected)) setPad(false);
+});
 const ctl = { yaw: Math.PI, camYaw: Math.PI, pitch: 0.62, dist: 13, rmb: false, lmb: false, drag: 0, aiming: false, pt: null, target: null, ml: 0, mx: 0, mz: 0 };
 const KEYMAP = { atk: ['Digit1', 'Numpad1'], q: ['Digit2', 'Numpad2'], e: ['Digit3', 'Numpad3'], u: ['Digit4', 'Numpad4'], dodge: ['Digit5', 'Numpad5', 'ShiftLeft'], jump: ['Space'] };
 const KEY2ACT = {}; for (const k in KEYMAP) for (const c of KEYMAP[k]) KEY2ACT[c] = k;
@@ -2816,14 +2906,15 @@ function ctlInput(dt, frozen) {
     if (keys.KeyE) str += 1; if (keys.KeyQ) str -= 1;
     if (keys.KeyD || keys.ArrowRight) turn += 1; if (keys.KeyA || keys.ArrowLeft) turn -= 1;
     if (ctl.rmb) { str += turn; turn = 0; }
-    fwd -= stick.dz; str += stick.dx;
+    fwd -= stick.dz + pad.ly; str += stick.dx + pad.lx;
   }
   if (turn) ctl.yaw -= turn * 2.9 * dt;
-  const b = touchMode ? ctl.camYaw : ctl.yaw;
+  const freeCam = touchMode || padMode;
+  const b = freeCam ? ctl.camYaw : ctl.yaw;
   let mx = Math.sin(b) * fwd - Math.cos(b) * str, mz = Math.cos(b) * fwd + Math.sin(b) * str, ml = Math.hypot(mx, mz);
   if (ml > 1) { mx /= ml; mz /= ml; ml = 1; }
-  if (fwd < 0 && !touchMode) { mx *= 0.65; mz *= 0.65; ml *= 0.65; }           // 后退慢一些
-  if (touchMode) { if (ml > 0.15) ctl.yaw = Math.atan2(mx, mz); }
+  if (fwd < 0 && !freeCam) { mx *= 0.65; mz *= 0.65; ml *= 0.65; }           // 后退慢一些
+  if (freeCam) { if (ml > 0.15) ctl.yaw = Math.atan2(mx, mz); }
   else if (ctl.rmb) ctl.yaw = ctl.camYaw;
   else if (!ctl.lmb && (ml > 0.15 || turn)) ctl.camYaw += angDiff(ctl.yaw, ctl.camYaw) * (1 - Math.exp(-(turn ? 14 : 4) * dt));   // 镜头回到角色身后
   ctl.ml = ml; ctl.mx = mx; ctl.mz = mz;
@@ -2949,7 +3040,13 @@ window.addEventListener('mouseup', e => {
 });
 canvas.addEventListener('wheel', e => { e.preventDefault(); if (game.state !== 'menu') ctl.dist = clamp(ctl.dist * (e.deltaY > 0 ? 1.12 : 0.89), 4, 28); }, { passive: false });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-function setTouch() { if (touchMode) return; touchMode = true; document.body.classList.add('touch'); resize(); if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]); if (game.state === 'menu') renderMenu(); syncStickVis(); }
+function setTouch() {
+  if (padMode) setPad(false);
+  if (touchMode) return;
+  touchMode = true; document.body.classList.add('touch'); resize();
+  if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
+  if (game.state === 'menu') renderMenu(); syncStickVis();
+}
 const stickEl = $('stick'), lookT = { id: null, x: 0, y: 0, d: 0 };
 let aimTouchId = null, lookPauseT = 0;
 canvas.addEventListener('touchstart', e => {
@@ -3638,6 +3735,7 @@ let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const raw = Math.min(0.25, Math.max(0, (now - last) / 1000)), real = Math.min(0.05, raw); last = now;
+  pollGamepad(real);
   const st = game.state;
   if (st !== 'paused') game.time += real;
   if (st === 'playing' || st === 'over') {

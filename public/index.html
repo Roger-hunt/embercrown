@@ -2704,7 +2704,7 @@ function buildWave(n) {
   return q;
 }
 function startWave(n) {
-  if (debugMode && n % 5 !== 0) n += 5 - (n % 5);
+  if (debugMode && n < 15) n = 15;
   game.wave = n; game.waveHp = 1 + 0.12 * (n - 1); game.waveDmg = 1 + 0.06 * (n - 1);
   game.spawnQ = buildWave(n); game.spawnT = 0; game.phase = 'intro'; game.phaseT = 1.5;
   const boss = n % 5 === 0 ? ENEMY[game.spawnQ[0]] : null;

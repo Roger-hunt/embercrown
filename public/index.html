@@ -2148,13 +2148,13 @@ function dropMark(g) { if (!g) return; scene.remove(g); g.traverse(o => { if (o.
 function ultPress() {
   const mp = game.state === 'mp', def = mp ? CLASSES[net.cls] : player.def, u = def.ult, p = mp ? net.lp : player;
   if (ctl.aiming) {
-    const t = ctl.target, o = ctl.pt || { x: t ? t.x : p.x + Math.sin(ctl.yaw) * 8, z: t ? t.z : p.z + Math.cos(ctl.yaw) * 8 };
+    const tgt = ctl.target, o = ctl.pt || { x: tgt ? tgt.x : p.x + Math.sin(ctl.yaw) * 8, z: tgt ? tgt.z : p.z + Math.cos(ctl.yaw) * 8 };
     clampRange(p, o, u.range); ultCast(o.x, o.z); return;
   }
   if (mp ? (net.ct > 0 || !net.me || net.me.dead) : (p.cast || p.dead)) return;
   if ((mp ? net.cd[3] : p.cds.u) > 0) return showErr(t('技能还没准备好', 'Skill not ready'));
   if ((mp ? net.res : p.res) < def.cost[3]) return showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res)));
-  const t = ctl.target, o = { x: t ? t.x : p.x + Math.sin(ctl.yaw) * 8, z: t ? t.z : p.z + Math.cos(ctl.yaw) * 8 };
+  const tgt = ctl.target, o = { x: tgt ? tgt.x : p.x + Math.sin(ctl.yaw) * 8, z: tgt ? tgt.z : p.z + Math.cos(ctl.yaw) * 8 };
   clampRange(p, o, u.range); ctl.pt = o;
   if (touchMode) {                                     // 触屏：进入地面选点模式，默认对准锁定目标或身前
     v3.set(o.x, 0.05, o.z).project(camera);

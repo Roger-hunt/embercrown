@@ -1941,7 +1941,7 @@ function makePlayer(cls) {
 function gainRage(p, v) { if (p.def.res === 'rage') { p.res = Math.min(100, p.res + v); p.calm = RES.rage.calm; } }
 function pay(p, i) {
   const c = p.def.cost[i];
-  if (p.res < c) { if (taps[['atk', 'q', 'e', 'u'][i]]) showErr(RES[p.def.res].name + '不足'); return false; }
+  if (p.res < c) { if (taps[['atk', 'q', 'e', 'u'][i]]) showErr(t(resName(p.def.res) + '不足', 'Not enough ' + resName(p.def.res))); return false; }
   p.res -= c; return true;
 }
 function hurtPlayer(dmg, sx, sz, kb = 7) {
@@ -2042,8 +2042,8 @@ function ultPress() {
     clampRange(p, o, u.range); ultCast(o.x, o.z); return;
   }
   if (mp ? (net.ct > 0 || !net.me || net.me.dead) : (p.cast || p.dead)) return;
-  if ((mp ? net.cd[3] : p.cds.u) > 0) return showErr('技能还没准备好');
-  if ((mp ? net.res : p.res) < def.cost[3]) return showErr(RES[def.res].name + '不足');
+  if ((mp ? net.cd[3] : p.cds.u) > 0) return showErr(t('技能还没准备好', 'Skill not ready'));
+  if ((mp ? net.res : p.res) < def.cost[3]) return showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res)));
   const t = ctl.target, o = { x: t ? t.x : p.x + Math.sin(ctl.yaw) * 8, z: t ? t.z : p.z + Math.cos(ctl.yaw) * 8 };
   clampRange(p, o, u.range); ctl.pt = o;
   if (touchMode) {                                     // 触屏：进入地面选点模式，默认对准锁定目标或身前
@@ -2067,7 +2067,7 @@ function ultCast(x, z) {
   const u = p.def.ult;
   p.cast = { t: 0, dur: u.cast, x, z, mark: makeMark(x, z, u.zone.r, ZCOL[u.kind]) };
   if (Math.hypot(x - p.x, z - p.z) > 0.2) p.aimA = Math.atan2(x - p.x, z - p.z);
-  castShow(u.name); sfx.cast();
+  castShow(clsText(def).ult.name); sfx.cast();
 }
 function castStop(p, msg) {
   if (!p || !p.cast) return;
@@ -2867,7 +2867,7 @@ function startGame() {
   player = makePlayer(selCls); game.kills = 0; game.excite = 0.6;
   for (const k in hudC) delete hudC[k];
   if (location.protocol !== 'file:') { const t0 = performance.now(); fetch('healthz', { cache: 'no-store' }).then(r => { if (r.ok) setPingHUD(performance.now() - t0); }).catch(() => {}); }
-  $('hRune').innerHTML = runeIcon(player.def.rune); $('hName').textContent = player.def.name;
+  $('hRune').innerHTML = runeIcon(player.def.rune); $('hName').textContent = clsText(player.def).name;
   buildSkillBar(); renderBuffs();
   show('menu', false); show('over', false); show('pause', false); show('upgrade', false); show('hud', true);
   camTarget.set(0, 1.5, 0); ctlReset(Math.PI);
@@ -3089,12 +3089,12 @@ function ctlTarget(p) {
   const want = held('atk') || held('q') || held('e') || (isKnight && held('dodge'));
   if (!validTarget(ctl.target)) ctl.target = null;
   if (!ctl.target && (touchMode || want)) ctl.target = nearestFoe(p, touchMode ? 30 : 22);
-  const t = ctl.target;
-  tRing.visible = !!t;
-  if (t) {
-    const r = (t.r || 0.5) + 0.45; tRing.position.set(t.x, 0.06, t.z); tRing.scale.set(r, r, 1); tRing.rotation.z = game.time * 1.5;
-    aim.set(t.x, 0, t.z);
-    tgtHUD(game.state === 'mp' ? net.names.get(t.id) || '勇士' : t.d.name, Math.max(0, Math.ceil(t.hp)), t.maxHp, game.state === 'mp' ? t.def.rune : '敌');
+  const tgt = ctl.target;
+  tRing.visible = !!tgt;
+  if (tgt) {
+    const r = (tgt.r || 0.5) + 0.45; tRing.position.set(tgt.x, 0.06, tgt.z); tRing.scale.set(r, r, 1); tRing.rotation.z = game.time * 1.5;
+    aim.set(tgt.x, 0, tgt.z);
+    tgtHUD(game.state === 'mp' ? net.names.get(tgt.id) || t('勇士', 'Hero') : enemyText(tgt.d).name, Math.max(0, Math.ceil(tgt.hp)), tgt.maxHp, game.state === 'mp' ? tgt.def.rune : '敌');
   } else { aim.set(p.x + Math.sin(ctl.yaw) * 9, 0, p.z + Math.cos(ctl.yaw) * 9); tgtHUD(null); }
 }
 function aimAngle(p) { const t = ctl.target; return t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05 ? Math.atan2(t.x - p.x, t.z - p.z) : ctl.yaw; }
@@ -3438,7 +3438,7 @@ function renderLobbyCls() {
     const c = CLASSES[id], b = document.createElement('button'); b.type = 'button';
     b.className = id === selCls ? 'active' : '';
     b.innerHTML = runeIcon(c.rune) + '<span></span>';
-    b.lastChild.textContent = c.name;
+    b.lastChild.textContent = clsText(c).name;
     b.addEventListener('click', () => { sfx.ui(); selCls = id; renderMenu(); setPreview(id); renderLobbyCls(); });
     el.appendChild(b);
   }
@@ -3569,7 +3569,7 @@ function renderRosterPanel() {
     const role = li.querySelector('.rp-role');
     role.textContent = mine ? '我' : r.b ? '电脑' : '玩家';
     if (r.b) role.classList.add('bot');
-    li.querySelector('.rp-cls').textContent = def.name;
+    li.querySelector('.rp-cls').textContent = clsText(def).name;
     const bs = li.querySelectorAll('.rp-st b');
     bs[0].textContent = r.k || 0; bs[1].textContent = r.d || 0; bs[2].textContent = r.dmg || 0;
     ol.appendChild(li);
@@ -3748,7 +3748,7 @@ function mpEvent(v) {
     case 'spawn': e.fresh = true; e.spawnFx = true; break;
     case 'cs':                                          // 开始读条
       sfx.cast();
-      if (me) { dropMark(net.castMark); net.castMark = makeMark(v.x, v.z, v.r, ZCOL[e.def.ult.kind]); net.castDur = net.ct = v.d; castShow(e.def.ult.name); lp.aimT = v.d + 0.3; lp.aimA = Math.atan2(v.x - lp.x, v.z - lp.z); }
+      if (me) { dropMark(net.castMark); net.castMark = makeMark(v.x, v.z, v.r, ZCOL[e.def.ult.kind]); net.castDur = net.ct = v.d; castShow(clsText(e.def).ult.name); lp.aimT = v.d + 0.3; lp.aimA = Math.atan2(v.x - lp.x, v.z - lp.z); }
       break;
     case 'cc': if (me) { dropMark(net.castMark); net.castMark = null; net.ct = 0; castEnd(false); showErr('施法被打断'); } break;
     case 'atk':
@@ -3848,7 +3848,7 @@ function mpUpdate(dt) {
     if (held('atk')) net.pendB |= 1; if (held('q')) net.pendB |= 2; if (held('e')) net.pendB |= 4;
     if (held('dodge')) net.pendB |= 8; if (held('jump')) net.pendB |= 16;
     if ((net.pendB & 7) || ((net.pendB & 8) && net.cls === 'knight')) { lp.aimT = 0.45; lp.aimA = ta; }
-    if (taps.q || taps.e) { const i = taps.q ? 0 : 1; if (net.cd[i] > 0.3) showErr('技能还没准备好'); else if (net.res < def.cost[i + 1]) showErr(RES[def.res].name + '不足'); }
+    if (taps.q || taps.e) { const i = taps.q ? 0 : 1; if (net.cd[i] > 0.3) showErr(t('技能还没准备好', 'Skill not ready')); else if (net.res < def.cost[i + 1]) showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res))); }
     if (taps.u) ultPress();
   }
   clearTaps();

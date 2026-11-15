@@ -322,7 +322,7 @@ const server = http.createServer((req, res) => {
       if (!ok) { recordAuthFail(ip); logDebug('WARN', 'auth', '口令验证失败', { ip }); }
       else logDebug('INFO', 'auth', '口令验证通过', { ip });
       res.writeHead(ok ? 200 : 401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(ok ? { ok: true, token: tokOk ? tok : issueSessionToken() } : { ok: false, msg: '口令错误，请重试' }));
+      res.end(JSON.stringify(ok ? { ok: true, token: tokOk ? tok : issueSessionToken(), debug: DEBUG_ON } : { ok: false, msg: '口令错误，请重试' }));
     });
     return;
   }

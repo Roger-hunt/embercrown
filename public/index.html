@@ -2618,6 +2618,7 @@ function buildWave(n) {
   return q;
 }
 function startWave(n) {
+  if (debugMode && n % 5 !== 0) n += 5 - (n % 5);
   game.wave = n; game.waveHp = 1 + 0.12 * (n - 1); game.waveDmg = 1 + 0.06 * (n - 1);
   game.spawnQ = buildWave(n); game.spawnT = 0; game.phase = 'intro'; game.phaseT = 1.5;
   const boss = n % 5 === 0 ? ENEMY[game.spawnQ[0]] : null;
@@ -3472,7 +3473,7 @@ function renderRooms(list) {
     ul.appendChild(li);
   }
 }
-let demoToken = '';
+let demoToken = '', debugMode = false;
 function showGateErr(msg) { const el = $('gateErr'); el.textContent = msg || ''; el.hidden = !msg; }
 function lockGate(msg) {
   demoToken = '';
@@ -3488,14 +3489,14 @@ function submitGate(silentToken) {
   if (location.protocol === 'file:') { showGateErr(t('请通过服务器地址打开本页（http://...）', 'Please open this page via the server URL (http://...)')); return; }
   showGateErr('');
   fetch('auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(isSilent ? { token: silentToken } : { pass }) })
-    .then(r => r.json().then(d => ({ ok: r.ok && d.ok, token: d.token || '', msg: d.msg })))
+    .then(r => r.json().then(d => ({ ok: r.ok && d.ok, token: d.token || '', debug: !!d.debug, msg: d.msg })))
     .then(res => {
       if (!res.ok || !res.token) {
         if (isSilent) try { sessionStorage.removeItem('embercrown-demo-token'); sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
         else showGateErr(res.msg || t('口令错误', 'Invalid passcode'));
         return;
       }
-      demoToken = res.token;
+      demoToken = res.token; debugMode = !!res.debug;
       try { sessionStorage.setItem('embercrown-demo-token', demoToken); sessionStorage.removeItem('embercrown-demo-pass'); } catch (e) {}
       audioInit(); sfx.ui();
       show('gate', false); show('menu', true);

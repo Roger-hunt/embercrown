@@ -182,7 +182,7 @@ body.rot90 #stick{left:calc(max(16px,env(safe-area-inset-top,0px)) + 56px * var(
 #banner h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:clamp(40px,8vw,76px);line-height:1.1;color:var(--gold);-webkit-text-stroke:8px var(--ink);paint-order:stroke fill;text-shadow:0 6px 0 var(--ink)}
 #banner p{margin:6px 0 0;font-family:var(--f-display);font-size:clamp(16px,3vw,22px);-webkit-text-stroke:5px var(--ink);paint-order:stroke fill}
 @keyframes banner{0%{opacity:0;transform:scale(1.5)}12%{opacity:1;transform:scale(1)}75%{opacity:1}100%{opacity:0;transform:translateY(-16px)}}
-#vig{position:absolute;inset:0;box-shadow:inset 0 0 120px 30px rgba(232,67,79,.75);opacity:0;transition:opacity .35s}
+#vig{position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px rgba(232,67,79,.75);opacity:0;transition:opacity .35s}
 #vig.hit{opacity:1;transition:none}
 #vig.low{opacity:.45}
 
@@ -636,8 +636,8 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="vig"></div>
 <div id="ui">
-  <div id="vig"></div>
   <div id="tags"></div>
   <div id="nums"></div>
   <div id="rotTip"><span>建议横屏全屏游玩</span><button id="btnRot">横屏全屏</button></div>
@@ -2838,7 +2838,7 @@ function togglePause() {
 const keys = {}, mouse = { x: 0, y: 0, down: false }, act = { atk: false, q: false, e: false, u: false, dodge: false, jump: false }, taps = {};
 const stick = { id: null, ox: 0, oy: 0, dx: 0, dz: 0 };
 const pad = { lx: 0, ly: 0, rx: 0, ry: 0, prev: [] };
-let padMode = false;
+let padMode = false, padIdx = -1;
 function setPad(on) {
   if (padMode === on) return;
   padMode = on;
@@ -2847,13 +2847,24 @@ function setPad(on) {
   syncStickVis();
   if (on && inPlay()) showErr('已接入蓝牙手柄（Xbox 键位）');
 }
+function pickGamepad(list) {
+  if (!list) return null;
+  let std = null, any = null;
+  for (let i = 0; i < list.length; i++) {
+    const g = list[i];
+    if (!g || !g.connected || g.axes.length < 2 || g.buttons.length < 6) continue;
+    if (!any) any = g;
+    if (!std && g.mapping === 'standard') std = g;
+    const active = g.axes.some(a => Math.abs(a) >= 0.18) || g.buttons.some(b => b && (b.pressed || b.value > 0.35));
+    if (active) { padIdx = g.index; return g; }
+  }
+  const cur = padIdx >= 0 ? list[padIdx] : null;
+  if (cur && cur.connected && cur.axes.length >= 2 && cur.buttons.length >= 6) return cur;
+  return std || any;
+}
 function pollGamepad(dt) {
   const list = navigator.getGamepads ? navigator.getGamepads() : null;
-  let gp = null;
-  if (list) for (let i = 0; i < list.length; i++) {
-    const g = list[i];
-    if (g && g.connected && g.axes.length >= 2 && g.buttons.length >= 8) { gp = g; break; }
-  }
+  const gp = pickGamepad(list);
   if (!gp) {
     pad.lx = pad.ly = pad.rx = pad.ry = 0;
     if (padMode) for (const k in act) act[k] = false;
@@ -2886,8 +2897,12 @@ function pollGamepad(dt) {
     if (cur && !was) taps[k] = true;
   }
 }
-window.addEventListener('gamepadconnected', () => setPad(true));
-window.addEventListener('gamepaddisconnected', () => {
+window.addEventListener('gamepadconnected', e => {
+  if (e.gamepad) padIdx = e.gamepad.index;
+  if (e.gamepad && e.gamepad.mapping === 'standard') setPad(true);
+});
+window.addEventListener('gamepaddisconnected', e => {
+  if (e.gamepad && e.gamepad.index === padIdx) padIdx = -1;
   const list = navigator.getGamepads ? navigator.getGamepads() : [];
   if (![...list].some(g => g && g.connected)) setPad(false);
 });

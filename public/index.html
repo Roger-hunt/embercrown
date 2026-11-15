@@ -1199,8 +1199,60 @@ function P(parent, kind, args, color, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 
   parent.add(m); return m;
 }
 function Gp(parent, x = 0, y = 0, z = 0) { const g = new T.Group(); g.position.set(x, y, z); if (parent) parent.add(g); return g; }
-function flatDecal(g, color, x, z, y) {
-  const m = new T.Mesh(g, toon(color)); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; scene.add(m); return m;
+function flatDecal(g, color, x, z, y, parent = scene) {
+  const m = new T.Mesh(g, toon(color)); m.rotation.x = -Math.PI / 2; m.position.set(x, y, z); m.receiveShadow = true; parent.add(m); return m;
+}
+// Merge toon-shaded meshes inside a group into a single vertex-coloured mesh (reduces draw calls & shadow-pass cost).
+const vcMat = new T.MeshToonMaterial({ vertexColors: true, gradientMap: gradMap });
+function bake(group, opt) {
+  const o = typeof opt === 'object' && opt ? opt : {};
+  const items = [];
+  const collect = (p, pm) => {
+    for (let i = 0; i < p.children.length; i++) {
+      const c = p.children[i];
+      if (c.isMesh && c.material && c.material.isMeshToonMaterial) {
+        c.updateMatrix();
+        items.push([c, pm ? pm.clone().multiply(c.matrix) : c.matrix]);
+      } else if (o.recursive && c.isGroup) {
+        c.updateMatrix();
+        collect(c, pm ? pm.clone().multiply(c.matrix) : c.matrix);
+      }
+    }
+  };
+  collect(group, null);
+  if (!items.length) return null;
+  const geos = [], tmpG = [];
+  let n = 0;
+  for (const [m] of items) {
+    const g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry;
+    if (g !== m.geometry) tmpG.push(g);
+    geos.push(g);
+    n += g.attributes.position.count;
+  }
+  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const nm = new T.Matrix3(), v = new T.Vector3();
+  let k = 0;
+  for (let mi = 0; mi < items.length; mi++) {
+    const [m, mat] = items[mi], g = geos[mi];
+    nm.getNormalMatrix(mat);
+    const gp = g.attributes.position, gn = g.attributes.normal, c = m.material.color;
+    for (let i = 0; i < gp.count; i++, k += 3) {
+      v.fromBufferAttribute(gp, i).applyMatrix4(mat); pos[k] = v.x; pos[k + 1] = v.y; pos[k + 2] = v.z;
+      v.fromBufferAttribute(gn, i).applyMatrix3(nm).normalize(); nor[k] = v.x; nor[k + 1] = v.y; nor[k + 2] = v.z;
+      col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b;
+    }
+    if (m.parent) m.parent.remove(m);
+  }
+  for (const g of tmpG) g.dispose();
+  const bg = new T.BufferGeometry();
+  bg.setAttribute('position', new T.BufferAttribute(pos, 3));
+  bg.setAttribute('normal', new T.BufferAttribute(nor, 3));
+  bg.setAttribute('color', new T.BufferAttribute(col, 3));
+  const mesh = new T.Mesh(bg, o.mat || vcMat);
+  mesh.castShadow = o.castShadow !== undefined ? o.castShadow : true;
+  if (o.receiveShadow) mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
 }
 
 /* ================= arena ================= */
@@ -1317,51 +1369,60 @@ function buildArena() {
 
   // ground
   flatDecal(new T.CircleGeometry(300, 28), 0xa9c46c, 0, 0, -0.06).receiveShadow = false;
-  flatDecal(new T.CircleGeometry(R + 1.6, 56), 0xecc98a, 0, 0, 0);
-  flatDecal(new T.RingGeometry(R - 1.3, R + 1.6, 56), 0xd9b072, 0, 0, 0.012);
-  flatDecal(new T.RingGeometry(5.3, 5.9, 40), 0xd9b072, 0, 0, 0.012);
-  flatDecal(new T.CircleGeometry(1.7, 8), 0xd9b072, 0, 0, 0.012);
-  for (let i = 0; i < 8; i++) flatDecal(new T.RingGeometry(2.3, 4.7, 3, 1, i * TAU / 8 - 0.13, 0.26), 0xd9b072, 0, 0, 0.012);
+  const groundG = Gp(scene);
+  flatDecal(new T.CircleGeometry(R + 1.6, 56), 0xecc98a, 0, 0, 0, groundG);
+  flatDecal(new T.RingGeometry(R - 1.3, R + 1.6, 56), 0xd9b072, 0, 0, 0.012, groundG);
+  flatDecal(new T.RingGeometry(5.3, 5.9, 40), 0xd9b072, 0, 0, 0.012, groundG);
+  flatDecal(new T.CircleGeometry(1.7, 8), 0xd9b072, 0, 0, 0.012, groundG);
+  for (let i = 0; i < 8; i++) flatDecal(new T.RingGeometry(2.3, 4.7, 3, 1, i * TAU / 8 - 0.13, 0.26), 0xd9b072, 0, 0, 0.012, groundG);
   for (let i = 0; i < 16; i++) {
     const a = rand(TAU), d = rand(3, R - 3);
-    const m = flatDecal(new T.CircleGeometry(rand(0.9, 2.4), 7), 0xe4bf7e, Math.sin(a) * d, Math.cos(a) * d, 0.006);
+    const m = flatDecal(new T.CircleGeometry(rand(0.9, 2.4), 7), 0xe4bf7e, Math.sin(a) * d, Math.cos(a) * d, 0.006, groundG);
     m.scale.set(rand(0.7, 1.5), rand(0.6, 1.1), 1); m.rotation.z = rand(TAU);
   }
   for (let i = 0; i < 28; i++) {
     const a = rand(TAU), d = rand(4, R - 1);
-    const m = P(scene, 'dod', [0.22], pick([0xb9ad9c, 0xa89c8c, 0xcfc3b0]), Math.sin(a) * d, 0.06, Math.cos(a) * d, rand(3), rand(3));
+    const m = P(groundG, 'dod', [0.22], pick([0xb9ad9c, 0xa89c8c, 0xcfc3b0]), Math.sin(a) * d, 0.06, Math.cos(a) * d, rand(3), rand(3));
     m.scale.setScalar(rand(0.5, 1.4));
   }
+  bake(groundG, { castShadow: false, receiveShadow: true });
 
-  // ring wall
+  // ring wall (merged per 1/16 sector so only blocking sectors fade)
   const N = 48, segW = (R + 1) * TAU / N + 0.14;
-  for (let i = 0; i < N; i++) {
-    const a = i / N * TAU, h = i % 2 ? 2.3 : 2.8;
-    const m = P(scene, 'box', [segW, h, 1.4], i % 2 ? 0xd2c4ad : 0xc2b39c, Math.sin(a) * (R + 1), h / 2, Math.cos(a) * (R + 1), 0, a, 0);
-    addOccluder(m, 0.25);
+  for (let s = 0; s < 16; s++) {
+    const wg = Gp(scene);
+    for (let j = 0; j < 3; j++) {
+      const i = s * 3 + j, a = i / N * TAU, h = i % 2 ? 2.3 : 2.8;
+      P(wg, 'box', [segW, h, 1.4], i % 2 ? 0xd2c4ad : 0xc2b39c, Math.sin(a) * (R + 1), h / 2, Math.cos(a) * (R + 1), 0, a, 0);
+    }
+    bake(wg, { receiveShadow: true });
+    addOccluder(wg, 0.25);
   }
   // gates with torches
   for (let k = 0; k < 4; k++) {
     const a = k * Math.PI / 2;
     const g = Gp(scene, Math.sin(a) * (R + 0.4), 0, Math.cos(a) * (R + 0.4)); g.rotation.y = a;
-    P(g, 'box', [4.4, 3.5, 0.6], 0x2a2233, 0, 1.75, 0.1);
+    const stone = Gp(g);
+    P(stone, 'box', [4.4, 3.5, 0.6], 0x2a2233, 0, 1.75, 0.1);
     for (const sx of [-1, 1]) {
-      P(g, 'box', [1, 4.4, 1.3], 0xe0d3bd, sx * 2.6, 2.2, 0);
-      P(g, 'box', [1.25, 0.4, 1.5], 0xbcae98, sx * 2.6, 4.5, 0);
-      const t = Gp(g, sx * 3.7, 2.3, -0.75);
-      P(t, 'box', [0.14, 0.9, 0.14], 0x5b3a1e, 0, -0.3, 0);
-      P(t, 'cyl', [0.26, 0.14, 0.24, 6], 0x3b3350, 0, 0.22, 0);
-      const f = P(t, 'cone', [0.26, 0.75, 5], M.fire, 0, 0.72, 0); f.castShadow = false;
-      const f2 = P(t, 'cone', [0.13, 0.42, 4], M.fireCore, 0, 0.58, 0); f2.castShadow = false;
+      P(stone, 'box', [1, 4.4, 1.3], 0xe0d3bd, sx * 2.6, 2.2, 0);
+      P(stone, 'box', [1.25, 0.4, 1.5], 0xbcae98, sx * 2.6, 4.5, 0);
+      const tx = sx * 3.7, ty = 2.3, tz = -0.75;
+      P(stone, 'box', [0.14, 0.9, 0.14], 0x5b3a1e, tx, ty - 0.3, tz);
+      P(stone, 'cyl', [0.26, 0.14, 0.24, 6], 0x3b3350, tx, ty + 0.22, tz);
+      const f = P(g, 'cone', [0.26, 0.75, 5], M.fire, tx, ty + 0.72, tz); f.castShadow = false;
+      const f2 = P(g, 'cone', [0.13, 0.42, 4], M.fireCore, tx, ty + 0.58, tz); f2.castShadow = false;
       flames.push(f, f2);
     }
-    P(g, 'box', [6.4, 0.95, 1.3], 0xe0d3bd, 0, 4.2, 0);
-    P(g, 'box', [0.8, 0.9, 0.2], 0xffc23d, 0, 4.2, -0.7);
-    P(g, 'cone', [0.42, 0.5, 4], 0xffc23d, 0, 3.52, -0.7, Math.PI);
+    P(stone, 'box', [6.4, 0.95, 1.3], 0xe0d3bd, 0, 4.2, 0);
+    P(stone, 'box', [0.8, 0.9, 0.2], 0xffc23d, 0, 4.2, -0.7);
+    P(stone, 'cone', [0.42, 0.5, 4], 0xffc23d, 0, 3.52, -0.7, Math.PI);
+    bake(stone);
     const port = Gp(g, 0, 0, 0);
     for (let i = -2; i <= 2; i++) P(port, 'box', [0.13, 3.4, 0.13], 0x574f68, i * 0.8, 1.7, -0.28);
     for (let j = 0; j < 3; j++) P(port, 'box', [4.2, 0.12, 0.12], 0x574f68, 0, 0.7 + j * 1.05, -0.28);
     for (let i = -2; i <= 2; i++) P(port, 'cone', [0.1, 0.28, 4], 0x574f68, i * 0.8, -0.1, -0.28, Math.PI);
+    bake(port);
     gatePorts[k] = { g: port, y: 0, to: 0, a };
     addOccluder(g, 0.25, 7.6);
   }
@@ -1374,6 +1435,7 @@ function buildArena() {
       P(g, 'box', [1.9, 1.7, 0.08], c, 0, 1.45, 0);
       P(g, 'cone', [0.95, 0.5, 4], c, 0, 0.36, 0, Math.PI, Math.PI / 4).scale.z = 0.08;
       P(g, 'oct', [0.36], 0xffc23d, 0, 1.5, -0.04).scale.z = 0.25;
+      bake(g, { castShadow: false });
       addOccluder(g, 0.25);
     }
   }
@@ -1412,8 +1474,9 @@ function buildArena() {
     const g = Gp(scene, Math.sin(a) * r, 8.2, Math.cos(a) * r);
     P(g, 'cyl', [0.12, 0.16, 5.2, 5], 0x6b4a2b, 0, 2.6, 0);
     P(g, 'oct', [0.26], 0xffc23d, 0, 5.4, 0);
+    bake(g, { castShadow: false });
     const f = Gp(g, 0, 4.4, 0); f.userData.a = a + Math.PI / 2;
-    P(f, 'box', [2.3, 1.3, 0.06], [0xd8433b, 0xf2b632, 0x3d6fd6][i % 3], 1.25, 0, 0);
+    P(f, 'box', [2.3, 1.3, 0.06], [0xd8433b, 0xf2b632, 0x3d6fd6][i % 3], 1.25, 0, 0).castShadow = false;
     flags.push(f);
     addOccluder(g, 1.4);
   }
@@ -1426,19 +1489,22 @@ function buildArena() {
     P(g, 'cyl', [1, 1.12, h, 8], 0xdccfb9, 0, 0.5 + h / 2, 0);
     if (broken) { P(g, 'cyl', [0.7, 1, 0.7, 5], 0xcbbda6, 0.12, h + 0.7, 0.05, 0.12, 0.6, 0.1); P(g, 'dod', [0.5], 0xcbbda6, 1.7, 0.3, 0.9, 1, 2); P(g, 'dod', [0.34], 0xbcae98, 1.2, 0.2, 1.7, 2, 1); }
     else { P(g, 'box', [2.5, 0.45, 2.5], 0xbcae98, 0, h + 0.72, 0); P(g, 'cone', [0.5, 0.9, 4], 0xffc23d, 0, h + 1.4, 0, 0, Math.PI / 4); }
+    bake(g);
     pillars.push({ x, z, r: 1.4 });
     addOccluder(g, 0.3);
   }
   // far scenery
+  const farG = Gp(scene);
   for (let i = 0; i < 16; i++) {
     const a = i / 16 * TAU + rand(-0.15, 0.15), d = rand(150, 210), h = rand(40, 85);
-    P(scene, 'cone', [rand(34, 58), h, 5], pick([0x8f86b8, 0x7d7aa8, 0xa398c6]), Math.sin(a) * d, h / 2 - 2, Math.cos(a) * d, 0, rand(3)).castShadow = false;
+    P(farG, 'cone', [rand(34, 58), h, 5], pick([0x8f86b8, 0x7d7aa8, 0xa398c6]), Math.sin(a) * d, h / 2 - 2, Math.cos(a) * d, 0, rand(3));
   }
   for (let i = 0; i < 46; i++) {
     const a = rand(TAU), d = rand(46, 120), s = rand(1.6, 3.4), x = Math.sin(a) * d, z = Math.cos(a) * d;
-    P(scene, 'cyl', [0.3 * s, 0.4 * s, 1.4 * s, 5], 0x7a5230, x, 0.7 * s, z).castShadow = false;
-    P(scene, 'cone', [1.5 * s, 3 * s, 6], pick([0x4f9f5f, 0x3f8550, 0x6fb35a]), x, 2.9 * s, z, 0, rand(3)).castShadow = false;
+    P(farG, 'cyl', [0.3 * s, 0.4 * s, 1.4 * s, 5], 0x7a5230, x, 0.7 * s, z);
+    P(farG, 'cone', [1.5 * s, 3 * s, 6], pick([0x4f9f5f, 0x3f8550, 0x6fb35a]), x, 2.9 * s, z, 0, rand(3));
   }
+  bake(farG, { castShadow: false });
   for (let i = 0; i < 9; i++) {
     const a = rand(TAU), d = rand(90, 200), g = Gp(cloudRig, Math.sin(a) * d, rand(55, 95), Math.cos(a) * d);
     for (let j = 0; j < 4; j++) {
@@ -1446,6 +1512,7 @@ function buildArena() {
       m.position.set(j * 7 - 10 + rand(-2, 2), rand(-1, 1), rand(-3, 3)); m.scale.set(rand(6, 10), rand(3, 4.5), rand(5, 8)); g.add(m);
     }
   }
+  bake(cloudRig, { recursive: true, castShadow: false });
   scene.add(cloudRig);
 }
 
@@ -1719,28 +1786,7 @@ function buildBlackKnight() {
   return g;
 }
 
-// Merge the toon-shaded meshes that sit directly in one group into a single vertex-coloured mesh (one draw call per bone).
-const vcMat = new T.MeshToonMaterial({ vertexColors: true, gradientMap: gradMap });
-function bake(group) {
-  const list = group.children.filter(c => c.isMesh && c.material.isMeshToonMaterial);
-  if (!list.length) return;
-  let n = 0; for (const m of list) n += m.geometry.attributes.position.count;
-  const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), col = new Float32Array(n * 3), nm = new T.Matrix3(), v = new T.Vector3();
-  let k = 0;
-  for (const m of list) {
-    m.updateMatrix(); nm.getNormalMatrix(m.matrix);
-    const gp = m.geometry.attributes.position, gn = m.geometry.attributes.normal, c = m.material.color;
-    for (let i = 0; i < gp.count; i++, k += 3) {
-      v.fromBufferAttribute(gp, i).applyMatrix4(m.matrix); pos[k] = v.x; pos[k + 1] = v.y; pos[k + 2] = v.z;
-      v.fromBufferAttribute(gn, i).applyMatrix3(nm).normalize(); nor[k] = v.x; nor[k + 1] = v.y; nor[k + 2] = v.z;
-      col[k] = c.r; col[k + 1] = c.g; col[k + 2] = c.b;
-    }
-    group.remove(m);
-  }
-  const g = new T.BufferGeometry();
-  g.setAttribute('position', new T.BufferAttribute(pos, 3)); g.setAttribute('normal', new T.BufferAttribute(nor, 3)); g.setAttribute('color', new T.BufferAttribute(col, 3));
-  const mesh = new T.Mesh(g, vcMat); mesh.castShadow = true; group.add(mesh);
-}
+// All toon parts are baked via shared bake() above into vertex-coloured meshes per bone.
 const rigCache = new Map();
 function makeRig(key, build) {
   let t = rigCache.get(key);

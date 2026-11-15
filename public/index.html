@@ -2177,7 +2177,7 @@ function ultCast(x, z) {
   const u = p.def.ult;
   p.cast = { t: 0, dur: u.cast, x, z, mark: makeMark(x, z, u.zone.r, ZCOL[u.kind]) };
   if (Math.hypot(x - p.x, z - p.z) > 0.2) p.aimA = Math.atan2(x - p.x, z - p.z);
-  castShow(clsText(def).ult.name); sfx.cast();
+  castShow(clsText(p.def).ult.name); sfx.cast();
 }
 function castStop(p, msg) {
   if (!p || !p.cast) return;
@@ -3120,12 +3120,17 @@ function showOver() {
   $('overSub').textContent = game.wave >= 10 ? t('观众会记住这一场很久。', 'The crowd will remember this battle for a long time.') : game.wave >= 5 ? t('打得漂亮，看台还在喊你的名字。', 'Well fought—the stands are still chanting your name.') : t('沙子还热着，再来一次。', 'The sand is still warm. Step back in.');
   show('over', true);
 }
+function clearInputs() {
+  dragEnd(); clearTaps();
+  for (const k in act) act[k] = false;
+  for (const k in keys) keys[k] = false;
+}
 function togglePause() {
   const mp = game.state === 'mp';
   $('pauseH').textContent = mp ? t('对战菜单', 'Match Menu') : t('暂停', 'Paused'); $('pauseP').textContent = mp ? t('对战不会暂停，别离开太久。', 'Online matches do not pause—don’t stay away long.') : t('闸门后的怪物会等你。', 'The monsters behind the gate will wait.');
   renderControlGuide();
-  if (mp) { net.menu = !net.menu; show('pause', net.menu); }
-  else if (game.state === 'playing') { game.state = 'paused'; show('pause', true); }
+  if (mp) { net.menu = !net.menu; if (net.menu) clearInputs(); show('pause', net.menu); }
+  else if (game.state === 'playing') { game.state = 'paused'; clearInputs(); show('pause', true); }
   else if (game.state === 'paused') { game.state = 'playing'; show('pause', false); last = performance.now(); }
 }
 
@@ -3135,7 +3140,7 @@ function togglePause() {
 const keys = {}, mouse = { x: 0, y: 0, down: false }, act = { atk: false, q: false, e: false, u: false, dodge: false, jump: false }, taps = {};
 const stick = { id: null, ox: 0, oy: 0, dx: 0, dz: 0 };
 const pad = { lx: 0, ly: 0, rx: 0, ry: 0, prev: [] };
-let padMode = false, padIdx = -1, padWasPlay = false;
+let padMode = false, padIdx = -1, padWasPlay = false, lastPadAt = 0;
 function setPad(on) {
   if (padMode === on) return;
   padMode = on;
@@ -3221,7 +3226,9 @@ function gpMenuNav(dt, lx, ly, down, edge) {
     const items = gpMenuItems(scr);
     if (!items.length) { clearGpFocus(); return; }
     if (!gpFocusEl || !items.includes(gpFocusEl)) {
-      const pref = items.find(el => el.classList.contains('primary') || el.classList.contains('on')) || items[0];
+      const pref = items.find(el => el.classList.contains('primary') || el.classList.contains('on'))
+        || items.find(el => el.classList.contains('go') && !el.classList.contains('alt'))
+        || items[0];
       setFocus(pref);
     }
     if (dir) {
@@ -3261,6 +3268,12 @@ function gpMenuNav(dt, lx, ly, down, edge) {
     if (bEl && !bEl.hidden && !bEl.disabled) { sfx.ui(); bEl.click(); }
   }
 }
+function syncPadPrev(gp) {
+  for (let i = 0, n = Math.min(18, gp.buttons.length); i < n; i++) {
+    const b = gp.buttons[i];
+    pad.prev[i] = !!b && (b.pressed || b.value > 0.35);
+  }
+}
 function pollGamepad(dt) {
   const list = navigator.getGamepads ? navigator.getGamepads() : null;
   const gp = pickGamepad(list);
@@ -3277,17 +3290,25 @@ function pollGamepad(dt) {
   const edge = i => { const cur = down(i), was = !!pad.prev[i]; pad.prev[i] = cur; return cur && !was; };
   let anyBtn = false;
   for (let i = 0; i < Math.min(16, gp.buttons.length); i++) if (down(i)) { anyBtn = true; break; }
-  if (!padMode && (anyBtn || lx || ly || rx || ry)) setPad(true);
-  pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry;
-  if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); return; }
-  if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); return; }
-  if (inPlay() && edge(12)) { toggleChar(); return; }
-  if (game.state === 'upgrade' && game.boonPicks && game.boonPicks.length) {
-    const pickIdx = edge(2) ? 0 : edge(3) ? 1 : edge(1) ? 2 : -1;
-    if (pickIdx >= 0 && game.boonPicks[pickIdx]) { chooseBoon(game.boonPicks[pickIdx]); return; }
+  if (anyBtn || lx || ly || rx || ry) {
+    lastPadAt = performance.now();
+    if (!padMode) setPad(true);
   }
+  pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry;
+  if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); syncPadPrev(gp); return; }
+  if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); syncPadPrev(gp); return; }
+  if (inPlay() && edge(12)) { toggleChar(); syncPadPrev(gp); return; }
   if (!inPlay()) {
-    if (padWasPlay) { padWasPlay = false; if (padMode) for (const k in act) act[k] = false; }
+    if (padWasPlay) {
+      padWasPlay = false;
+      if (padMode) for (const k in act) act[k] = false;
+      syncPadPrev(gp);
+      return;
+    }
+    if (game.state === 'upgrade' && game.boonPicks && game.boonPicks.length) {
+      const pickIdx = edge(2) ? 0 : edge(3) ? 1 : edge(1) ? 2 : -1;
+      if (pickIdx >= 0 && game.boonPicks[pickIdx]) { chooseBoon(game.boonPicks[pickIdx]); syncPadPrev(gp); return; }
+    }
     if (padMode) gpMenuNav(dt, lx, ly, down, edge);
     return;
   }
@@ -3466,7 +3487,8 @@ window.addEventListener('mouseup', e => {
 canvas.addEventListener('wheel', e => { e.preventDefault(); if (game.state !== 'menu') ctl.dist = clamp(ctl.dist * (e.deltaY > 0 ? 1.12 : 0.89), 4, 28); }, { passive: false });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 function setTouch() {
-  if (padMode) setPad(false);
+  const keepPad = padMode && performance.now() - lastPadAt < 3000;
+  if (padMode && !keepPad) setPad(false);
   if (touchMode) return;
   touchMode = true; document.body.classList.add('touch'); resize();
   if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
@@ -3478,6 +3500,19 @@ function touchById(touches, id) {
   for (let i = 0; i < touches.length; i++) if (touches[i].identifier === id) return touches[i];
   return null;
 }
+function pruneTouches(touches) {
+  if (aimTouchId !== null && !touchById(touches, aimTouchId)) { aimTouchId = null; ctl.aiming = false; }
+  if (stick.id !== null && !touchById(touches, stick.id)) { stick.id = null; stick.dx = stick.dz = 0; syncStickVis(); }
+  if (lookT.id !== null && !touchById(touches, lookT.id)) { lookT.id = null; }
+  if (pinch.a !== null && (!touchById(touches, pinch.a) || !touchById(touches, pinch.b))) {
+    const keep = touchById(touches, pinch.a) || touchById(touches, pinch.b);
+    pinch.a = pinch.b = null; pinch.d = 0;
+    if (keep && inPlay() && lookT.id === null) {
+      const [kx, ky] = toViewXY(keep.clientX, keep.clientY);
+      lookT.id = keep.identifier; lookT.x = kx; lookT.y = ky; lookT.d = 20;
+    }
+  }
+}
 function startPinch(touches, idA, idB) {
   const ta = touchById(touches, idA), tb = touchById(touches, idB);
   if (!ta || !tb) return false;
@@ -3488,6 +3523,14 @@ function startPinch(touches, idA, idB) {
 }
 canvas.addEventListener('touchstart', e => {
   setTouch(); audioInit(); e.preventDefault();
+  pruneTouches(e.touches);
+  const simTwo = e.touches.length === 2 && e.changedTouches.length >= 2 && stick.id === null && pinch.a === null && !ctl.aiming && inPlay();
+  if (simTwo) {
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const [x0, y0] = toViewXY(t0.clientX, t0.clientY), [x1, y1] = toViewXY(t1.clientX, t1.clientY);
+    const stickHit = (x, y) => x < viewW * 0.28 && y > viewH * 0.56;
+    if (!stickHit(x0, y0) && !stickHit(x1, y1)) { startPinch(e.touches, t0.identifier, t1.identifier); return; }
+  }
   for (const t of e.changedTouches) {
     const [tx, ty] = toViewXY(t.clientX, t.clientY);
     if (ctl.aiming && inPlay() && aimTouchId === null) {
@@ -3504,6 +3547,7 @@ canvas.addEventListener('touchstart', e => {
 }, { passive: false });
 canvas.addEventListener('touchmove', e => {
   e.preventDefault();
+  pruneTouches(e.touches);
   for (const t of e.changedTouches) {
     const [tx, ty] = toViewXY(t.clientX, t.clientY);
     if (t.identifier === aimTouchId) {
@@ -3551,6 +3595,7 @@ const endTouch = e => {
       }
     } else if (t.identifier === lookT.id) { if (!cancel && lookT.d < 10 && inPlay()) pickTarget(tx, ty); lookT.id = null; }
   }
+  pruneTouches(e.touches);
 };
 canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
 window.addEventListener('touchstart', setTouch, { passive: true, once: true });

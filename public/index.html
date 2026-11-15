@@ -1095,7 +1095,7 @@ function resize() {
   const dpr = window.devicePixelRatio || 1;
   const isCar3K = rvw >= 1200 && Math.abs(rvw / rvh - 2880 / 1260) < 0.18;
   const minPhysW = isCar3K ? Math.max(2880, rvw * dpr) : rvw * dpr;
-  const effDpr = clamp(minPhysW / rvw, 1, Math.min(3, 2880 / rvw + 0.5));
+  const effDpr = clamp(minPhysW / rvw, 1, Math.min(2, 2880 / rvw + 0.5));
   renderer.setPixelRatio(effDpr);
   renderer.setSize(rvw, rvh, false);
   aspect = rvw / rvh; camera.aspect = aspect; camera.updateProjectionMatrix();
@@ -1113,9 +1113,7 @@ const sun = new T.DirectionalLight(0xfff0d0, 0.56);
 sun.position.set(18, 34, 14);
 sun.castShadow = true;
 {
-  const maxTex = (renderer.capabilities && renderer.capabilities.maxTextureSize) || 2048;
-  const shSz = maxTex >= 4096 && Math.max((window.screen && window.screen.width) || 0, window.innerWidth) * (window.devicePixelRatio || 1) >= 2400 ? 4096 : 2048;
-  sun.shadow.mapSize.set(shSz, shSz);
+  sun.shadow.mapSize.set(2048, 2048);
 }
 Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 90 });
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
@@ -1751,8 +1749,10 @@ function burst(x, y, z, color, n = 8, sp = 5, size = 0.16, life = 0.5) {
   for (let i = 0; i < n; i++) { const a = rand(TAU), v = sp * rand(0.3, 1); spark(x, y, z, Math.cos(a) * v, rand(1, sp), Math.sin(a) * v, color, size * rand(0.6, 1.4), life * rand(0.6, 1.2)); }
 }
 function updateParticles(dt) {
+  let dirty = false;
   for (let i = 0; i < PN; i++) {
     const p = parts[i]; if (!p.on) continue;
+    dirty = true;
     p.life -= dt;
     if (p.life <= 0) { p.on = false; dummy.position.set(0, -50, 0); dummy.scale.setScalar(0); dummy.rotation.set(0, 0, 0); dummy.updateMatrix(); pMesh.setMatrixAt(i, dummy.matrix); continue; }
     p.vy -= p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
@@ -1760,7 +1760,7 @@ function updateParticles(dt) {
     dummy.position.set(p.x, p.y, p.z); dummy.rotation.set(p.life * 9, p.life * 7, 0); dummy.scale.setScalar(p.s * (0.3 + 0.7 * p.life / p.max)); dummy.updateMatrix();
     pMesh.setMatrixAt(i, dummy.matrix);
   }
-  pMesh.instanceMatrix.needsUpdate = true;
+  if (dirty) pMesh.instanceMatrix.needsUpdate = true;
 }
 const fxMat = (c, o) => new T.MeshBasicMaterial({ color: c, transparent: true, opacity: o, depthWrite: false, side: T.DoubleSide });
 function addFx(mesh, life, upd) { scene.add(mesh); game.fx.push({ mesh, life, t: 0, upd }); return mesh; }
@@ -2240,6 +2240,17 @@ function spawnEnemy(type, x, z, o = {}) {
   if (!o.cine) burst(x, 0.4, z, 0xf3dcae, 6, 3, 0.2, 0.4);
   return e;
 }
+const voiceCache = {};
+function playVoice(src) {
+  if (!src || muted) return;
+  try {
+    let a = voiceCache[src];
+    if (!a) { a = new Audio(src); a.preload = 'auto'; a.volume = 0.95; voiceCache[src] = a; }
+    a.currentTime = 0;
+    a.play().catch(() => {});
+  } catch (err) {}
+}
+try { const a = new Audio('greta_yell.mp3'); a.preload = 'auto'; a.volume = 0.95; voiceCache['greta_yell.mp3'] = a; } catch (e) {}
 function bossYell(e) {
   const ld = enemyText(e.d); if (!ld.quote) return;
   const fd = document.createElement('div'); fd.className = 'fd boss';
@@ -2249,7 +2260,7 @@ function bossYell(e) {
   feedEl.appendChild(fd); while (feedEl.childElementCount > 4) feedEl.firstChild.remove();
   setTimeout(() => fd.remove(), 6500);
   showSayBubble(e, ld.quote, 4.8);
-  if (e.d.voice && !muted) { try { const a = new Audio(e.d.voice); a.volume = 0.95; a.play().catch(() => {}); } catch (err) {} }
+  playVoice(e.d.voice);
 }
 // 首领登场演出：闸门升起 → 首领从闸门阴影中缓缓走出（共 10 秒，期间玩家禁止攻击、首领无敌）
 const CINE_DUR = 10;
@@ -3072,30 +3083,33 @@ function pickGamepad(list) {
   if (cur && cur.connected && cur.axes.length >= 2 && cur.buttons.length >= 6) return cur;
   return std || any;
 }
-let gpFocusEl = null, gpStickDir = null, gpStickHold = 0;
+let gpFocusEl = null, gpLastScr = null, gpStickDir = null, gpStickHold = 0;
 function clearGpFocus() {
   if (gpFocusEl) { gpFocusEl.classList.remove('gp-focus'); gpFocusEl = null; }
+  gpLastScr = null;
 }
 document.addEventListener('pointerdown', clearGpFocus);
 function activeMenuScreen() {
   const rp = $('rosterPanel');
-  if (rp && !rp.hidden && getComputedStyle(rp).display !== 'none') return rp;
+  if (rp && !rp.hidden) return rp;
   const ids = ['pause', 'upgrade', 'over', 'mpEnd', 'lobbyCreate', 'lobbyDiff', 'lobbyJoin', 'lobbyRooms', 'lobby', 'menu', 'gate'];
   for (const id of ids) {
     const el = $(id);
-    if (el && !el.hidden && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none') return el;
+    if (el && !el.hidden && !el.classList.contains('hidden')) return el;
   }
   return null;
+}
+function gpMenuItems(scr) {
+  const sel = scr.id === 'upgrade' ? '.boon' : 'button:not([hidden]):not(:disabled), input:not([hidden]):not(:disabled), #roomList li';
+  const out = [];
+  for (const el of scr.querySelectorAll(sel)) {
+    if (!el.hidden && el.offsetParent !== null) out.push(el);
+  }
+  return out;
 }
 function gpMenuNav(dt, lx, ly, down, edge) {
   const scr = activeMenuScreen();
   if (!scr) { clearGpFocus(); return; }
-  const sel = scr.id === 'upgrade' ? '.boon' : 'button:not([hidden]):not(:disabled), input:not([hidden]):not(:disabled), #roomList li';
-  const items = [...scr.querySelectorAll(sel)].filter(el => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
-  });
-  if (!items.length) { clearGpFocus(); return; }
   const setFocus = el => {
     if (gpFocusEl === el) return;
     if (gpFocusEl) gpFocusEl.classList.remove('gp-focus');
@@ -3103,10 +3117,6 @@ function gpMenuNav(dt, lx, ly, down, edge) {
     gpFocusEl.classList.add('gp-focus');
     gpFocusEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   };
-  if (!gpFocusEl || !items.includes(gpFocusEl)) {
-    const pref = items.find(el => el.classList.contains('primary') || el.classList.contains('on')) || items[0];
-    setFocus(pref);
-  }
   let dir = edge(12) ? 'U' : edge(13) ? 'D' : edge(14) ? 'L' : edge(15) ? 'R' : null;
   if (!dir) {
     let sdir = null;
@@ -3118,28 +3128,38 @@ function gpMenuNav(dt, lx, ly, down, edge) {
       else { gpStickHold -= dt; if (gpStickHold <= 0) { gpStickHold = 0.14; dir = sdir; } }
     } else { gpStickDir = null; gpStickHold = 0; }
   }
-  if (dir) {
-    const fr = gpFocusEl.getBoundingClientRect();
-    const fx = fr.left + fr.width / 2, fy = fr.top + fr.height / 2;
-    const vx = dir === 'L' ? -1 : dir === 'R' ? 1 : 0;
-    const vy = dir === 'U' ? -1 : dir === 'D' ? 1 : 0;
-    let best = null, bestScore = Infinity;
-    for (const el of items) {
-      if (el === gpFocusEl) continue;
-      const r = el.getBoundingClientRect();
-      const dx = (r.left + r.width / 2) - fx, dy = (r.top + r.height / 2) - fy;
-      const main = dx * vx + dy * vy;
-      if (main <= 4) continue;
-      const cross = Math.abs(dx * vy - dy * vx);
-      const score = main + cross * 2.5;
-      if (score < bestScore) { bestScore = score; best = el; }
+  const needFocus = scr !== gpLastScr || !gpFocusEl || !gpFocusEl.isConnected || !scr.contains(gpFocusEl) || gpFocusEl.hidden || gpFocusEl.disabled || gpFocusEl.offsetParent === null;
+  if (needFocus || dir) {
+    gpLastScr = scr;
+    const items = gpMenuItems(scr);
+    if (!items.length) { clearGpFocus(); return; }
+    if (!gpFocusEl || !items.includes(gpFocusEl)) {
+      const pref = items.find(el => el.classList.contains('primary') || el.classList.contains('on')) || items[0];
+      setFocus(pref);
     }
-    if (!best) {
-      const idx = items.indexOf(gpFocusEl);
-      const step = (dir === 'R' || dir === 'D') ? 1 : -1;
-      best = items[(idx + step + items.length) % items.length];
+    if (dir) {
+      const fr = gpFocusEl.getBoundingClientRect();
+      const fx = fr.left + fr.width / 2, fy = fr.top + fr.height / 2;
+      const vx = dir === 'L' ? -1 : dir === 'R' ? 1 : 0;
+      const vy = dir === 'U' ? -1 : dir === 'D' ? 1 : 0;
+      let best = null, bestScore = Infinity;
+      for (const el of items) {
+        if (el === gpFocusEl) continue;
+        const r = el.getBoundingClientRect();
+        const dx = (r.left + r.width / 2) - fx, dy = (r.top + r.height / 2) - fy;
+        const main = dx * vx + dy * vy;
+        if (main <= 4) continue;
+        const cross = Math.abs(dx * vy - dy * vx);
+        const score = main + cross * 2.5;
+        if (score < bestScore) { bestScore = score; best = el; }
+      }
+      if (!best) {
+        const idx = items.indexOf(gpFocusEl);
+        const step = (dir === 'R' || dir === 'D') ? 1 : -1;
+        best = items[(idx + step + items.length) % items.length];
+      }
+      if (best && best !== gpFocusEl) { sfx.ui(); setFocus(best); }
     }
-    if (best && best !== gpFocusEl) { sfx.ui(); setFocus(best); }
   }
   if (edge(0) && gpFocusEl) {
     if (gpFocusEl.tagName === 'INPUT') gpFocusEl.focus();

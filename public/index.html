@@ -1227,11 +1227,77 @@ function updateGates(dt) {
   return moving;
 }
 const pillars = [];
-const flames = [], flags = [];
+const flames = [], flags = [], occluders = [];
 let crowdBody, crowdHead; const crowd = [];
 const cloudRig = new T.Group();
 const dummy = new T.Object3D();
 const tmpC = new T.Color();
+const occOrig = new T.Vector3(), occTgt = new T.Vector3(), occDir = new T.Vector3(), occHit = new T.Vector3();
+const occRay = new T.Ray(occOrig, occDir);
+function addOccluder(obj, pad = 0.25, maxY = 0) {
+  obj.updateWorldMatrix(true, true);
+  const box = new T.Box3().setFromObject(obj).expandByScalar(pad);
+  if (maxY > box.max.y) box.max.y = maxY;
+  const meshes = [], orig = [], fadeMap = new Map();
+  obj.traverse(m => { if (m.isMesh && m.material) { meshes.push(m); orig.push(m.material); } });
+  if (!meshes.length) return obj;
+  occluders.push({ box, meshes, orig, fade: null, fadeMats: null, baseOp: null, fadeMap, alpha: 1 });
+  return obj;
+}
+function ensureOccFade(o) {
+  if (o.fade) return;
+  const fade = [], fadeMats = [], baseOp = [];
+  for (const src of o.orig) {
+    let cm = o.fadeMap.get(src);
+    if (!cm) {
+      cm = src.clone();
+      cm.transparent = true;
+      cm.depthWrite = false;
+      o.fadeMap.set(src, cm);
+      fadeMats.push(cm);
+      baseOp.push(src.opacity ?? 1);
+    }
+    fade.push(cm);
+  }
+  o.fade = fade; o.fadeMats = fadeMats; o.baseOp = baseOp; o.fadeMap = null;
+}
+function setOccAlpha(o, a) {
+  if (a >= 0.995) {
+    if (o.alpha < 0.995) {
+      for (let i = 0; i < o.meshes.length; i++) o.meshes[i].material = o.orig[i];
+    }
+    o.alpha = 1;
+    return;
+  }
+  ensureOccFade(o);
+  if (o.alpha >= 0.995) {
+    for (let i = 0; i < o.meshes.length; i++) o.meshes[i].material = o.fade[i];
+  }
+  for (let i = 0; i < o.fadeMats.length; i++) o.fadeMats[i].opacity = o.baseOp[i] * a;
+  o.alpha = a;
+}
+function updateOccluders(dt, p) {
+  let dist = 0;
+  if (p) {
+    occOrig.copy(camera.position);
+    occTgt.set(p.x, (p.y || 0) + 1.1, p.z);
+    occDir.subVectors(occTgt, occOrig);
+    dist = occDir.length();
+    if (dist > 0.01) occDir.divideScalar(dist);
+  }
+  const rate = Math.min(1, dt * 12);
+  for (let i = 0; i < occluders.length; i++) {
+    const o = occluders[i];
+    let want = 1;
+    if (dist > 0.4) {
+      if (o.box.containsPoint(occOrig)) want = 0.24;
+      else if (occRay.intersectBox(o.box, occHit) && occHit.distanceTo(occOrig) < dist - 0.35) want = 0.26;
+    }
+    if (o.alpha === want) continue;
+    const next = Math.abs(want - o.alpha) < 0.01 ? want : o.alpha + (want - o.alpha) * rate;
+    setOccAlpha(o, next);
+  }
+}
 
 function buildArena() {
   const R = R_ARENA;
@@ -1272,6 +1338,7 @@ function buildArena() {
   for (let i = 0; i < N; i++) {
     const a = i / N * TAU, h = i % 2 ? 2.3 : 2.8;
     const m = P(scene, 'box', [segW, h, 1.4], i % 2 ? 0xd2c4ad : 0xc2b39c, Math.sin(a) * (R + 1), h / 2, Math.cos(a) * (R + 1), 0, a, 0);
+    addOccluder(m, 0.25);
   }
   // gates with torches
   for (let k = 0; k < 4; k++) {
@@ -1296,6 +1363,7 @@ function buildArena() {
     for (let j = 0; j < 3; j++) P(port, 'box', [4.2, 0.12, 0.12], 0x574f68, 0, 0.7 + j * 1.05, -0.28);
     for (let i = -2; i <= 2; i++) P(port, 'cone', [0.1, 0.28, 4], 0x574f68, i * 0.8, -0.1, -0.28, Math.PI);
     gatePorts[k] = { g: port, y: 0, to: 0, a };
+    addOccluder(g, 0.25, 7.6);
   }
   // wall tapestries between gates
   for (let k = 0; k < 4; k++) {
@@ -1306,14 +1374,20 @@ function buildArena() {
       P(g, 'box', [1.9, 1.7, 0.08], c, 0, 1.45, 0);
       P(g, 'cone', [0.95, 0.5, 4], c, 0, 0.36, 0, Math.PI, Math.PI / 4).scale.z = 0.08;
       P(g, 'oct', [0.36], 0xffc23d, 0, 1.5, -0.04).scale.z = 0.25;
+      addOccluder(g, 0.25);
     }
   }
-  // stands
+  // stands (segmented so only blocking sectors fade)
   const prof = [[R + 1.5, 0], [R + 1.5, 2.0], [R + 4.1, 2.0], [R + 4.1, 3.6], [R + 6.7, 3.6], [R + 6.7, 5.2], [R + 9.3, 5.2], [R + 9.3, 8.2], [R + 10.6, 8.2], [R + 10.6, 0]]
     .map(p => new T.Vector2(p[0], p[1]));
-  let lg = new T.LatheGeometry(prof, 48); lg = lg.toNonIndexed(); lg.computeVertexNormals();
-  const stands = new T.Mesh(lg, new T.MeshToonMaterial({ color: 0xcbbda6, gradientMap: gradMap, side: T.DoubleSide }));
-  scene.add(stands);
+  const standMat = new T.MeshToonMaterial({ color: 0xcbbda6, gradientMap: gradMap, side: T.DoubleSide });
+  for (let i = 0; i < 16; i++) {
+    let lg = new T.LatheGeometry(prof, 3, i / 16 * TAU, TAU / 16 + 0.004);
+    lg = lg.toNonIndexed(); lg.computeVertexNormals();
+    const sec = new T.Mesh(lg, standMat);
+    scene.add(sec);
+    addOccluder(sec, 0.25);
+  }
   // crowd
   const tiers = [[R + 2.8, 2.0], [R + 5.4, 3.6], [R + 8, 5.2]];
   for (const [r, y] of tiers) {
@@ -1341,6 +1415,7 @@ function buildArena() {
     const f = Gp(g, 0, 4.4, 0); f.userData.a = a + Math.PI / 2;
     P(f, 'box', [2.3, 1.3, 0.06], [0xd8433b, 0xf2b632, 0x3d6fd6][i % 3], 1.25, 0, 0);
     flags.push(f);
+    addOccluder(g, 1.4);
   }
   // pillars inside the arena (cover + collision)
   for (let k = 0; k < 4; k++) {
@@ -1352,6 +1427,7 @@ function buildArena() {
     if (broken) { P(g, 'cyl', [0.7, 1, 0.7, 5], 0xcbbda6, 0.12, h + 0.7, 0.05, 0.12, 0.6, 0.1); P(g, 'dod', [0.5], 0xcbbda6, 1.7, 0.3, 0.9, 1, 2); P(g, 'dod', [0.34], 0xbcae98, 1.2, 0.2, 1.7, 2, 1); }
     else { P(g, 'box', [2.5, 0.45, 2.5], 0xbcae98, 0, h + 0.72, 0); P(g, 'cone', [0.5, 0.9, 4], 0xffc23d, 0, h + 1.4, 0, 0, Math.PI / 4); }
     pillars.push({ x, z, r: 1.4 });
+    addOccluder(g, 0.3);
   }
   // far scenery
   for (let i = 0; i < 16; i++) {
@@ -2892,7 +2968,7 @@ function renderMenu() {
   let best = 0; try { best = +localStorage.getItem('embercrown-best') || 0; } catch (e) {}
   $('best').textContent = best ? t('· 最佳 第 ' + best + ' 波', '· Best Wave ' + best) : '';
   $('hint').innerHTML = touchMode
-    ? t('<b>左下摇杆</b> 移动 · <b>右半屏滑动</b> 转镜头 / 点选目标 · <b>右下轮盘</b> 普攻、技能、位移与跳跃', '<b>Left Stick</b> Move · <b>Right Drag</b> Camera / Tap Target · <b>Wheel</b> Attack, Skills, Dodge & Jump')
+    ? t('<b>左下摇杆</b> 移动 · <b>右半屏滑动</b> 转镜头 / 点选目标 · <b>双指捏合</b> 缩放视角 · <b>右下轮盘</b> 普攻、技能、位移与跳跃', '<b>Left Stick</b> Move · <b>Right Drag</b> Camera / Tap Target · <b>Pinch</b> Zoom · <b>Wheel</b> Attack, Skills, Dodge & Jump')
     : t('<b>WASD</b> 移动 · <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性', '<b>WASD</b> Move · <b>RMB Drag</b> Turn · <b>Space</b> Jump · <b>1–5</b> Skills · <b>Tab / Click</b> Target · <b>C</b> Stats');
 }
 $('kitPop').addEventListener('click', () => closeKitPop());
@@ -2950,6 +3026,7 @@ function clearWorld() {
   if (player && player.cast) dropMark(player.cast.mark);
   ctl.aiming = false; ctl.target = null; tRing.visible = reticle.visible = rangeRing.visible = false; document.body.classList.remove('aiming');
   toggleChar(false); $('castBar').hidden = true; $('castBar').className = ''; $('errs').innerHTML = ''; clearTaps();
+  aimTouchId = null; lookT.id = null; pinch.a = pinch.b = null; pinch.d = 0;
   stick.id = null; stick.dx = stick.dz = 0; syncStickVis();
   for (const e of game.enemies) { scene.remove(e.root); if (e.bar) scene.remove(e.bar.g); }
   for (const c of game.corpses) scene.remove(c.e.root);
@@ -3395,18 +3472,32 @@ function setTouch() {
   if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
   if (game.state === 'menu') renderMenu(); syncStickVis();
 }
-const stickEl = $('stick'), lookT = { id: null, x: 0, y: 0, d: 0 };
+const stickEl = $('stick'), lookT = { id: null, x: 0, y: 0, d: 0 }, pinch = { a: null, b: null, d: 0 };
 let aimTouchId = null, lookPauseT = 0;
+function touchById(touches, id) {
+  for (let i = 0; i < touches.length; i++) if (touches[i].identifier === id) return touches[i];
+  return null;
+}
+function startPinch(touches, idA, idB) {
+  const ta = touchById(touches, idA), tb = touchById(touches, idB);
+  if (!ta || !tb) return false;
+  const [ax, ay] = toViewXY(ta.clientX, ta.clientY), [bx, by] = toViewXY(tb.clientX, tb.clientY);
+  pinch.a = idA; pinch.b = idB; pinch.d = Math.max(12, Math.hypot(ax - bx, ay - by));
+  lookT.id = null;
+  return true;
+}
 canvas.addEventListener('touchstart', e => {
   setTouch(); audioInit(); e.preventDefault();
   for (const t of e.changedTouches) {
     const [tx, ty] = toViewXY(t.clientX, t.clientY);
     if (ctl.aiming && inPlay() && aimTouchId === null) {
       aimTouchId = t.identifier; mouse.x = tx; mouse.y = ty;
-    } else if (stick.id === null && tx < viewW * 0.52) {
+    } else if (stick.id === null && pinch.a === null && tx < viewW * (lookT.id === null ? 0.48 : 0.34) && (lookT.id === null || ty > viewH * 0.48)) {
       stick.id = t.identifier; stick.ox = tx; stick.oy = ty; stick.dx = stick.dz = 0;
-      stickEl.style.left = tx + 'px'; stickEl.style.top = ty + 'px'; stickEl.firstElementChild.style.transform = ''; stickEl.hidden = game.state !== 'playing' && game.state !== 'mp';
-    } else if (lookT.id === null && inPlay()) {
+      stickEl.style.left = tx + 'px'; stickEl.style.top = ty + 'px'; stickEl.firstElementChild.style.transform = ''; syncStickVis();
+    } else if (lookT.id !== null && pinch.a === null && inPlay()) {
+      startPinch(e.touches, lookT.id, t.identifier);
+    } else if (lookT.id === null && pinch.a === null && inPlay()) {
       lookT.id = t.identifier; lookT.x = tx; lookT.y = ty; lookT.d = 0;
     }
   }
@@ -3420,10 +3511,19 @@ canvas.addEventListener('touchmove', e => {
     } else if (t.identifier === stick.id) {
       let dx = (tx - stick.ox) / 46, dz = (ty - stick.oy) / 46; const l = Math.hypot(dx, dz); if (l > 1) { dx /= l; dz /= l; }
       stick.dx = dx; stick.dz = dz; stickEl.firstElementChild.style.transform = 'translate(' + dx * 34 + 'px,' + dz * 34 + 'px)';
-    } else if (t.identifier === lookT.id) {
+    } else if (pinch.a === null && t.identifier === lookT.id) {
       const dx = tx - lookT.x, dy = ty - lookT.y; lookT.x = tx; lookT.y = ty; lookT.d += Math.abs(dx) + Math.abs(dy);
       ctl.camYaw -= dx * 0.0065; ctl.pitch = clamp(ctl.pitch + dy * 0.005, 0.15, 1.35);
       if (lookT.d > 8) lookPauseT = performance.now() + 1800;
+    }
+  }
+  if (pinch.a !== null) {
+    const ta = touchById(e.touches, pinch.a), tb = touchById(e.touches, pinch.b);
+    if (ta && tb) {
+      const [ax, ay] = toViewXY(ta.clientX, ta.clientY), [bx, by] = toViewXY(tb.clientX, tb.clientY);
+      const nd = Math.hypot(ax - bx, ay - by);
+      if (nd >= 12 && pinch.d >= 12) ctl.dist = clamp(ctl.dist * (pinch.d / nd), 4, 28);
+      pinch.d = Math.max(12, nd);
     }
   }
 }, { passive: false });
@@ -3441,7 +3541,15 @@ const endTouch = e => {
         clampRange(p, o, def.ult.range); ultCast(o.x, o.z);
       } else if (cancel) ctl.aiming = false;
     } else if (t.identifier === stick.id) { stick.id = null; stick.dx = stick.dz = 0; syncStickVis(); }
-    else if (t.identifier === lookT.id) { if (!cancel && lookT.d < 10 && inPlay()) pickTarget(tx, ty); lookT.id = null; }
+    else if (pinch.a !== null && (t.identifier === pinch.a || t.identifier === pinch.b)) {
+      const keepId = t.identifier === pinch.a ? pinch.b : pinch.a;
+      pinch.a = pinch.b = null; pinch.d = 0;
+      const kt = !cancel && inPlay() ? touchById(e.touches, keepId) : null;
+      if (kt) {
+        const [kx, ky] = toViewXY(kt.clientX, kt.clientY);
+        lookT.id = keepId; lookT.x = kx; lookT.y = ky; lookT.d = 20;
+      }
+    } else if (t.identifier === lookT.id) { if (!cancel && lookT.d < 10 && inPlay()) pickTarget(tx, ty); lookT.id = null; }
   }
 };
 canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
@@ -4237,6 +4345,7 @@ function frame(now) {
   updateChar();
   updateGates(real);
   updateCamera(st === 'mp' ? raw : real);
+  updateOccluders(real, st === 'mp' ? net.lp : (st === 'menu' ? null : player));
   updateSayBubbles(real);
   renderer.render(scene, camera);
 }

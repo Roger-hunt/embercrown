@@ -1286,6 +1286,7 @@ const dummy = new T.Object3D();
 const tmpC = new T.Color();
 const occOrig = new T.Vector3(), occTgt = new T.Vector3(), occDir = new T.Vector3(), occHit = new T.Vector3();
 const occRay = new T.Ray(occOrig, occDir);
+const occRc = new T.Raycaster(), occHits = [];
 function addOccluder(obj, pad = 0.25, maxY = 0) {
   obj.updateWorldMatrix(true, true);
   const box = new T.Box3().setFromObject(obj).expandByScalar(pad);
@@ -1328,6 +1329,24 @@ function setOccAlpha(o, a) {
   for (let i = 0; i < o.fadeMats.length; i++) o.fadeMats[i].opacity = o.baseOp[i] * a;
   o.alpha = a;
 }
+function hitsOccluder(o, dist) {
+  const inBox = o.box.containsPoint(occOrig);
+  if (!(inBox || (occRay.intersectBox(o.box, occHit) && occHit.distanceTo(occOrig) < dist - 0.35))) return false;
+  for (let j = 0; j < o.meshes.length; j++) o.meshes[j].updateWorldMatrix(true, false);
+  occRc.near = 0; occRc.far = dist - 0.35;
+  occRc.ray.set(occOrig, occDir);
+  occHits.length = 0;
+  occRc.intersectObjects(o.meshes, false, occHits);
+  if (occHits.length) return true;
+  if (!inBox) return false;
+  // Camera inside an occluder's AABB may sit inside a closed FrontSide mesh: trace back from player to camera.
+  occRc.near = 0.35; occRc.far = dist;
+  occRc.ray.origin.copy(occTgt);
+  occRc.ray.direction.copy(occDir).negate();
+  occHits.length = 0;
+  occRc.intersectObjects(o.meshes, false, occHits);
+  return occHits.length > 0;
+}
 function updateOccluders(dt, p) {
   let dist = 0;
   if (p) {
@@ -1340,11 +1359,7 @@ function updateOccluders(dt, p) {
   const rate = Math.min(1, dt * 12);
   for (let i = 0; i < occluders.length; i++) {
     const o = occluders[i];
-    let want = 1;
-    if (dist > 0.4) {
-      if (o.box.containsPoint(occOrig)) want = 0.24;
-      else if (occRay.intersectBox(o.box, occHit) && occHit.distanceTo(occOrig) < dist - 0.35) want = 0.26;
-    }
+    const want = dist > 0.4 && hitsOccluder(o, dist) ? 0.26 : 1;
     if (o.alpha === want) continue;
     const next = Math.abs(want - o.alpha) < 0.01 ? want : o.alpha + (want - o.alpha) * rate;
     setOccAlpha(o, next);

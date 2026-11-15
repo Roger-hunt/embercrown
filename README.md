@@ -1,3 +1,5 @@
+**中文** | [English](README_EN.md)
+
 # 烬冠竞技场 (Embercrown Arena)
 
 低多边形卡通风格的 3D 西式奇幻竞技场 ARPG。基于 **Three.js + Node.js (WebSocket)** 构建，使用 **Claude Fable 5.2 + Gemini Argon** 联合开发。

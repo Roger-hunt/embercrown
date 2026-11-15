@@ -632,6 +632,9 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 .gate-card input{width:100%;font:inherit;font-size:16px;text-align:center;letter-spacing:.12em;color:var(--cream);background:var(--ink);border:3px solid var(--plate-2);border-radius:12px;padding:10px 14px;-webkit-user-select:text;user-select:text}
 .gate-card input:focus-visible{outline:none;border-color:var(--gold)}
 .gate-card .go{align-self:stretch}
+.lang-btn{min-width:56px;font-weight:800;letter-spacing:.04em}
+.gate-top{display:flex;align-items:center;justify-content:space-between;width:100%}
+.menu-eyebrow-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -712,9 +715,9 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 
   <div id="gate" class="screen center">
     <div class="plate card gate-card">
-      <div class="eyebrow">受邀体验版 · DEMO</div>
-      <h2>烬冠竞技场</h2>
-      <p>请输入访问口令进入游戏（代号与房间由系统自动分配）。</p>
+      <div class="gate-top"><div class="eyebrow" id="gateEyebrow">受邀体验版 · DEMO</div><button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button></div>
+      <h2 id="gateH">烬冠竞技场</h2>
+      <p id="gateP">请输入访问口令进入游戏（代号与房间由系统自动分配）。</p>
       <input id="inPass" type="password" maxlength="32" placeholder="输入访问口令" autocomplete="off" spellcheck="false">
       <p class="hint bad" id="gateErr" hidden></p>
       <button class="go" id="btnGate">验证并进入</button>
@@ -725,8 +728,8 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
     <div class="menu-shell">
       <div class="menu-top">
         <div class="menu-brand">
-          <div class="eyebrow">单人闯关 · 8 人联机混战 <span id="best"></span></div>
-          <h1>烬冠竞技场</h1>
+          <div class="menu-eyebrow-row"><div class="eyebrow" id="menuEyebrow">单人闯关 · 8 人联机混战 <span id="best"></span></div><button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button></div>
+          <h1 id="menuTitle">烬冠竞技场</h1>
         </div>
         <div class="menu-kit-wrap">
           <div class="kit-head"><b id="kitHeroName"></b><span id="kitBlurb"></span></div>
@@ -847,6 +850,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
       <div class="pause-tools">
         <button type="button" class="ptool" id="btnFs" aria-label="全屏横屏"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 3v-3h2v5h-5v-2h3z"/></svg><span>全屏横屏</span></button>
         <button type="button" class="ptool" id="btnSound" aria-label="开关声音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h4.5L14 4.5v15l-5.5-5H4v-5zm12.8-2.3a6.8 6.8 0 0 1 0 9.6l-1.5-1.5a4.7 4.7 0 0 0 0-6.6l1.5-1.5z"/></svg><span>音效：开</span></button>
+        <button type="button" class="ptool lang-btn" data-lang-btn aria-label="Language"><span>EN</span></button>
       </div>
       <div class="pad-guide">
         <div class="pad-guide-h"><span>蓝牙手柄键位（标准 Xbox 手柄）</span><small>接入自动隐藏虚拟按键</small></div>
@@ -938,6 +942,92 @@ const TAU = Math.PI * 2;
 const rand = (a = 1, b) => b === undefined ? Math.random() * a : a + Math.random() * (b - a);
 const pick = a => a[Math.random() * a.length | 0];
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+function detectLang() {
+  try { const s = localStorage.getItem('ec_lang'); if (s === 'zh' || s === 'en') return s; } catch (e) {}
+  const nav = (navigator.languages && navigator.languages[0]) || navigator.language || 'zh';
+  return String(nav).toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+let lang = detectLang();
+const t = (zh, en) => lang === 'en' ? (en ?? zh) : zh;
+const EN_DATA = {
+  res: { rage: 'Rage', energy: 'Energy', mana: 'Mana' },
+  diff: { easy: 'Easy', normal: 'Normal', hard: 'Hard' },
+  cls: {
+    knight: {
+      name: 'Ironvow Knight', tag: 'Knight', rune: 'K', role: 'Melee · Bulwark (26% Armor)',
+      blurb: 'Heavy plate and shield; 26% damage reduction and Whirlwind lifesteal.',
+      atkName: 'Slash', atkDesc: 'Wide cleave in front, generating Rage on hit',
+      mastery: 'Slash arc +25%',
+      move: { name: 'Charge', desc: 'Rush toward target (or forward), stunning enemies, brief immunity, +25 Rage' },
+      skills: [
+        { name: 'Shield Bash', desc: 'Smash enemies ahead for heavy damage, stun, and +15 Rage' },
+        { name: 'Whirlwind', desc: 'Spin to strike all nearby foes and heal per enemy hit' },
+      ],
+      ult: { name: 'Skyfall Blade', desc: 'Cast 0.95s on target area; a giant blade crashes down, dealing heavy damage and stun' },
+    },
+    ranger: {
+      name: 'Verdant Ranger', tag: 'Ranger', rune: 'R', role: 'Ranged · Agile (10% Armor)',
+      blurb: 'Arrows always fly faster than footsteps.',
+      atkName: 'Shot', atkDesc: 'Fires an arrow that pierces one enemy',
+      mastery: '+1 extra arrow per shot',
+      move: { name: 'Roll', desc: 'Dodge roll in move direction with brief invulnerability and slow cleanse' },
+      skills: [
+        { name: 'Volley', desc: 'Fires a fan of piercing arrows that slow enemies' },
+        { name: 'Arrow Rain', desc: 'Rains arrows on target area, dealing damage over time and slowing' },
+      ],
+      ult: { name: 'Arrow Storm', desc: 'Cast 1.05s on target area for a massive sustained arrow storm' },
+    },
+    mage: {
+      name: 'Ember Mage', tag: 'Mage', rune: 'M', role: 'Caster · Burst (10% Ward)',
+      blurb: 'What fire can solve needs no extra words.',
+      atkName: 'Fireball', atkDesc: 'Explodes on impact, hitting nearby enemies',
+      mastery: 'Fireball blast radius +35%',
+      move: { name: 'Blink', desc: 'Teleport in move direction, cleansing stuns and slows' },
+      skills: [
+        { name: 'Frost Nova', desc: 'Freezes all enemies around you' },
+        { name: 'Meteor', desc: 'Calls down a meteor for massive area damage' },
+      ],
+      ult: { name: 'Inferno', desc: 'Cast 1.25s on target area for three consecutive flame eruptions' },
+    },
+  },
+  enemy: {
+    goblin: { name: 'Goblin' },
+    slime: { name: 'Slime' },
+    skeleton: { name: 'Skeleton Archer' },
+    orc: { name: 'Orc Brute' },
+    cultist: { name: 'Shadow Cultist' },
+    ogre: { name: 'Crag Ogre' },
+    lich: { name: 'Withered Lich' },
+    blackKnight: { name: 'Emberlord', quote: 'Darest thou gaze into the ember?' },
+  },
+  boons: {
+    巨人之力: { rune: 'P', name: 'Giant Might', desc: 'All damage +20%' },
+    疾风之手: { rune: 'S', name: 'Gale Hands', desc: 'Attack speed +18%' },
+    铁石之躯: { rune: 'V', name: 'Iron Body', desc: 'Max HP +30 and heal 30' },
+    迅捷之靴: { rune: 'F', name: 'Swift Boots', desc: 'Move speed +10%' },
+    嗜血獠牙: { rune: 'L', name: 'Blood Fang', desc: 'Heal 3 HP per kill' },
+    致命直觉: { rune: 'C', name: 'Lethal Instinct', desc: 'Crit chance +12% (2x damage)' },
+    奥术沙漏: { rune: 'H', name: 'Arcane Hourglass', desc: 'Skill cooldowns -15%' },
+    武艺精通: { rune: 'M', name: 'Mastery' },
+    守护符文: { rune: 'G', name: 'Guard Rune', desc: 'Damage taken -12%' },
+    生命泉水: { rune: 'R', name: 'Vital Spring', desc: 'Instantly heal 60% HP' },
+    轻羽披风: { rune: 'D', name: 'Feather Cloak', desc: 'Mobility skill (5) cooldown -25%' },
+  },
+};
+function resName(k) { return lang === 'en' ? (EN_DATA.res[k] || RES[k].name) : RES[k].name; }
+function clsText(def) { return lang === 'en' ? Object.assign({}, def, EN_DATA.cls[def.id] || {}) : def; }
+function enemyText(def) {
+  if (lang !== 'en') return def;
+  const k = Object.keys(ENEMY).find(x => ENEMY[x] === def);
+  return k && EN_DATA.enemy[k] ? Object.assign({}, def, EN_DATA.enemy[k]) : def;
+}
+function boonText(b) {
+  if (lang !== 'en') return b;
+  const e = EN_DATA.boons[b.name];
+  if (!e) return b;
+  return { rune: e.rune || b.rune, name: e.name || b.name, desc: typeof b.desc === 'function' ? () => clsText(player.def).mastery : (e.desc || b.desc) };
+}
+function diffText(d) { return lang === 'en' ? (EN_DATA.diff[d] || d) : (DIFF_NAMES[d] || d); }
 const lerp = (a, b, t) => a + (b - a) * t;
 const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 
@@ -2544,9 +2634,9 @@ const hudC = {};
 function setTxt(id, v) { if (hudC[id] !== v) { hudC[id] = v; $(id).textContent = v; } }
 let slots = [];
 function buildSkillBar(d = player.def) {
-  const el = $('skills'); el.innerHTML = '';
-  const defs = [['atk', '1', d.atkIco, d.atkName], ['q', '2', d.skills[0].ico, d.skills[0].name], ['e', '3', d.skills[1].ico, d.skills[1].name],
-    ['u', '4', d.ult.ico, d.ult.name], ['dodge', '5', d.move.ico, d.move.name], ['jump', '', 'jump', '跳跃']];
+  const el = $('skills'); el.innerHTML = ''; const ld = clsText(d);
+  const defs = [['atk', '1', d.atkIco, ld.atkName], ['q', '2', d.skills[0].ico, ld.skills[0].name], ['e', '3', d.skills[1].ico, ld.skills[1].name],
+    ['u', '4', d.ult.ico, ld.ult.name], ['dodge', '5', d.move.ico, ld.move.name], ['jump', '', 'jump', t('跳跃', 'Jump')]];
   const tint = { atk: ['#6d5a9c', '#33264d'], u: ['#c98a1e', '#5a3410'], dodge: ['#3f8a7a', '#1f3d3a'], jump: ['#3f6f9a', '#1f2f4a'] };
   slots = defs.map(([k, key, ico, name], i) => {
     const s = document.createElement('div'); s.className = 'slot' + (k === 'jump' ? ' touch-only' : ''); s.dataset.k = k;
@@ -2554,7 +2644,7 @@ function buildSkillBar(d = player.def) {
     s.children[0].textContent = padMode ? ({ atk: 'X', q: 'Y', e: 'B', u: 'RB', dodge: 'LB', jump: 'A' }[k] || key) : key; s.children[1].innerHTML = icon(ico); s.children[2].textContent = name;
     const c = tint[k] || (d.id === 'knight' ? ['#b0483f', '#4a1f26'] : d.id === 'ranger' ? ['#4f9f5f', '#1f4a2c'] : ['#5b6fd6', '#262a6a']);
     s.style.setProperty('--c1', c[0]); s.style.setProperty('--c2', c[1]);
-    const cost = i < 4 ? d.cost[i] : 0; s.title = name + (cost ? '（' + cost + ' ' + RES[d.res].name + '）' : '');
+    const cost = i < 4 ? d.cost[i] : 0; s.title = name + (cost ? ' (' + cost + ' ' + resName(d.res) + ')' : '');
     const on = ev => { ev.preventDefault(); audioInit(); act[k] = true; taps[k] = true; s.classList.add('down'); }, off = () => { act[k] = false; s.classList.remove('down'); };
     s.addEventListener('pointerdown', on); s.addEventListener('pointerup', off); s.addEventListener('pointercancel', off); s.addEventListener('pointerleave', off);
     el.appendChild(s); return { el: s, k, last: -1, sec: '', cost, oom: false, armed: false };
@@ -2569,7 +2659,7 @@ function hpHUD(hp, max, dead) {
 }
 function resHUD(v, def) {
   v = Math.round(v); if (hudC.res === v) return; hudC.res = v;
-  $('resFill').style.width = v + '%'; $('resTxt').textContent = RES[def.res].name + ' ' + v;
+  $('resFill').style.width = v + '%'; $('resTxt').textContent = resName(def.res) + ' ' + v;
 }
 function tgtHUD(name, hp, max, rune) {
   const key = name === null ? '' : name + '|' + hp + '|' + max; if (hudC.tgt === key) return; hudC.tgt = key;
@@ -2599,34 +2689,34 @@ function show(id, on) { $(id).hidden = !on; }
 /* ---- 个人属性面板（C）---- */
 let charOpen = false, charKey = '';
 function charRows() {
-  const pct = v => Math.round(v * 100) + '%', R_ = [];
-  const row = (k, v, up) => R_.push([k, String(v), up]), sec = t => R_.push([t]);
+  const pct = v => Math.round(v * 100) + '%', R_ = [], s = t(' 秒', 's');
+  const row = (k, v, up) => R_.push([k, String(v), up]), sec = h => R_.push([h]);
   if (game.state === 'mp') {
-    const me = net.me, def = CLASSES[net.cls], st = net.cfg.cls[net.cls], r = net.roster.find(q => q.id === net.id) || { k: 0, d: 0 };
-    sec('状态'); row('生命', (me ? me.hp : st.hp) + ' / ' + st.hp); row(RES[def.res].name, net.res + ' / ' + net.cfg.resMax);
-    sec('攻击'); row('攻击间隔', st.atkCd.toFixed(2) + ' 秒'); row('暴击率', '8%'); row('暴击伤害', '160%');
-    sec('防御与移动'); row('伤害减免', pct(1 - st.armor)); row('移动速度', st.speed.toFixed(1)); row(def.move.name + '冷却', net.cfg.move[net.cls].cd.toFixed(1) + ' 秒');
-    sec('技能冷却'); row(def.skills[0].name, st.q + ' 秒'); row(def.skills[1].name, st.e + ' 秒'); row(def.ult.name, st.u + ' 秒（读条 ' + st.cast + ' 秒）');
-    sec('本局战绩'); row('击杀', r.k); row('阵亡', r.d);
+    const me = net.me, def = CLASSES[net.cls], ld = clsText(def), st = net.cfg.cls[net.cls], r = net.roster.find(q => q.id === net.id) || { k: 0, d: 0 };
+    sec(t('状态', 'Status')); row(t('生命', 'HP'), (me ? me.hp : st.hp) + ' / ' + st.hp); row(resName(def.res), net.res + ' / ' + net.cfg.resMax);
+    sec(t('攻击', 'Offense')); row(t('攻击间隔', 'Atk Interval'), st.atkCd.toFixed(2) + s); row(t('暴击率', 'Crit Chance'), '8%'); row(t('暴击伤害', 'Crit Damage'), '160%');
+    sec(t('防御与移动', 'Defense & Mobility')); row(t('伤害减免', 'Damage Reduction'), pct(1 - st.armor)); row(t('移动速度', 'Move Speed'), st.speed.toFixed(1)); row(ld.move.name + t('冷却', ' CD'), net.cfg.move[net.cls].cd.toFixed(1) + s);
+    sec(t('技能冷却', 'Cooldowns')); row(ld.skills[0].name, st.q + s); row(ld.skills[1].name, st.e + s); row(ld.ult.name, st.u + s + t('（读条 ' + st.cast + ' 秒）', ' (' + st.cast + 's cast)'));
+    sec(t('本局战绩', 'Match Stats')); row(t('击杀', 'Kills'), r.k); row(t('阵亡', 'Deaths'), r.d);
     return R_;
   }
-  const p = player, d = p.def;
-  sec('状态'); row('生命', Math.ceil(p.hp) + ' / ' + p.maxHp, p.maxHp > d.hp); row(RES[d.res].name, Math.round(p.res) + ' / 100');
-  sec('攻击'); row('伤害加成', '+' + pct(p.dmgMul - 1), p.dmgMul > 1); row('攻击间隔', (d.atkCd / p.atkMul).toFixed(2) + ' 秒', p.atkMul > 1);
-  row('暴击率', pct(p.crit), p.crit > 0.05); row('暴击伤害', '200%'); row('武艺精通', p.mastery + ' 层', p.mastery > 0);
-  sec('防御与移动'); row('伤害减免', pct(1 - p.armor), p.armor < (d.armor ?? 1)); row('移动速度', p.speed.toFixed(1), p.speed > d.speed);
-  row(d.move.name + '冷却', (d.move.cd * p.dodgeMul).toFixed(2) + ' 秒', p.dodgeMul < 1); row('击杀回复', p.killHeal + ' 生命', p.killHeal > 0);
-  sec('技能冷却'); row('冷却缩减', pct(1 - p.cdr), p.cdr < 1);
-  row(d.skills[0].name, (d.skills[0].cd * p.cdr).toFixed(1) + ' 秒'); row(d.skills[1].name, (d.skills[1].cd * p.cdr).toFixed(1) + ' 秒'); row(d.ult.name, (d.ult.cd * p.cdr).toFixed(1) + ' 秒（读条 ' + d.ult.cast + ' 秒）');
-  sec('本次闯关'); row('波次', game.wave); row('击杀', game.kills);
+  const p = player, d = p.def, ld = clsText(d);
+  sec(t('状态', 'Status')); row(t('生命', 'HP'), Math.ceil(p.hp) + ' / ' + p.maxHp, p.maxHp > d.hp); row(resName(d.res), Math.round(p.res) + ' / 100');
+  sec(t('攻击', 'Offense')); row(t('伤害加成', 'Damage Bonus'), '+' + pct(p.dmgMul - 1), p.dmgMul > 1); row(t('攻击间隔', 'Atk Interval'), (d.atkCd / p.atkMul).toFixed(2) + s, p.atkMul > 1);
+  row(t('暴击率', 'Crit Chance'), pct(p.crit), p.crit > 0.05); row(t('暴击伤害', 'Crit Damage'), '200%'); row(t('武艺精通', 'Mastery'), p.mastery + t(' 层', ' stacks'), p.mastery > 0);
+  sec(t('防御与移动', 'Defense & Mobility')); row(t('伤害减免', 'Damage Reduction'), pct(1 - p.armor), p.armor < (d.armor ?? 1)); row(t('移动速度', 'Move Speed'), p.speed.toFixed(1), p.speed > d.speed);
+  row(ld.move.name + t('冷却', ' CD'), (d.move.cd * p.dodgeMul).toFixed(2) + s, p.dodgeMul < 1); row(t('击杀回复', 'Kill Heal'), p.killHeal + t(' 生命', ' HP'), p.killHeal > 0);
+  sec(t('技能冷却', 'Cooldowns')); row(t('冷却缩减', 'CDR'), pct(1 - p.cdr), p.cdr < 1);
+  row(ld.skills[0].name, (d.skills[0].cd * p.cdr).toFixed(1) + s); row(ld.skills[1].name, (d.skills[1].cd * p.cdr).toFixed(1) + s); row(ld.ult.name, (d.ult.cd * p.cdr).toFixed(1) + s + t('（读条 ' + d.ult.cast + ' 秒）', ' (' + d.ult.cast + 's cast)'));
+  sec(t('本次闯关', 'Current Run')); row(t('波次', 'Wave'), game.wave); row(t('击杀', 'Kills'), game.kills);
   return R_;
 }
 function updateChar() {
   if (!charOpen) return;
   if (!(game.state === 'mp' ? net.joined : player)) return toggleChar(false);
   const rows = charRows(), key = JSON.stringify(rows); if (key === charKey) return; charKey = key;
-  const def = game.state === 'mp' ? CLASSES[net.cls] : player.def;
-  $('cpRune').innerHTML = runeIcon(def.rune); $('cpName').textContent = $('hName').textContent; $('cpRole').textContent = def.name + ' · ' + def.role;
+  const def = game.state === 'mp' ? CLASSES[net.cls] : player.def, ld = clsText(def);
+  $('cpRune').innerHTML = runeIcon(def.rune); $('cpName').textContent = $('hName').textContent; $('cpRole').textContent = ld.name + ' · ' + ld.role;
   const dl = $('cpList'); dl.innerHTML = '';
   for (const r of rows) {
     const dt = document.createElement('dt'); dt.textContent = r[0]; dl.appendChild(dt);
@@ -2643,21 +2733,21 @@ function closeKitPop() { activeKitKey = ''; const p = $('kitPop'); if (p) p.hidd
 function renderMenu() {
   const hs = $('heroes'); hs.innerHTML = ''; closeKitPop();
   for (const id in CLASSES) {
-    const c = CLASSES[id], b = document.createElement('button');
+    const c = CLASSES[id], lc = clsText(c), b = document.createElement('button');
     b.className = 'hero-row'; b.id = 'hero-' + id; b.setAttribute('aria-pressed', id === selCls);
     b.innerHTML = '<div class="rune"></div><div><div class="hn"></div><div class="hr"></div></div>';
-    b.querySelector('.rune').innerHTML = runeIcon(c.rune); b.querySelector('.hn').textContent = c.name; b.querySelector('.hr').textContent = c.role;
+    b.querySelector('.rune').innerHTML = runeIcon(c.rune); b.querySelector('.hn').textContent = lc.name; b.querySelector('.hr').textContent = lc.role;
     b.addEventListener('click', () => { audioInit(); sfx.ui(); selCls = id; renderMenu(); setPreview(id); });
     hs.appendChild(b);
   }
-  const c = CLASSES[selCls], kit = $('kit'); kit.innerHTML = '';
-  $('kitHeroName').textContent = c.name; $('kitBlurb').textContent = c.blurb;
+  const c = CLASSES[selCls], lc = clsText(c), kit = $('kit'); kit.innerHTML = '';
+  $('kitHeroName').textContent = lc.name; $('kitBlurb').textContent = lc.blurb;
   const items = [
-    ['1', c.atkIco, c.atkName, c.atkDesc],
-    ['2', c.skills[0].ico, c.skills[0].name, c.skills[0].desc],
-    ['3', c.skills[1].ico, c.skills[1].name, c.skills[1].desc],
-    ['4', c.ult.ico, c.ult.name, c.ult.desc],
-    ['5', c.move.ico, c.move.name, c.move.desc],
+    ['1', c.atkIco, lc.atkName, lc.atkDesc],
+    ['2', c.skills[0].ico, lc.skills[0].name, lc.skills[0].desc],
+    ['3', c.skills[1].ico, lc.skills[1].name, lc.skills[1].desc],
+    ['4', c.ult.ico, lc.ult.name, lc.ult.desc],
+    ['5', c.move.ico, lc.move.name, lc.move.desc],
   ];
   for (const [k, ico, n, d] of items) {
     const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'kit-btn';
@@ -2671,15 +2761,17 @@ function renderMenu() {
       pop.innerHTML = '<div class="kp-h">' + icon(ico) + '<span></span><kbd></kbd></div><div class="kp-d"></div>';
       pop.querySelector('.kp-h span').textContent = n;
       const kb = pop.querySelector('.kp-h kbd');
-      if (touchMode) kb.hidden = true; else kb.textContent = '按键 ' + k;
+      if (touchMode) kb.hidden = true; else kb.textContent = t('按键 ', 'Key ') + k;
       pop.querySelector('.kp-d').textContent = d;
       pop.hidden = false;
     });
     kit.appendChild(btn);
   }
   let best = 0; try { best = +localStorage.getItem('embercrown-best') || 0; } catch (e) {}
-  $('best').textContent = best ? '· 最佳 第 ' + best + ' 波' : '';
-  if (touchMode) $('hint').innerHTML = '<b>左下摇杆</b> 移动 · <b>右半屏滑动</b> 转镜头 / 点选目标 · <b>右下轮盘</b> 普攻、技能、位移与跳跃';
+  $('best').textContent = best ? t('· 最佳 第 ' + best + ' 波', '· Best Wave ' + best) : '';
+  $('hint').innerHTML = touchMode
+    ? t('<b>左下摇杆</b> 移动 · <b>右半屏滑动</b> 转镜头 / 点选目标 · <b>右下轮盘</b> 普攻、技能、位移与跳跃', '<b>Left Stick</b> Move · <b>Right Drag</b> Camera / Tap Target · <b>Wheel</b> Attack, Skills, Dodge & Jump')
+    : t('<b>WASD</b> 移动 · <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性', '<b>WASD</b> Move · <b>RMB Drag</b> Turn · <b>Space</b> Jump · <b>1–5</b> Skills · <b>Tab / Click</b> Target · <b>C</b> Stats');
 }
 $('kitPop').addEventListener('click', () => closeKitPop());
 document.addEventListener('pointerdown', e => { if (!$('kitPop').hidden && !$('kitPop').contains(e.target) && !$('kit').contains(e.target)) closeKitPop(); });
@@ -2781,9 +2873,9 @@ function renderBuffs() {
       e.stopPropagation(); audioInit(); sfx.ui();
       if (activeBuffKey === item.boon.name) { closeBuffPop(); return; }
       closeBuffPop(); activeBuffKey = item.boon.name; btn.classList.add('active');
-      const desc = typeof item.boon.desc === 'function' ? item.boon.desc(player) : item.boon.desc;
+      const lb = boonText(item.boon), desc = typeof lb.desc === 'function' ? lb.desc(player) : lb.desc;
       $('buffPop').innerHTML = '<div class="bp-h">' + icon(item.boon.ico) + '<span></span><small></small></div><div class="bp-d"></div>';
-      $('buffPop').querySelector('.bp-h span').textContent = item.boon.name;
+      $('buffPop').querySelector('.bp-h span').textContent = lb.name;
       $('buffPop').querySelector('.bp-h small').textContent = item.count > 1 ? '×' + item.count : '';
       $('buffPop').querySelector('.bp-d').textContent = desc;
       $('buffPop').hidden = false;
@@ -2799,14 +2891,14 @@ function openUpgrade() {
   while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.random() * pool.length | 0, 1)[0]);
   const el = $('boons'); el.innerHTML = '';
   picks.forEach((b, i) => {
-    const btn = document.createElement('button'); btn.className = 'boon'; btn.id = 'boon-' + i;
+    const lb = boonText(b), btn = document.createElement('button'); btn.className = 'boon'; btn.id = 'boon-' + i;
     btn.innerHTML = '<div class="rune"></div><b></b><span></span><kbd></kbd>';
-    btn.children[0].innerHTML = icon(b.ico); btn.children[1].textContent = b.name; btn.children[2].textContent = typeof b.desc === 'function' ? b.desc(p) : b.desc; btn.children[3].textContent = touchMode ? '' : '按 ' + (i + 1);
+    btn.children[0].innerHTML = icon(b.ico); btn.children[1].textContent = lb.name; btn.children[2].textContent = typeof lb.desc === 'function' ? lb.desc(p) : lb.desc; btn.children[3].textContent = padMode ? ['X', 'Y', 'B'][i] : (touchMode ? '' : t('按 ', 'Press ') + (i + 1));
     btn.addEventListener('click', () => chooseBoon(b));
     el.appendChild(btn);
   });
   game.boonPicks = picks;
-  $('upSub').textContent = '第 ' + game.wave + ' 波已肃清。带上一份力量，迎接下一波。';
+  $('upSub').textContent = t('第 ' + game.wave + ' 波已肃清。带上一份力量，迎接下一波。', 'Wave ' + game.wave + ' cleared. Claim a blessing for the next wave.');
   show('upgrade', true);
 }
 function chooseBoon(b) {
@@ -2825,12 +2917,12 @@ function showOver() {
   game.state = 'over'; show('pause', false);
   let best = 0; try { best = +localStorage.getItem('embercrown-best') || 0; if (game.wave > best) { best = game.wave; localStorage.setItem('embercrown-best', best); } } catch (e) { best = Math.max(best, game.wave); }
   $('oWave').textContent = game.wave; $('oKills').textContent = game.kills; $('oBest').textContent = best;
-  $('overSub').textContent = game.wave >= 10 ? '观众会记住这一场很久。' : game.wave >= 5 ? '打得漂亮，看台还在喊你的名字。' : '沙子还热着，再来一次。';
+  $('overSub').textContent = game.wave >= 10 ? t('观众会记住这一场很久。', 'The crowd will remember this battle for a long time.') : game.wave >= 5 ? t('打得漂亮，看台还在喊你的名字。', 'Well fought—the stands are still chanting your name.') : t('沙子还热着，再来一次。', 'The sand is still warm. Step back in.');
   show('over', true);
 }
 function togglePause() {
   const mp = game.state === 'mp';
-  $('pauseH').textContent = mp ? '对战菜单' : '暂停'; $('pauseP').textContent = mp ? '对战不会暂停，别离开太久。' : '闸门后的怪物会等你。';
+  $('pauseH').textContent = mp ? t('对战菜单', 'Match Menu') : t('暂停', 'Paused'); $('pauseP').textContent = mp ? t('对战不会暂停，别离开太久。', 'Online matches do not pause—don’t stay away long.') : t('闸门后的怪物会等你。', 'The monsters behind the gate will wait.');
   if (mp) { net.menu = !net.menu; show('pause', net.menu); }
   else if (game.state === 'playing') { game.state = 'paused'; show('pause', true); }
   else if (game.state === 'paused') { game.state = 'playing'; show('pause', false); last = performance.now(); }
@@ -2886,6 +2978,11 @@ function pollGamepad(dt) {
   if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); return; }
   if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); return; }
   if (edge(12) && (game.state === 'playing' || game.state === 'mp')) { toggleChar(); return; }
+  if (game.state === 'upgrade' && game.boonPicks && game.boonPicks.length) {
+    const pickIdx = edge(2) ? 0 : edge(3) ? 1 : edge(1) ? 2 : -1;
+    if (pickIdx >= 0 && game.boonPicks[pickIdx]) chooseBoon(game.boonPicks[pickIdx]);
+    return;
+  }
   if (!inPlay()) return;
   if (edge(6)) cycleTarget();
   if (rx || ry) {
@@ -3134,9 +3231,9 @@ document.querySelectorAll('.diff-btn[data-diff]').forEach(b => b.addEventListene
 function openDiffModal(from) {
   diffFrom = from;
   const isCreate = from === 'create';
-  $('diffStepTag').textContent = isCreate ? '引导 · 创建对战房间（2 / 2）' : '引导 · 快速匹配';
-  $('diffStepDesc').textContent = isCreate ? '已设置 ' + (parseInt($('inBots').value, 10) || 0) + ' 名电脑对手，请选择本局电脑难度。' : '选择期望的电脑难度，系统将自动匹配或开启对应难度房间。';
-  $('btnDiffGo').textContent = isCreate ? '创建并进入' : '开始匹配';
+  $('diffStepTag').textContent = isCreate ? t('引导 · 创建对战房间（2 / 2）', 'Setup · Create Room (2 / 2)') : t('引导 · 快速匹配', 'Setup · Quick Match');
+  $('diffStepDesc').textContent = isCreate ? t('已设置 ' + (parseInt($('inBots').value, 10) || 0) + ' 名电脑对手，请选择本局电脑难度。', (parseInt($('inBots').value, 10) || 0) + ' bots selected. Choose bot difficulty.') : t('选择期望的电脑难度，系统将自动匹配或开启对应难度房间。', 'Choose bot difficulty to auto-match or create a room.');
+  $('btnDiffGo').textContent = isCreate ? t('创建并进入', 'Create & Enter') : t('开始匹配', 'Find Match');
   showLobbyStep('diff');
 }
 $('btnOnline').addEventListener('click', () => { if (touchMode) enterMobileFs(false); openLobby(); });
@@ -3183,7 +3280,88 @@ $('btnMenu').addEventListener('click', toMenu);
 $('btnQuit').addEventListener('click', toMenu);
 $('btnResume').addEventListener('click', () => { if (touchMode) enterMobileFs(false); togglePause(); });
 $('btnPause').addEventListener('click', togglePause);
-$('btnSound').addEventListener('click', () => { muted = !muted; $('btnSound').classList.toggle('off', muted); $('btnSound').querySelector('span').textContent = muted ? '音效：关' : '音效：开'; audioInit(); sfx.ui(); });
+$('btnSound').addEventListener('click', () => { muted = !muted; $('btnSound').classList.toggle('off', muted); $('btnSound').querySelector('span').textContent = muted ? t('音效：关', 'Sound: Off') : t('音效：开', 'Sound: On'); audioInit(); sfx.ui(); });
+function applyI18n() {
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+  document.title = t('烬冠竞技场', 'Embercrown Arena');
+  document.querySelectorAll('[data-lang-btn]').forEach(b => {
+    const sp = b.querySelector('span');
+    if (sp) sp.textContent = lang === 'en' ? '中文' : 'EN';
+    else b.textContent = lang === 'en' ? '中文' : 'EN';
+  });
+  const setQ = (sel, zh, en) => { const el = document.querySelector(sel); if (el) el.textContent = t(zh, en); };
+  const setH = (sel, zh, en) => { const el = document.querySelector(sel); if (el) el.innerHTML = t(zh, en); };
+  setQ('#gateEyebrow', '受邀体验版 · DEMO', 'INVITE PREVIEW · DEMO');
+  setQ('#gateH', '烬冠竞技场', 'Embercrown Arena');
+  setQ('#gateP', '请输入访问口令进入游戏（代号与房间由系统自动分配）。', 'Enter access passcode to join (codename and room are auto-assigned).');
+  $('inPass').placeholder = t('输入访问口令', 'Enter passcode');
+  setQ('#btnGate', '验证并进入', 'Verify & Enter');
+  setH('#menuEyebrow', '单人闯关 · 8 人联机混战 <span id="best"></span>', 'Solo Waves · 8-Player FFA <span id="best"></span>');
+  setQ('#menuTitle', '烬冠竞技场', 'Embercrown Arena');
+  setQ('#btnStart', '单人闯关', 'Solo Waves');
+  setQ('#btnOnline', '联机对战', 'Online FFA');
+  setQ('#lobby h2', '对战大厅', 'Battle Lobby');
+  setQ('#lobby > .card > p', '8 人自由混战，先拿到 15 次击杀获胜 · 代号与房间号由系统自动分配', '8-player free-for-all, first to 15 kills wins · Codename & room auto-assigned');
+  setH('#btnQuick', '<b>快速匹配</b><span>选择难度后自动匹配或开启战局</span>', '<b>Quick Match</b><span>Auto-match or open a room by difficulty</span>');
+  setH('#btnOpenRooms', '<b>房间列表 <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>浏览并加入正在激战的活跃房间</span>', '<b>Room List <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>Browse and join active rooms</span>');
+  setH('#btnOpenCreate', '<b>创建房间</b><span>自定义 Bot 数量与难度开新局</span>', '<b>Create Room</b><span>Customize bot count and difficulty</span>');
+  setH('#btnOpenJoin', '<b>房间号加入</b><span>输入好友 4 位房间号直接进房</span>', '<b>Join by Code</b><span>Enter a 4-char room code to join</span>');
+  setQ('#btnLobbyBack', '返回主菜单', 'Back to Menu');
+  setQ('#lobbyRooms .modal-step', '引导 · 选择对战房间', 'Setup · Select Room');
+  setQ('#lobbyRooms h2', '活跃房间列表', 'Active Rooms');
+  setQ('#btnRefreshRooms', '刷新列表', 'Refresh');
+  setQ('#btnRoomsCreate', '创建新房间', 'Create Room');
+  setQ('#btnRoomsBack', '上一步', 'Back');
+  setQ('#lobbyCreate .modal-step', '引导 · 创建对战房间（1 / 2）', 'Setup · Create Room (1 / 2)');
+  setQ('#lobbyCreate h2', '设置电脑数量', 'Bot Count');
+  setQ('#lobbyCreate > .card > p', '设置本局陪练的电脑对手数量，房间号将由系统随机分配。', 'Choose how many AI bots to fill; room code is assigned automatically.');
+  setQ('#lobbyCreate .lobby-form .hint', '单局最多 8 人，有真人玩家加入时电脑会自动让位。', 'Up to 8 players; bots step aside as real players join.');
+  setQ('#btnCreateGo', '下一步：选择难度', 'Next: Difficulty');
+  setQ('#btnCreateBack', '上一步', 'Back');
+  setQ('#lobbyDiff h2', '选择 Bot 难度', 'Select Bot Difficulty');
+  setH('.diff-btn[data-diff="easy"]', '<b>简单</b><em>55% 伤害 · 78% 移速</em><small>慢速反应与转向，适合热身熟悉技能</small>', '<b>Easy</b><em>55% DMG · 78% SPD</em><small>Slower reactions, great for warming up</small>');
+  setH('.diff-btn[data-diff="normal"]', '<b>普通</b><em>75% 伤害 · 88% 移速</em><small>均衡走位与技能间隔，标准竞技体验</small>', '<b>Normal</b><em>75% DMG · 88% SPD</em><small>Balanced movement and pacing</small>');
+  setH('.diff-btn[data-diff="hard"]', '<b>困难</b><em>95% 伤害 · 96% 移速</em><small>高频反应与走位拉扯，高强度混战挑战</small>', '<b>Hard</b><em>95% DMG · 96% SPD</em><small>Fast reactions and aggressive kiting</small>');
+  setQ('#btnDiffBack', '上一步', 'Back');
+  setQ('#lobbyJoin .modal-step', '引导 · 加入指定房间', 'Setup · Join Room');
+  setQ('#lobbyJoin h2', '加入房间', 'Join Room');
+  setQ('#lobbyJoin > .card > p', '输入好友分享的房间号，立即进入同一场混战。', 'Enter your friend’s room code to join the match.');
+  $('inJoinRoom').placeholder = t('输入房间号', 'Enter room code');
+  setQ('#btnJoinGo', '加入房间', 'Join Room');
+  setQ('#btnJoinBack', '上一步', 'Back');
+  setQ('#upgrade h2', '选择一项祝福', 'Choose a Blessing');
+  setQ('#btnFs span', '全屏横屏', 'Fullscreen');
+  setQ('#btnSound span', muted ? '音效：关' : '音效：开', muted ? 'Sound: Off' : 'Sound: On');
+  setQ('.pad-guide-h span', '蓝牙手柄键位（标准 Xbox 手柄）', 'Bluetooth Gamepad (Standard Xbox)');
+  setQ('.pad-guide-h small', '接入自动隐藏虚拟按键', 'Hides touch controls automatically');
+  setH('.pad-grid', '<span><kbd>左摇杆</kbd>移动</span><span><kbd>右摇杆</kbd>视角转向</span><span><kbd>X / RT</kbd>普通攻击</span><span><kbd>Y</kbd>1 号技能</span><span><kbd>B</kbd>2 号技能</span><span><kbd>RB</kbd>终极大招</span><span><kbd>LB</kbd>位移/冲锋</span><span><kbd>A</kbd>跳跃</span><span><kbd>LT</kbd>切换目标</span><span><kbd>View</kbd>排行榜</span><span><kbd>D-Pad ↑</kbd>个人属性</span><span><kbd>Menu</kbd>暂停/菜单</span>',
+    '<span><kbd>L Stick</kbd>Move</span><span><kbd>R Stick</kbd>Camera</span><span><kbd>X / RT</kbd>Attack</span><span><kbd>Y</kbd>Skill 1</span><span><kbd>B</kbd>Skill 2</span><span><kbd>RB</kbd>Ultimate</span><span><kbd>LB</kbd>Mobility</span><span><kbd>A</kbd>Jump</span><span><kbd>LT</kbd>Target</span><span><kbd>View</kbd>Scoreboard</span><span><kbd>D-Pad ↑</kbd>Stats</span><span><kbd>Menu</kbd>Pause</span>');
+  setQ('#btnResume', '继续战斗', 'Resume');
+  setQ('#btnQuit', '返回主菜单', 'Main Menu');
+  setQ('#over h2', '你倒在了沙场上', 'Fallen in the Arena');
+  setQ('#btnRetry', '再战一场', 'Play Again');
+  setQ('#btnMenu', '更换勇士', 'Change Hero');
+  setQ('#btnEndLeave', '离开房间', 'Leave Room');
+  setQ('.mvp-eyebrow span:first-child', '本场最佳', 'Match MVP');
+  setQ('#boardN', '战榜', 'Board');
+  setQ('#rosterPanel .cp-h b', '房间完整用户列表', 'Room Players');
+  setQ('#rosterPanel .hint', '点击战榜、按 O 或右上角 × 关闭', 'Click Board, press O, or × to close');
+  setQ('#charPanel .hint', '按 C 关闭', 'Press C to close');
+  setQ('#rotTip span', '建议横屏全屏游玩', 'Landscape fullscreen recommended');
+  setQ('#btnRot', '横屏全屏', 'Fullscreen');
+  setQ('#fail h2', '无法启动', 'Unable to Start');
+  setQ('#fail p', '这个浏览器没有开启 WebGL，竞技场画不出来。请换用新版 Chrome、Edge、Firefox 或 Safari 再试。', 'WebGL is unavailable in this browser. Please try a modern Chrome, Edge, Firefox, or Safari.');
+  renderMenu();
+  if (typeof renderLobbyCls === 'function' && !$('lobby').hidden) renderLobbyCls();
+  if (player) { $('hName').textContent = clsText(player.def).name; $('hRune').innerHTML = runeIcon(player.def.rune); buildSkillBar(); }
+  else if (game.state === 'mp' && CLASSES[net.cls]) { $('hName').textContent = clsText(CLASSES[net.cls]).name; buildSkillBar(CLASSES[net.cls]); }
+  if (charOpen) { charKey = ''; updateChar(); }
+}
+document.querySelectorAll('[data-lang-btn]').forEach(b => b.addEventListener('click', () => {
+  lang = lang === 'en' ? 'zh' : 'en';
+  try { localStorage.setItem('ec_lang', lang); } catch (e) {}
+  audioInit(); sfx.ui(); applyI18n();
+}));
 
 /* ================= multiplayer (server-authoritative; the client predicts only its own movement) ================= */
 const CLS_IDS = ['knight', 'ranger', 'mage'];
@@ -3411,21 +3589,21 @@ function mpShowEnd() {
   const def = CLASSES[CLS_IDS[top.c]] || CLASSES.knight, isMe = top.id === net.id;
   $('endH').textContent = isMe ? '你加冕为本局 MVP！' : top.n + ' 夺得烬冠 MVP';
   $('mvpRune').innerHTML = runeIcon(def.rune);
-  $('mvpName').textContent = top.n + (isMe ? '（你）' : '');
-  $('mvpSub').textContent = def.name + ' · ' + (top.b ? '电脑对手' : '真人玩家');
+  $('mvpName').textContent = top.n + (isMe ? t('（你）', ' (You)') : '');
+  $('mvpSub').textContent = clsText(def).name + ' · ' + (top.b ? t('电脑对手', 'Bot') : t('真人玩家', 'Player'));
   const k = top.k || 0, d = top.d || 0, dmg = top.dmg || 0, st = top.st || k;
-  $('mvpMedal').textContent = st >= 7 ? '超神' : d === 0 && k >= 3 ? '不败战神' : st >= 5 ? '无人能挡' : dmg >= 1200 ? '狂暴屠戮' : '竞技霸主';
+  $('mvpMedal').textContent = st >= 7 ? t('超神', 'Godlike') : d === 0 && k >= 3 ? t('不败战神', 'Undefeated') : st >= 5 ? t('无人能挡', 'Unstoppable') : dmg >= 1200 ? t('狂暴屠戮', 'Rampage') : t('竞技霸主', 'Arena Champion');
   $('mvpKills').textContent = k;
   $('mvpDmg').textContent = dmg;
   $('mvpStreak').textContent = st;
   $('mvpKd').textContent = d ? (k / d).toFixed(1) : k.toFixed(1);
   const ol = $('endList'); ol.innerHTML = '';
   r.forEach((p, i) => {
-    const pDef = CLASSES[CLS_IDS[p.c]] || CLASSES.knight;
+    const pDef = clsText(CLASSES[CLS_IDS[p.c]] || CLASSES.knight);
     const li = document.createElement('li'); if (p.id === net.id) li.className = 'me';
-    li.innerHTML = '<span class="rk"></span><span class="rtag"></span><span class="nm"></span><span class="kd"><b></b>杀 <b></b>死 <b></b>伤</span>';
+    li.innerHTML = '<span class="rk"></span><span class="rtag"></span><span class="nm"></span><span class="kd"><b></b>' + t('杀', 'K') + ' <b></b>' + t('死', 'D') + ' <b></b>' + t('伤', 'DMG') + '</span>';
     li.children[0].textContent = i + 1;
-    li.children[1].textContent = (pDef.tag || pDef.name) + (p.b ? '·机' : '');
+    li.children[1].textContent = (pDef.tag || pDef.name) + (p.b ? t('·机', '·Bot') : '');
     li.children[2].textContent = p.n;
     const bs = li.querySelectorAll('.kd b'); bs[0].textContent = p.k || 0; bs[1].textContent = p.d || 0; bs[2].textContent = p.dmg || 0;
     ol.appendChild(li);
@@ -3435,24 +3613,25 @@ function mpShowEnd() {
 function killCallout(v) {
   if (!v) return null;
   const tags = [];
-  if (v.fb) tags.push({ txt: '第一滴血', cls: 'fb' });
-  if (v.mk >= 5) tags.push({ txt: '五杀暴走', cls: 'god' });
-  else if (v.mk === 4) tags.push({ txt: '四杀', cls: 'god' });
-  else if (v.mk === 3) tags.push({ txt: '三杀', cls: 'mk' });
-  else if (v.mk === 2) tags.push({ txt: '双杀', cls: '' });
-  if (v.st >= 8) tags.push({ txt: '超越神了', cls: 'god' });
-  else if (v.st === 7) tags.push({ txt: '超神', cls: 'god' });
-  else if (v.st === 6) tags.push({ txt: '横扫千军', cls: 'god' });
-  else if (v.st === 5) tags.push({ txt: '无人能挡', cls: 'mk' });
-  else if (v.st === 4) tags.push({ txt: '杀人如麻', cls: 'mk' });
-  else if (v.st === 3) tags.push({ txt: '大杀特杀', cls: '' });
-  if (v.sd >= 3) tags.push({ txt: '终结', cls: 'sd' });
+  if (v.fb) tags.push({ txt: t('第一滴血', 'First Blood'), cls: 'fb' });
+  if (v.mk >= 5) tags.push({ txt: t('五杀暴走', 'Rampage!'), cls: 'god' });
+  else if (v.mk === 4) tags.push({ txt: t('四杀', 'Ultra Kill'), cls: 'god' });
+  else if (v.mk === 3) tags.push({ txt: t('三杀', 'Triple Kill'), cls: 'mk' });
+  else if (v.mk === 2) tags.push({ txt: t('双杀', 'Double Kill'), cls: '' });
+  if (v.st >= 8) tags.push({ txt: t('超越神了', 'Beyond Godlike!'), cls: 'god' });
+  else if (v.st === 7) tags.push({ txt: t('超神', 'Godlike!'), cls: 'god' });
+  else if (v.st === 6) tags.push({ txt: t('横扫千军', 'Wicked Sick'), cls: 'god' });
+  else if (v.st === 5) tags.push({ txt: t('无人能挡', 'Unstoppable'), cls: 'mk' });
+  else if (v.st === 4) tags.push({ txt: t('杀人如麻', 'Dominating'), cls: 'mk' });
+  else if (v.st === 3) tags.push({ txt: t('大杀特杀', 'Killing Spree'), cls: '' });
+  if (v.sd >= 3) tags.push({ txt: t('终结', 'Shut Down'), cls: 'sd' });
   return tags;
 }
 function mpFeed(killer, victim, mineK, mineV, v) {
   const d = document.createElement('div'); d.className = 'fd' + (mineK ? ' k' : mineV ? ' v' : '');
-  d.innerHTML = '<b class="fk"></b><span>击败了</span><b class="fv"></b>';
-  d.children[0].textContent = killer || '竞技场';
+  d.innerHTML = '<b class="fk"></b><span></span><b class="fv"></b>';
+  d.children[0].textContent = killer || t('竞技场', 'Arena');
+  d.children[1].textContent = t('击败了', 'slain');
   d.children[2].textContent = victim;
   const tags = killCallout(v) || [];
   for (const tg of tags) {
@@ -3788,7 +3967,7 @@ function frame(now) {
 
 buildArena();
 if (window.matchMedia && matchMedia('(pointer: coarse)').matches) setTouch();
-renderMenu(); setPreview(selCls); requestAnimationFrame(frame);
+applyI18n(); setPreview(selCls); requestAnimationFrame(frame);
 try { const saved = sessionStorage.getItem('embercrown-demo-pass'); if (saved) submitGate(saved); } catch (e) {}
 window.__arenaCtl = ctl;
 window.__arena = { info: renderer.info, cam: camera, net, game, get player() { return player; }, startGame, spawnEnemy, hurtEnemy, openUpgrade, keys, mouse, aim };

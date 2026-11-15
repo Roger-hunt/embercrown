@@ -6,7 +6,7 @@ A low-poly stylized 3D Western-fantasy arena ARPG built with **Three.js + Node.j
 
 ## Core Gameplay
 
-- **Solo Waves**: Endless arena waves with boss encounters every 5 waves (**Crag Ogre** / **Withered Lich** / **Dark Knight**), plus pick-1-of-3 blessings between waves.
+- **Solo Waves**: Endless arena waves with boss encounters every 5 waves (**Crag Ogre** / **Withered Lich** / **Greta the Dark Knight**), plus pick-1-of-3 blessings between waves.
 - **8-Player Online FFA**: 30Hz server-authoritative multiplayer supporting Quick Match, Custom Room Creation (configurable bot count & Easy/Normal/Hard difficulty), Active Room List, and 4-character Room Code joining.
 - **Three Playable Classes**:
   - **Ironvow Knight** (Melee · Rage): High armor mitigation, Shield Bash stun, Whirlwind lifesteal, target-locking Charge, and Skyfall Blade.

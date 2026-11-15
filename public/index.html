@@ -1021,7 +1021,16 @@ const EN_DATA = {
     生命泉水: { rune: 'R', name: 'Vital Spring', desc: 'Instantly heal 60% HP' },
     轻羽披风: { rune: 'D', name: 'Feather Cloak', desc: 'Mobility skill (5) cooldown -25%' },
   },
+  names: {
+    波林: 'Borin', 艾瑞克: 'Eric', 莉雅: 'Lia', 凯尔: 'Kael', 薇拉: 'Vela', 索恩: 'Thorn', 米拉: 'Mila', 卡隆: 'Karon', 芬恩: 'Finn', 伊索德: 'Isolde',
+    赤焰: 'Crimson', 苍风: 'Zephyr', 铁壁: 'Bastion', 星矢: 'Starfall', 孤狼: 'Lonewolf', 寒霜: 'Frost', 烈阳: 'Solaris', 影刃: 'Shadowblade', 破晓: 'Dawn', 雷鸣: 'Thunder', 磐石: 'Monolith', 逐影: 'Strider',
+  },
 };
+function dispName(n) {
+  if (!n || lang !== 'en') return n;
+  if (EN_DATA.names[n]) return EN_DATA.names[n];
+  return n.startsWith('勇士') ? 'Hero ' + n.slice(2) : n;
+}
 function resName(k) { return lang === 'en' ? (EN_DATA.res[k] || RES[k].name) : RES[k].name; }
 function clsText(def) { return lang === 'en' ? Object.assign({}, def, EN_DATA.cls[def.id] || {}) : def; }
 function enemyText(def) {
@@ -3095,7 +3104,7 @@ function ctlTarget(p) {
   if (tgt) {
     const r = (tgt.r || 0.5) + 0.45; tRing.position.set(tgt.x, 0.06, tgt.z); tRing.scale.set(r, r, 1); tRing.rotation.z = game.time * 1.5;
     aim.set(tgt.x, 0, tgt.z);
-    tgtHUD(game.state === 'mp' ? net.names.get(tgt.id) || t('勇士', 'Hero') : enemyText(tgt.d).name, Math.max(0, Math.ceil(tgt.hp)), tgt.maxHp, game.state === 'mp' ? tgt.def.rune : '敌');
+    tgtHUD(game.state === 'mp' ? dispName(net.names.get(tgt.id) || '') || t('勇士', 'Hero') : enemyText(tgt.d).name, Math.max(0, Math.ceil(tgt.hp)), tgt.maxHp, game.state === 'mp' ? tgt.def.rune : '敌');
   } else { aim.set(p.x + Math.sin(ctl.yaw) * 9, 0, p.z + Math.cos(ctl.yaw) * 9); tgtHUD(null); }
 }
 function aimAngle(p) { const t = ctl.target; return t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05 ? Math.atan2(t.x - p.x, t.z - p.z) : ctl.yaw; }
@@ -3373,7 +3382,12 @@ function applyI18n() {
   renderMenu();
   if (typeof renderLobbyCls === 'function' && !$('lobby').hidden) renderLobbyCls();
   if (player) { $('hName').textContent = clsText(player.def).name; $('hRune').innerHTML = runeIcon(player.def.rune); buildSkillBar(); }
-  else if (game.state === 'mp' && CLASSES[net.cls]) { $('hName').textContent = clsText(CLASSES[net.cls]).name; buildSkillBar(CLASSES[net.cls]); }
+  else if (game.state === 'mp' && CLASSES[net.cls]) {
+    $('hName').textContent = dispName(net.names.get(net.id) || '') || clsText(CLASSES[net.cls]).name;
+    buildSkillBar(CLASSES[net.cls]);
+    if (net.roster.length) mpRoster(net.roster);
+    if (!$('rosterPanel').hidden) renderRosterPanel();
+  }
   if (charOpen) { charKey = ''; updateChar(); }
 }
 document.querySelectorAll('[data-lang-btn]').forEach(b => b.addEventListener('click', () => {
@@ -3558,17 +3572,18 @@ $('rpClose').addEventListener('click', () => { sfx.ui(); toggleRoster(false); })
 function renderRosterPanel() {
   if ($('rosterPanel').hidden) return;
   const max = net.cfg ? net.cfg.max : 8, humans = net.roster.filter(p => !p.b).length, bots = net.roster.length - humans;
-  $('rpSub').textContent = '房间 ' + net.room + ' · ' + (DIFF_NAMES[net.diff] || '普通') + '难度 · 真人 ' + humans + ' / 电脑 ' + bots + '（共 ' + net.roster.length + '/' + max + ' 人）';
+  $('rpSub').textContent = t('房间 ' + net.room + ' · ' + diffText(net.diff) + '难度 · 真人 ' + humans + ' / 电脑 ' + bots + '（共 ' + net.roster.length + '/' + max + ' 人）',
+    'Room ' + net.room + ' · ' + diffText(net.diff) + ' · ' + humans + ' Players / ' + bots + ' Bots (' + net.roster.length + '/' + max + ')');
   const ol = $('rpList'); ol.innerHTML = '';
   net.roster.forEach((r, i) => {
     const def = CLASSES[CLS_IDS[r.c]] || CLASSES.knight, mine = r.id === net.id;
     const li = document.createElement('li'); if (mine) li.className = 'me';
-    li.innerHTML = '<span class="rp-rk"></span><span class="rp-ico"></span><div class="rp-info"><div class="rp-nm"><b></b><span class="rp-role"></span></div><div class="rp-cls"></div></div><div class="rp-st"><span><b class="k"></b> 杀</span><span><b></b> 死</span><span><b class="dmg"></b> 伤</span></div>';
+    li.innerHTML = '<span class="rp-rk"></span><span class="rp-ico"></span><div class="rp-info"><div class="rp-nm"><b></b><span class="rp-role"></span></div><div class="rp-cls"></div></div><div class="rp-st"><span><b class="k"></b> ' + t('杀', 'K') + '</span><span><b></b> ' + t('死', 'D') + '</span><span><b class="dmg"></b> ' + t('伤', 'DMG') + '</span></div>';
     li.children[0].textContent = '#' + (i + 1);
     li.children[1].innerHTML = runeIcon(def.rune);
-    li.querySelector('.rp-nm b').textContent = r.n;
+    li.querySelector('.rp-nm b').textContent = dispName(r.n);
     const role = li.querySelector('.rp-role');
-    role.textContent = mine ? '我' : r.b ? '电脑' : '玩家';
+    role.textContent = mine ? t('我', 'Me') : r.b ? t('电脑', 'Bot') : t('玩家', 'Player');
     if (r.b) role.classList.add('bot');
     li.querySelector('.rp-cls').textContent = clsText(def).name;
     const bs = li.querySelectorAll('.rp-st b');
@@ -3583,7 +3598,7 @@ function mpStart(m) {
   net.lp = { x: m.x, z: m.z, r: 0.5, face: Math.atan2(-m.x, -m.z), dashT: 0, dashX: 0, dashZ: 1, dashSp: 0, hold: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, landT: 0, aimT: 0 };
   const def = CLASSES[m.cls];
   for (const k in hudC) delete hudC[k];
-  $('hRune').innerHTML = runeIcon(def.rune); $('hName').textContent = m.name;
+  $('hRune').innerHTML = runeIcon(def.rune); $('hName').textContent = dispName(m.name);
   const dk = DIFF_NAMES[m.diff] ? m.diff : 'normal';
   net.diff = dk;
   $('mpTarget').textContent = m.cfg.target; $('mpRoom').textContent = m.room; $('mpKills').textContent = '0';
@@ -3593,7 +3608,7 @@ function mpStart(m) {
   sentSeqT.clear(); net.ping = 0; $('pingTxt').textContent = '--';
   mpStatus('');
   camTarget.set(m.x, 1.5, m.z); ctlReset(Math.atan2(-m.x, -m.z)); game.excite = 0.6; game.state = 'mp'; syncStickVis();
-  banner('自由混战', '先拿到 ' + m.cfg.target + ' 次击杀的勇士获胜'); sfx.horn();
+  banner(t('自由混战', 'Free-For-All'), t('先拿到 ' + m.cfg.target + ' 次击杀的勇士获胜', 'First to ' + m.cfg.target + ' kills wins')); sfx.horn();
 }
 function mpEnt(id, ci) {
   const def = CLASSES[CLS_IDS[ci]] || CLASSES.knight, rig = makeRig(def.id, def.build), mine = id === net.id, st = net.cfg.cls[def.id];
@@ -3606,7 +3621,7 @@ function mpEnt(id, ci) {
   e.debuff = makeDebuffFx(rig.root, 2.25, 1, 0.84);
   e.ring = new T.Mesh(geo('ring', 0.62, 0.82, 24), mine ? M.ringMe : M.ringFoe); e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = 0.04; rig.root.add(e.ring);
   e.tag = document.createElement('div'); e.tag.className = 'ntag' + (mine ? ' me' : ''); e.tag.innerHTML = '<em hidden></em><span></span><i><b></b></i>';
-  e.tag.children[1].textContent = net.names.get(id) || ''; tagsEl.appendChild(e.tag);
+  e.tag.children[1].textContent = dispName(net.names.get(id) || ''); tagsEl.appendChild(e.tag);
   scene.add(rig.root); net.ents.set(id, e); if (mine) net.me = e;
   return e;
 }
@@ -3615,11 +3630,11 @@ function mpRoster(list) {
   let myRank = 1;
   net.roster.forEach((r, i) => {
     net.names.set(r.id, r.n);
-    const e = net.ents.get(r.id); if (e) e.tag.children[1].textContent = r.n;
+    const e = net.ents.get(r.id); if (e) e.tag.children[1].textContent = dispName(r.n);
     if (r.id === net.id) { myRank = i + 1; setTxt('mpKills', r.k); }
   });
   $('boardRank').textContent = '#' + myRank;
-  $('boardN').textContent = '战榜';
+  $('boardN').textContent = t('战榜', 'Board');
   if (!$('rosterPanel').hidden) renderRosterPanel();
   if (net.phase === 1) mpShowEnd();
 }
@@ -3628,7 +3643,7 @@ function mpShowEnd() {
   const def = CLASSES[CLS_IDS[top.c]] || CLASSES.knight, isMe = top.id === net.id;
   $('endH').textContent = isMe ? '你加冕为本局 MVP！' : top.n + ' 夺得烬冠 MVP';
   $('mvpRune').innerHTML = runeIcon(def.rune);
-  $('mvpName').textContent = top.n + (isMe ? t('（你）', ' (You)') : '');
+  $('mvpName').textContent = dispName(top.n) + (isMe ? t('（你）', ' (You)') : '');
   $('mvpSub').textContent = clsText(def).name + ' · ' + (top.b ? t('电脑对手', 'Bot') : t('真人玩家', 'Player'));
   const k = top.k || 0, d = top.d || 0, dmg = top.dmg || 0, st = top.st || k;
   $('mvpMedal').textContent = st >= 7 ? t('超神', 'Godlike') : d === 0 && k >= 3 ? t('不败战神', 'Undefeated') : st >= 5 ? t('无人能挡', 'Unstoppable') : dmg >= 1200 ? t('狂暴屠戮', 'Rampage') : t('竞技霸主', 'Arena Champion');
@@ -3643,7 +3658,7 @@ function mpShowEnd() {
     li.innerHTML = '<span class="rk"></span><span class="rtag"></span><span class="nm"></span><span class="kd"><b></b>' + t('杀', 'K') + ' <b></b>' + t('死', 'D') + ' <b></b>' + t('伤', 'DMG') + '</span>';
     li.children[0].textContent = i + 1;
     li.children[1].textContent = (pDef.tag || pDef.name) + (p.b ? t('·机', '·Bot') : '');
-    li.children[2].textContent = p.n;
+    li.children[2].textContent = dispName(p.n);
     const bs = li.querySelectorAll('.kd b'); bs[0].textContent = p.k || 0; bs[1].textContent = p.d || 0; bs[2].textContent = p.dmg || 0;
     ol.appendChild(li);
   });
@@ -3730,13 +3745,13 @@ function mpEvent(v) {
       if (me) { floatText(p.x, 2.2, p.z, '+' + v.v, 'heal'); sfx.pickup(); }
       break;
     case 'kill': {
-      const vn = net.names.get(v.id) || '勇士', kn = net.names.get(v.by) || '';
+      const vn = dispName(net.names.get(v.id) || '') || t('勇士', 'Hero'), kn = dispName(net.names.get(v.by) || '');
       const tags = mpFeed(kn, vn, v.by === net.id, me, v);
       burst(p.x, 1, p.z, 0xffc23d, 18, 7, 0.2, 0.8); e.deadT = 0;
       game.excite = Math.min(1, game.excite + 0.4);
       if (me) { net.killer = kn; game.shake = 0.7; sfx.dead(); }
       else if (v.by === net.id) {
-        const headline = tags.length ? tags[tags.length - 1].txt : '击败 ' + vn;
+        const headline = tags.length ? tags[tags.length - 1].txt : t('击败 ', 'Slain ') + vn;
         floatText(net.lp.x, 3.2, net.lp.z, headline, 'note');
       }
       if (v.fb) sfx.fb();

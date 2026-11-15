@@ -1698,6 +1698,10 @@ const sfx = {
   cheer: () => noise(1.3, 0.07, 1000, 0.6, 'bandpass', 1600),
   dead: () => tone(220, 0.7, 'sawtooth', 0.13, 55),
   cast: () => tone(300, 0.3, 'sine', 0.1, 700),
+  fb: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.08, 0, i * 0.06)); tone(1047, 0.38, 'triangle', 0.13, 0, 0.22); },
+  streak: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.12, 0, i * 0.065)),
+  godlike: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.28, 'sawtooth', 0.075, 0, i * 0.065)); sfx.cheer(); },
+  shutdown: () => [440, 349, 294, 220].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.08, 0, i * 0.07)),
 };
 
 /* ================= game state ================= */
@@ -3410,7 +3414,7 @@ function mpShowEnd() {
   $('mvpName').textContent = top.n + (isMe ? '（你）' : '');
   $('mvpSub').textContent = def.name + ' · ' + (top.b ? '电脑对手' : '真人玩家');
   const k = top.k || 0, d = top.d || 0, dmg = top.dmg || 0, st = top.st || k;
-  $('mvpMedal').textContent = st >= 7 ? '超神 Godlike' : d === 0 && k >= 3 ? '不败战神' : st >= 5 ? '无人能挡' : dmg >= 1200 ? '狂暴屠戮' : '竞技霸主';
+  $('mvpMedal').textContent = st >= 7 ? '超神' : d === 0 && k >= 3 ? '不败战神' : st >= 5 ? '无人能挡' : dmg >= 1200 ? '狂暴屠戮' : '竞技霸主';
   $('mvpKills').textContent = k;
   $('mvpDmg').textContent = dmg;
   $('mvpStreak').textContent = st;
@@ -3431,18 +3435,18 @@ function mpShowEnd() {
 function killCallout(v) {
   if (!v) return null;
   const tags = [];
-  if (v.fb) tags.push({ txt: '第一滴血 First Blood', cls: 'fb' });
-  if (v.mk >= 5) tags.push({ txt: '五杀暴走 Rampage!', cls: 'god' });
-  else if (v.mk === 4) tags.push({ txt: '四杀 Ultra Kill', cls: 'god' });
-  else if (v.mk === 3) tags.push({ txt: '三杀 Triple Kill', cls: 'mk' });
-  else if (v.mk === 2) tags.push({ txt: '双杀 Double Kill', cls: '' });
-  if (v.st >= 8) tags.push({ txt: '超越神了 Beyond Godlike!', cls: 'god' });
-  else if (v.st === 7) tags.push({ txt: '超神 Godlike!', cls: 'god' });
-  else if (v.st === 6) tags.push({ txt: '横扫千军 Wicked Sick', cls: 'god' });
-  else if (v.st === 5) tags.push({ txt: '无人能挡 Unstoppable', cls: 'mk' });
-  else if (v.st === 4) tags.push({ txt: '杀人如麻 Dominating', cls: 'mk' });
-  else if (v.st === 3) tags.push({ txt: '大杀特杀 Killing Spree', cls: '' });
-  if (v.sd >= 3) tags.push({ txt: '终结 Shut Down', cls: 'sd' });
+  if (v.fb) tags.push({ txt: '第一滴血', cls: 'fb' });
+  if (v.mk >= 5) tags.push({ txt: '五杀暴走', cls: 'god' });
+  else if (v.mk === 4) tags.push({ txt: '四杀', cls: 'god' });
+  else if (v.mk === 3) tags.push({ txt: '三杀', cls: 'mk' });
+  else if (v.mk === 2) tags.push({ txt: '双杀', cls: '' });
+  if (v.st >= 8) tags.push({ txt: '超越神了', cls: 'god' });
+  else if (v.st === 7) tags.push({ txt: '超神', cls: 'god' });
+  else if (v.st === 6) tags.push({ txt: '横扫千军', cls: 'god' });
+  else if (v.st === 5) tags.push({ txt: '无人能挡', cls: 'mk' });
+  else if (v.st === 4) tags.push({ txt: '杀人如麻', cls: 'mk' });
+  else if (v.st === 3) tags.push({ txt: '大杀特杀', cls: '' });
+  if (v.sd >= 3) tags.push({ txt: '终结', cls: 'sd' });
   return tags;
 }
 function mpFeed(killer, victim, mineK, mineV, v) {
@@ -3515,8 +3519,13 @@ function mpEvent(v) {
       if (me) { net.killer = kn; game.shake = 0.7; sfx.dead(); }
       else if (v.by === net.id) {
         const headline = tags.length ? tags[tags.length - 1].txt : '击败 ' + vn;
-        floatText(net.lp.x, 3.2, net.lp.z, headline, 'note'); sfx.boon();
+        floatText(net.lp.x, 3.2, net.lp.z, headline, 'note');
       }
+      if (v.fb) sfx.fb();
+      else if (v.st >= 7 || v.mk >= 4) sfx.godlike();
+      else if (v.mk >= 2 || v.st >= 3) sfx.streak();
+      else if (v.sd >= 3) sfx.shutdown();
+      else if (!me && v.by === net.id) sfx.boon();
       break;
     }
     case 'spawn': e.fresh = true; e.spawnFx = true; break;

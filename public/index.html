@@ -3033,6 +3033,7 @@ function showOver() {
 function togglePause() {
   const mp = game.state === 'mp';
   $('pauseH').textContent = mp ? t('对战菜单', 'Match Menu') : t('暂停', 'Paused'); $('pauseP').textContent = mp ? t('对战不会暂停，别离开太久。', 'Online matches do not pause—don’t stay away long.') : t('闸门后的怪物会等你。', 'The monsters behind the gate will wait.');
+  renderControlGuide();
   if (mp) { net.menu = !net.menu; show('pause', net.menu); }
   else if (game.state === 'playing') { game.state = 'paused'; show('pause', true); }
   else if (game.state === 'paused') { game.state = 'playing'; show('pause', false); last = performance.now(); }
@@ -3051,7 +3052,8 @@ function setPad(on) {
   document.body.classList.toggle('pad', on);
   if (player) buildSkillBar(); else if (game.state === 'mp') buildSkillBar(CLASSES[net.cls]);
   syncStickVis();
-  if (on && inPlay()) showErr('已接入蓝牙手柄（Xbox 键位）');
+  if (typeof renderControlGuide === 'function') renderControlGuide();
+  if (on && inPlay()) showErr(t('已接入蓝牙手柄（Xbox 键位）', 'Bluetooth gamepad connected (Xbox layout)'));
 }
 function pickGamepad(list) {
   if (!list) return null;
@@ -3442,10 +3444,7 @@ function applyI18n() {
   setQ('#upgrade h2', '选择一项祝福', 'Choose a Blessing');
   setQ('#btnFs span', '全屏横屏', 'Fullscreen');
   setQ('#btnSound span', muted ? '音效：关' : '音效：开', muted ? 'Sound: Off' : 'Sound: On');
-  setQ('.pad-guide-h span', '蓝牙手柄键位（标准 Xbox 手柄）', 'Bluetooth Gamepad (Standard Xbox)');
-  setQ('.pad-guide-h small', '接入自动隐藏虚拟按键', 'Hides touch controls automatically');
-  setH('.pad-grid', '<span><kbd>左摇杆</kbd>移动</span><span><kbd>右摇杆</kbd>视角转向</span><span><kbd>X / RT</kbd>普通攻击</span><span><kbd>Y</kbd>1 号技能</span><span><kbd>B</kbd>2 号技能</span><span><kbd>RB</kbd>终极大招</span><span><kbd>LB</kbd>位移/冲锋</span><span><kbd>A</kbd>跳跃</span><span><kbd>LT</kbd>切换目标</span><span><kbd>View</kbd>排行榜</span><span><kbd>D-Pad ↑</kbd>个人属性</span><span><kbd>Menu</kbd>暂停/菜单</span>',
-    '<span><kbd>L Stick</kbd>Move</span><span><kbd>R Stick</kbd>Camera</span><span><kbd>X / RT</kbd>Attack</span><span><kbd>Y</kbd>Skill 1</span><span><kbd>B</kbd>Skill 2</span><span><kbd>RB</kbd>Ultimate</span><span><kbd>LB</kbd>Mobility</span><span><kbd>A</kbd>Jump</span><span><kbd>LT</kbd>Target</span><span><kbd>View</kbd>Scoreboard</span><span><kbd>D-Pad ↑</kbd>Stats</span><span><kbd>Menu</kbd>Pause</span>');
+  renderControlGuide();
   setQ('#btnResume', '继续战斗', 'Resume');
   setQ('#btnQuit', '返回主菜单', 'Main Menu');
   setQ('#over h2', '你倒在了沙场上', 'Fallen in the Arena');
@@ -3471,6 +3470,25 @@ function applyI18n() {
     if (!$('rosterPanel').hidden) renderRosterPanel();
   }
   if (charOpen) { charKey = ''; updateChar(); }
+}
+function renderControlGuide() {
+  const h = document.querySelector('.pad-guide-h span'), s = document.querySelector('.pad-guide-h small'), g = document.querySelector('.pad-grid');
+  if (!h || !s || !g) return;
+  if (padMode) {
+    h.textContent = t('蓝牙手柄键位（标准 Xbox 手柄）', 'Bluetooth Gamepad (Standard Xbox)');
+    s.textContent = t('接入自动隐藏虚拟按键', 'Hides touch controls automatically');
+    g.innerHTML = t(
+      '<span><kbd>左摇杆</kbd>移动</span><span><kbd>右摇杆</kbd>视角转向</span><span><kbd>X / RT</kbd>普通攻击</span><span><kbd>Y</kbd>1 号技能</span><span><kbd>B</kbd>2 号技能</span><span><kbd>RB</kbd>终极大招</span><span><kbd>LB</kbd>位移/冲锋</span><span><kbd>A</kbd>跳跃</span><span><kbd>LT</kbd>切换目标</span><span><kbd>View</kbd>排行榜</span><span><kbd>D-Pad ↑</kbd>个人属性</span><span><kbd>Menu</kbd>暂停/菜单</span>',
+      '<span><kbd>L Stick</kbd>Move</span><span><kbd>R Stick</kbd>Camera</span><span><kbd>X / RT</kbd>Attack</span><span><kbd>Y</kbd>Skill 1</span><span><kbd>B</kbd>Skill 2</span><span><kbd>RB</kbd>Ultimate</span><span><kbd>LB</kbd>Mobility</span><span><kbd>A</kbd>Jump</span><span><kbd>LT</kbd>Target</span><span><kbd>View</kbd>Scoreboard</span><span><kbd>D-Pad ↑</kbd>Stats</span><span><kbd>Menu</kbd>Pause</span>'
+    );
+  } else {
+    h.textContent = t('键鼠操作键位', 'Keyboard & Mouse Controls');
+    s.textContent = t('支持连接蓝牙手柄自动切换', 'Auto-switches on gamepad input');
+    g.innerHTML = t(
+      '<span><kbd>WASD</kbd>移动</span><span><kbd>右键拖动</kbd>转向</span><span><kbd>左键拖动</kbd>视角</span><span><kbd>1</kbd>普通攻击</span><span><kbd>2</kbd>1 号技能</span><span><kbd>3</kbd>2 号技能</span><span><kbd>4</kbd>终极大招</span><span><kbd>5 / Shift</kbd>位移/冲锋</span><span><kbd>Space</kbd>跳跃</span><span><kbd>Tab / 点击</kbd>切换目标</span><span><kbd>C</kbd>个人属性</span><span><kbd>O</kbd>排行榜</span>',
+      '<span><kbd>WASD</kbd>Move</span><span><kbd>RMB Drag</kbd>Turn</span><span><kbd>LMB Drag</kbd>Camera</span><span><kbd>1</kbd>Attack</span><span><kbd>2</kbd>Skill 1</span><span><kbd>3</kbd>Skill 2</span><span><kbd>4</kbd>Ultimate</span><span><kbd>5 / Shift</kbd>Mobility</span><span><kbd>Space</kbd>Jump</span><span><kbd>Tab / Click</kbd>Target</span><span><kbd>C</kbd>Stats</span><span><kbd>O</kbd>Scoreboard</span>'
+    );
+  }
 }
 document.querySelectorAll('[data-lang-btn]').forEach(b => b.addEventListener('click', () => {
   lang = lang === 'en' ? 'zh' : 'en';

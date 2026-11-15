@@ -1,0 +1,12 @@
+{
+  "name": "embercrown-arena",
+  "version": "1.0.0",
+  "private": true,
+  "description": "烬冠竞技场：低多边形西式奇幻竞技场，单人闯关 + 8 人联机对战",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.22.2"
+  }
+}

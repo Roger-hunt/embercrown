@@ -1,0 +1,19 @@
+# 行尾统一为 LF。
+#
+# 本机系统级配置是 core.autocrlf=true，会把检出内容改写成 CRLF，
+# 而工作区里现有源码实测是 9127 行 LF / 137 行 CRLF —— 以 LF 为准。
+# 如果不显式锁死，同一份文件在不同机器上会产生整文件级别的假 diff。
+#
+# 只在检出时生效：磁盘上已有的文件不会被改动，下次 checkout 才规范化。
+* text=auto eol=lf
+
+# 显式声明二进制，避免被 text=auto 误判后做行尾转换而损坏文件
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
+*.glb  binary
+*.gltf binary

@@ -2856,7 +2856,7 @@ function pollGamepad(dt) {
   }
   if (!gp) {
     pad.lx = pad.ly = pad.rx = pad.ry = 0;
-    for (const k in act) act[k] = false;
+    if (padMode) for (const k in act) act[k] = false;
     return;
   }
   const dz = v => Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82;

@@ -327,6 +327,13 @@ li.me .nm{color:var(--gold);font-weight:700}
 .fd-tag.mk{background:linear-gradient(90deg,#ff9a52,var(--blood));color:#fff;text-shadow:0 1px 1px var(--ink)}
 .fd-tag.fb{background:var(--blood);color:#fff;text-shadow:0 1px 1px var(--ink)}
 .fd-tag.sd{background:var(--sky);color:var(--ink)}
+.fd.boss{color:#ffdf7e;white-space:normal;line-height:1.35}
+.fd.boss b{color:#ff8484}
+.say-bub{position:absolute;left:0;top:0;max-width:min(240px,54vw);padding:7px 12px;border-radius:14px;background:#fff6dc;color:var(--ink);border:3px solid var(--ink);box-shadow:0 4px 0 var(--ink);font-family:var(--f-display);font-size:14px;line-height:1.3;text-align:center;pointer-events:none;z-index:4;transition:opacity .35s}
+.say-bub::before{content:"";position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink);border-bottom:0}
+.say-bub::after{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:4.5px solid transparent;border-top-color:#fff6dc;border-bottom:0}
+.say-bub.pop{animation:saypop .28s cubic-bezier(.2,1.5,.4,1)}
+@keyframes saypop{0%{opacity:0;scale:.55}100%{opacity:1;scale:1}}
 #respawn{align-self:center;justify-self:center;text-align:center;padding:12px 28px 14px;margin-top:-18vh}
 #respawn h3{margin:0;font-family:var(--f-display);font-weight:400;font-size:22px;color:#ff9aa2}
 #respawn p{margin:2px 0 0;color:var(--muted)}
@@ -2182,9 +2189,17 @@ function spawnEnemy(type, x, z, o = {}) {
   } else {
     game.boss = e;
     const ld = enemyText(d);
-    $('bossName').textContent = ld.quote ? ld.name + ' · 「' + ld.quote + '」' : ld.name;
+    $('bossName').textContent = ld.name;
     $('bossBar').hidden = false;
-    if (d.quote) floatText(x, e.h + 0.6, z, d.quote, 'note');
+    if (ld.quote) {
+      const fd = document.createElement('div'); fd.className = 'fd boss';
+      fd.innerHTML = '<b></b><span></span>';
+      fd.children[0].textContent = ld.name;
+      fd.children[1].textContent = t('喊道：', 'yells: ') + '「' + ld.quote + '」';
+      feedEl.appendChild(fd); while (feedEl.childElementCount > 4) feedEl.firstChild.remove();
+      setTimeout(() => fd.remove(), 6500);
+      showSayBubble(e, ld.quote, 4.8);
+    }
   }
   rig.root.position.set(x, 0, z); rig.root.scale.setScalar(0.01); scene.add(rig.root);
   game.enemies.push(e);
@@ -2607,7 +2622,7 @@ function startWave(n) {
   game.spawnQ = buildWave(n); game.spawnT = 0; game.phase = 'intro'; game.phaseT = 1.5;
   const boss = n % 5 === 0 ? ENEMY[game.spawnQ[0]] : null;
   const lb = boss ? enemyText(boss) : null;
-  banner(t('第 ' + n + ' 波', 'Wave ' + n), lb ? t('首领登场：', 'Boss Appears: ') + lb.name + (lb.quote ? ' — 「' + lb.quote + '」' : '') : (n === 1 ? t('闸门升起，怪物涌入', 'The gates rise—monsters pour in!') : ''));
+  banner(t('第 ' + n + ' 波', 'Wave ' + n), lb ? t('首领登场：', 'Boss Appears: ') + lb.name : (n === 1 ? t('闸门升起，怪物涌入', 'The gates rise—monsters pour in!') : ''));
   sfx.horn();
 }
 function updateWave(dt) {
@@ -3375,6 +3390,25 @@ const net = {
   sx: 0, sz: 0, hasS: false, hitT: 0, menu: false, killer: '',
 };
 const tagsEl = $('tags'), feedEl = $('feed');
+const sayBubbles = [];
+function showSayBubble(ent, text, dur = 4.6) {
+  const el = document.createElement('div');
+  el.className = 'say-bub pop';
+  el.textContent = text;
+  tagsEl.appendChild(el);
+  sayBubbles.push({ ent, el, left: dur });
+}
+function updateSayBubbles(dt) {
+  for (let i = sayBubbles.length - 1; i >= 0; i--) {
+    const b = sayBubbles[i]; b.left -= dt;
+    if (b.left <= 0 || !b.ent || b.ent.dead) { b.el.remove(); sayBubbles.splice(i, 1); continue; }
+    if (b.left < 0.4) b.el.style.opacity = '0';
+    v3.set(b.ent.x, (b.ent.h || 2.5) + 0.55 + (b.ent.y || 0), b.ent.z).project(camera);
+    const vis = v3.z < 1 && Math.abs(v3.x) < 1.15 && Math.abs(v3.y) < 1.15;
+    b.el.hidden = !vis;
+    if (vis) b.el.style.transform = 'translate(' + ((v3.x + 1) / 2 * viewW).toFixed(1) + 'px,' + ((1 - v3.y) / 2 * viewH).toFixed(1) + 'px) translate(-50%,-100%)';
+  }
+}
 function mpStatus(msg, bad) {
   for (const id of ['mpStatus', 'roomsStatus', 'createStatus', 'diffStatus', 'joinStatus']) {
     const el = $(id); if (el) { el.textContent = msg || ''; el.hidden = !msg; el.classList.toggle('bad', !!bad); }
@@ -3966,6 +4000,7 @@ function frame(now) {
   if (st !== 'paused') { game.excite = Math.max(st === 'menu' ? 0.25 : 0, game.excite - real * 0.35); animateArena(game.time, real); }
   updateChar();
   updateCamera(st === 'mp' ? raw : real);
+  updateSayBubbles(real);
   renderer.render(scene, camera);
 }
 

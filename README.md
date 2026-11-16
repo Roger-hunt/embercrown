@@ -60,3 +60,7 @@ npm start
 ## 开源协议
 
 本项目基于 [MIT License](LICENSE) 开源。
+
+## 致谢
+
+感谢 [linux.do](https://linux.do/) 社区。

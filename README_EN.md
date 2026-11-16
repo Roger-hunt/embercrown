@@ -62,3 +62,7 @@ Open `http://localhost:3000` (LAN players can connect via the LAN address printe
 ## License
 
 Released under the [MIT License](LICENSE).
+
+## Acknowledgments
+
+Thanks to the [linux.do](https://linux.do/) community.

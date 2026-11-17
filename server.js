@@ -428,8 +428,9 @@ const server = http.createServer((req, res) => {
 const rooms = new Map();
 function makeRoom(code, botCount = Math.max(0, BOT_FILL - 1), diff = 'normal', pwd = '', fun = false) {
   const dKey = BOT_DIFF[diff] ? diff : 'normal';
-  const room = { code, pwd: cleanRoomPwd(pwd), fun: !!fun, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], bombs: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME,
+  const room = { code, pwd: cleanRoomPwd(pwd), fun: !!fun, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], bombs: [], critters: [], critterTimers: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME,
     nextId: 1, nextObj: 1, pickT: fun ? 3 : 6, botT: 0, rosterDirty: true, hasFb: false };
+  initCritters(room);
   rooms.set(code, room); return room;
 }
 function freshFun() {
@@ -590,10 +591,12 @@ function attack(room, p) {
   const a = p.face; p.cd.atk = CLS[p.cls].atkCd; p.prot = 0;
   if (p.cls === 'knight') {
     room.ev.push({ e: 'atk', id: p.id, k: 'slash', a: r2(a) });
+    let hitAny = false;
     for (const o of foes(room, p)) {
       const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 3.3 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.15)) damage(room, o, 24, p, { kb: 2.5, fx: p.x, fz: p.z });
+      if (d < 3.3 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.15)) { damage(room, o, 24, p, { kb: 2.5, fx: p.x, fz: p.z }); hitAny = true; }
     }
+    if (hitCrittersInArc(room, p.x, p.z, a, 3.3, 1.15, p) && !hitAny) { gain(p, RES.rage.hit); p.calm = RES.rage.calm; }
   } else if (p.cls === 'ranger') {
     room.ev.push({ e: 'atk', id: p.id, k: 'shoot', a: r2(a) });
     shoot(room, p, 'arrow', a, { speed: 30, dmg: 14, life: 1.0, pierce: 1 });
@@ -610,8 +613,10 @@ function skill(room, p, slot) {
       const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
       if (d < 3.1 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.05)) damage(room, o, 28, p, { kb: 4, fx: p.x, fz: p.z, stun: 0.95, sk: 1 });
     }
+    hitCrittersInArc(room, p.x, p.z, a, 3.1, 1.05, p);
   } else if (slot === 2) {                             // 冲锋（骑士的 5 号位移技能）
-    const tg = p.chargeTgId ? foes(room, p).find(o => o.id === p.chargeTgId && Math.hypot(o.x - p.x, o.z - p.z) <= CHARGE.maxDist) : null;
+    const tg = p.chargeTgId ? (foes(room, p).find(o => o.id === p.chargeTgId && Math.hypot(o.x - p.x, o.z - p.z) <= CHARGE.maxDist)
+      || (room.critters || []).find(c => c.id === p.chargeTgId && Math.hypot(c.x - p.x, c.z - p.z) <= CHARGE.maxDist)) : null;
     const ca = tg ? Math.atan2(tg.x - p.x, tg.z - p.z) : a;
     p.chargeTarget = tg; p.chargeTgId = 0; p.chargeDist = 0;
     p.dashT = tg ? 0.6 : CHARGE.dur; p.dashSp = CHARGE.sp; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.inv = Math.max(p.inv, 0.45);
@@ -621,6 +626,7 @@ function skill(room, p, slot) {
     room.ev.push({ e: 'atk', id: p.id, k: 'spin', a: r2(a) });
     let hits = 0;
     for (const o of foes(room, p)) if (Math.hypot(o.x - p.x, o.z - p.z) < 4.4 + PR) { if (damage(room, o, 48, p, { kb: 6, fx: p.x, fz: p.z, sk: 1 })) hits++; }
+    hitCrittersInRadius(room, p.x, p.z, 4.4, p);
     if (hits && !p.dead) { const max = CLS.knight.hp, got = Math.min(27, hits * 9, max - p.hp); if (got > 0) { p.hp += got; room.ev.push({ e: 'heal', id: p.id, v: Math.round(got) }); } }
   } else if (p.cls === 'ranger' && !slot) {
     room.ev.push({ e: 'atk', id: p.id, k: 'shoot', a: r2(a) });
@@ -633,6 +639,7 @@ function skill(room, p, slot) {
   } else if (!slot) {
     room.ev.push({ e: 'atk', id: p.id, k: 'nova', a: r2(a) });
     for (const o of foes(room, p)) if (Math.hypot(o.x - p.x, o.z - p.z) < 5.8 + PR) damage(room, o, 26, p, { freeze: 1.45, sk: 1 });
+    hitCrittersInRadius(room, p.x, p.z, 5.8, p);
   } else {
     const t = aimPoint(p, 17);
     room.ev.push({ e: 'atk', id: p.id, k: 'call', a: r2(a) });
@@ -680,7 +687,8 @@ function updatePlayer(room, p) {
   else if (p.dashT > 0) {
     if (p.charging && p.chargeTarget) {
       const tg = p.chargeTarget;
-      if (tg.dead || !room.players.includes(tg)) p.chargeTarget = null;
+      const aliveTg = room.players.includes(tg) ? !tg.dead : (room.critters || []).includes(tg);
+      if (!aliveTg) p.chargeTarget = null;
       else {
         const dx = tg.x - p.x, dz = tg.z - p.z, dist = Math.hypot(dx, dz);
         if (dist > CHARGE.maxGap) p.chargeTarget = null;
@@ -696,12 +704,17 @@ function updatePlayer(room, p) {
         p.chargeHit.add(o); damage(room, o, 28, p, { kb: 10, fx: p.x - p.dashX, fz: p.z - p.dashZ, stun: 0.85, sk: 1 });
         if (o === p.chargeTarget) { p.dashT = 0; break; }
       }
+      if (p.dashT > 0) for (const c of (room.critters || []).slice()) if (!p.chargeHit.has(c) && Math.hypot(c.x - p.x, c.z - p.z) < PR + CRITTER_R + 0.95) {
+        p.chargeHit.add(c); killCritter(room, c, p);
+        if (c === p.chargeTarget) { p.dashT = 0; break; }
+      }
       if (p.chargeDist >= CHARGE.maxDist || (!p.chargeTarget && p.chargeDist >= CHARGE.dur * CHARGE.sp)) p.dashT = 0;
     } else if (p.rocket) {
       p.face = Math.atan2(p.dashX, p.dashZ);
       for (const o of foes(room, p)) if (!p.rocketHit.has(o) && Math.hypot(o.x - p.x, o.z - p.z) < PR * 2 + 1.0) {
         p.rocketHit.add(o); damage(room, o, 28, p, { kb: 12, fx: p.x - p.dashX, fz: p.z - p.dashZ, stun: 0.5, sk: 1 });
       }
+      hitCrittersInRadius(room, p.x, p.z, PR + 1.0, p);
     }
     if (p.dashT <= 0) { if (p.charging) p.inv = Math.min(p.inv, 0.08); p.charging = p.rolling = p.rocket = false; p.chargeTarget = null; }
   } else {
@@ -770,12 +783,22 @@ function updateProj(room) {
         if (pr.splash || pr.pierce-- <= 0) gone = true;
         break;
       }
+      if (!gone) for (const c of (room.critters || []).slice()) {
+        if (Math.hypot(c.x - pr.x, c.z - pr.z) > 0.4 + CRITTER_R) continue;
+        killCritter(room, c, pr.o);
+        hit = 1;
+        if (pr.splash || pr.pierce-- <= 0) gone = true;
+        break;
+      }
     }
     pr.life -= DT; if (pr.life <= 0) gone = true;
     if (gone) {
-      if (pr.splash) for (const t of room.players) {
-        if (t === pr.o || t.dead || pr.hit.has(t)) continue;
-        if (Math.hypot(t.x - pr.x, t.z - pr.z) < pr.splash + PR) damage(room, t, pr.dmg * 0.6, pr.o, { kb: 4, fx: pr.x, fz: pr.z });
+      if (pr.splash) {
+        for (const t of room.players) {
+          if (t === pr.o || t.dead || pr.hit.has(t)) continue;
+          if (Math.hypot(t.x - pr.x, t.z - pr.z) < pr.splash + PR) damage(room, t, pr.dmg * 0.6, pr.o, { kb: 4, fx: pr.x, fz: pr.z });
+        }
+        hitCrittersInRadius(room, pr.x, pr.z, pr.splash, pr.o);
       }
       room.ev.push({ e: 'p-', id: pr.id, x: r2(pr.x), z: r2(pr.z), h: hit });
       ps.splice(i, 1);
@@ -787,6 +810,7 @@ function blast(room, z) {
     if (t === z.o || t.dead) continue;
     if (Math.hypot(t.x - z.x, t.z - z.z) < z.r + PR) damage(room, t, z.dmg, z.o, { kb: z.kb, fx: z.x, fz: z.z, slow: z.slow, stun: z.stun, sk: 1 });
   }
+  hitCrittersInRadius(room, z.x, z.z, z.r, z.o);
 }
 function updateZones(room) {
   const zs = room.zones;
@@ -913,6 +937,7 @@ function updateFunCombat(room) {
           else damage(room, o, 54, bm.o, { kb: 14, fx: bm.x, fz: bm.z, stun: 0.75, sk: 1 });
         }
         room.ev.push({ e: 'bombx', x: r2(bm.x), z: r2(bm.z), r: 4.6 });
+        hitCrittersInRadius(room, bm.x, bm.z, 4.6, bm.o);
         room.bombs.splice(i, 1);
       }
     }
@@ -928,6 +953,7 @@ function updateFunCombat(room) {
         fn.starHit.set(o.id, t);
         damage(room, o, 24, p, { kb: 12, fx: p.x, fz: p.z, sk: 1 });
       }
+      hitCrittersInRadius(room, p.x, p.z, PR + 0.7, p);
     }
     if (fn.boom > 0) {
       for (let b = 0; b < 3; b++) {
@@ -941,7 +967,87 @@ function updateFunCombat(room) {
             room.ev.push({ e: 'boomhit', id: o.id, by: p.id });
           }
         }
+        hitCrittersInRadius(room, bx, bz, 0.7, p);
       }
+    }
+  }
+}
+const CRITTER_R = 0.25;
+function confineCritter(c) {
+  for (const p of PILLARS) {
+    const dx = c.x - p.x, dz = c.z - p.z, d = Math.hypot(dx, dz), min = p.r + CRITTER_R;
+    if (d < min) { if (d > 0.001) { c.x = p.x + dx * min / d; c.z = p.z + dz * min / d; } else c.x = p.x + min; return true; }
+  }
+  const d = Math.hypot(c.x, c.z), max = R - CRITTER_R;
+  if (d > max) { c.x *= max / d; c.z *= max / d; return true; }
+  return false;
+}
+function spawnChicken(room, edge = false) {
+  let x = 0, z = 0;
+  for (let n = 0; n < 8; n++) {
+    const a = Math.random() * TAU, r = edge ? R - 2 : 4 + Math.random() * (R - 8);
+    x = Math.sin(a) * r; z = Math.cos(a) * r;
+    if (PILLARS.every(p => Math.hypot(x - p.x, z - p.z) > p.r + CRITTER_R + 0.4)) break;
+  }
+  const c = { id: room.nextObj++, x, z, face: Math.random() * TAU, a: Math.random() * TAU, waitT: 0.5 + Math.random() * 1.7, walkT: 1 + Math.random() * 1.4, spd: 0 };
+  confineCritter(c);
+  room.critters.push(c);
+  return c;
+}
+function initCritters(room) {
+  room.critters = []; room.critterTimers = [];
+  for (let i = 0; i < 4; i++) spawnChicken(room, false);
+}
+function killCritter(room, c, by) {
+  const idx = room.critters ? room.critters.indexOf(c) : -1;
+  if (idx < 0) return;
+  room.critters.splice(idx, 1);
+  room.critterTimers.push(15);
+  room.ev.push({ e: 'ck', x: r2(c.x), z: r2(c.z), by: by ? by.id : 0 });
+}
+function hitCrittersInRadius(room, x, z, r, by) {
+  if (!room.critters || !room.critters.length) return 0;
+  let n = 0;
+  for (const c of room.critters.slice()) if (Math.hypot(c.x - x, c.z - z) < r + CRITTER_R) { killCritter(room, c, by); n++; }
+  return n;
+}
+function hitCrittersInArc(room, x, z, fa, range, half, by) {
+  if (!room.critters || !room.critters.length) return 0;
+  let n = 0;
+  for (const c of room.critters.slice()) {
+    const dx = c.x - x, dz = c.z - z, dd = Math.hypot(dx, dz);
+    if (dd < range + CRITTER_R && (dd < CRITTER_R + 0.85 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < half)) { killCritter(room, c, by); n++; }
+  }
+  return n;
+}
+function updateCritters(room) {
+  if (!room.critters) initCritters(room);
+  for (let i = room.critterTimers.length - 1; i >= 0; i--) {
+    room.critterTimers[i] -= DT;
+    if (room.critterTimers[i] <= 0) { room.critterTimers.splice(i, 1); if (room.critters.length < 4) spawnChicken(room, true); }
+  }
+  for (const c of room.critters) {
+    let near = null, bd = 3.2;
+    for (const p of room.players) {
+      if (p.dead) continue;
+      const d = Math.hypot(c.x - p.x, c.z - p.z);
+      if (d < bd) { bd = d; near = p; }
+    }
+    let spd = 0;
+    if (near) {
+      c.a = Math.atan2(c.x - near.x, c.z - near.z); c.walkT = 0.7; c.waitT = 0; spd = 4.2;
+    } else if (c.walkT > 0) {
+      c.walkT -= DT; spd = 1.65;
+      if (c.walkT <= 0) c.waitT = 1.0 + Math.random() * 1.8;
+    } else {
+      c.waitT -= DT;
+      if (c.waitT <= 0) { c.a = Math.random() * TAU; c.walkT = 1.2 + Math.random() * 1.8; }
+    }
+    c.spd = spd;
+    if (spd > 0) {
+      c.x += Math.sin(c.a) * spd * DT; c.z += Math.cos(c.a) * spd * DT;
+      if (confineCritter(c)) c.a += Math.PI * 0.75;
+      c.face += angDiff(c.a, c.face) * Math.min(1, DT * 10);
     }
   }
 }
@@ -1070,6 +1176,7 @@ function endRound(room) {
 }
 function startRound(room) {
   room.phase = 'play'; room.roundT = ROUND_TIME; room.proj.length = room.zones.length = room.picks.length = 0; if (room.bombs) room.bombs.length = 0; room.pickT = room.fun ? 3 : 6; room.hasFb = false;
+  initCritters(room);
   for (const p of room.players) { p.kills = p.deaths = p.dmg = p.streak = p.maxStreak = p.mk = p.mkT = 0; p.dead = false; p.cd.u = 0; }
   for (const p of room.players) respawn(room, p);
   room.rosterDirty = true;
@@ -1083,7 +1190,7 @@ function tickRoom(room) {
   else {
     if (room.players.length >= 2) { room.roundT -= DT; if (room.roundT <= 0) endRound(room); }
     for (const p of room.players.slice()) updatePlayer(room, p);
-    separate(room); updateFunCombat(room); updateProj(room); updateZones(room); updatePicks(room);
+    separate(room); updateFunCombat(room); updateProj(room); updateZones(room); updatePicks(room); updateCritters(room);
   }
   broadcast(room);
 }
@@ -1106,7 +1213,9 @@ function broadcast(room) {
         (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0),
         CLS_IDS.indexOf(p.cls), r2(p.y)];
     }),
-    k: room.picks.map(k => [k.id, r2(k.x), r2(k.z), k.k || 'heal']), ev: room.ev,
+    k: room.picks.map(k => [k.id, r2(k.x), r2(k.z), k.k || 'heal']),
+    cr: (room.critters || []).map(c => [c.id, r2(c.x), r2(c.z), r2(c.face), c.spd > 0 ? 1 : 0]),
+    ev: room.ev,
   });
   room.ev = [];
   const cdv = v => v > 0 ? Math.round(v * 20) / 20 : 0;

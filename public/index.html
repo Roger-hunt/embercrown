@@ -119,7 +119,9 @@ body.rot90 #ui{
 @keyframes castout{to{opacity:0}}
 /* action bar: square icon slots, key number in the corner, clockwise cooldown sweep with seconds */
 .skills{display:flex;gap:5px;padding:5px;background:rgba(35,26,51,.82);border:3px solid var(--ink);border-radius:12px;box-shadow:0 0 0 2px #7d6a3a,0 4px 0 var(--ink);transition:opacity .12s}
-body.touch.aiming #skills{opacity:0;pointer-events:none}
+body.touch.aiming #skills{opacity:0}
+body.touch.aiming #skills .slot{pointer-events:none}
+body.touch.aiming #skills .slot[data-k="u"]{pointer-events:auto}
 .slot{pointer-events:auto;touch-action:none;position:relative;width:60px;height:60px;display:grid;place-items:center;overflow:hidden;
   background:radial-gradient(circle at 50% 32%,var(--c1,#5d4a8a),var(--c2,#33264d));border:2px solid #0e0a17;border-radius:8px;box-shadow:inset 0 0 0 2px rgba(255,241,210,.18)}
 .slot .ico{display:grid;place-items:center;margin-top:-10px;color:var(--cream);filter:drop-shadow(0 2px 0 rgba(20,12,34,.7))}
@@ -3479,9 +3481,20 @@ function buildSkillBar(d = player.def) {
     const c = tint[k] || (d.id === 'knight' ? ['#b0483f', '#4a1f26'] : d.id === 'ranger' ? ['#4f9f5f', '#1f4a2c'] : ['#5b6fd6', '#262a6a']);
     s.style.setProperty('--c1', c[0]); s.style.setProperty('--c2', c[1]);
     const cost = i < 4 ? d.cost[i] : 0; s.title = name + (cost ? ' (' + cost + ' ' + resName(d.res) + ')' : '');
-    let holdTid = 0;
+let holdTid = 0;
     const on = ev => {
       ev.preventDefault(); audioInit();
+      if (k === 'u' && (touchMode || ev.pointerType === 'touch')) {
+        s.classList.add('down');
+        if (game.state === 'mp' && net.item) { ultPress(); return; }
+        if (!ctl.aiming) ultPress();
+        if (ctl.aiming) {
+          const r = s.getBoundingClientRect();
+          uDrag = { id: ev.pointerId, btn: s, cx: r.left + r.width / 2, cy: r.top + r.height / 2, rad: Math.max(r.width, r.height) * 0.56, out: false };
+          try { s.setPointerCapture(ev.pointerId); } catch (e) {}
+        }
+        return;
+      }
       if (k === 'atk') {
         clearTimeout(holdTid);
         try { s.setPointerCapture(ev.pointerId); } catch (e) {}
@@ -3493,9 +3506,31 @@ function buildSkillBar(d = player.def) {
       }
       act[k] = true; taps[k] = true; s.classList.add('down');
     };
-    const off = () => { if (holdTid) { clearTimeout(holdTid); holdTid = 0; } act[k] = false; s.classList.remove('down'); };
-    s.addEventListener('pointerdown', on); s.addEventListener('pointerup', off); s.addEventListener('pointercancel', off);
-    s.addEventListener('pointerleave', ev => { if (k !== 'atk' || !s.hasPointerCapture || !s.hasPointerCapture(ev.pointerId)) off(); });
+    const onMove = ev => {
+      if (k !== 'u' || !uDrag || uDrag.id !== ev.pointerId) return;
+      if (!ctl.aiming || !inPlay()) { uDrag = null; s.classList.remove('down'); return; }
+      if (Math.hypot(ev.clientX - uDrag.cx, ev.clientY - uDrag.cy) > uDrag.rad) uDrag.out = true;
+      if (uDrag.out) { const [vx, vy] = toViewXY(ev.clientX, ev.clientY); mouse.x = vx; mouse.y = vy; }
+    };
+    const off = ev => {
+      if (holdTid) { clearTimeout(holdTid); holdTid = 0; }
+      act[k] = false; s.classList.remove('down');
+      if (k === 'u' && uDrag && (!ev || uDrag.id === ev.pointerId)) {
+        const d = uDrag; uDrag = null;
+        if (ev && ev.type === 'pointerup' && ctl.aiming && inPlay()) {
+          const p = game.state === 'mp' ? net.lp : player, def = game.state === 'mp' ? CLASSES[net.cls] : player.def;
+          let o;
+          if (d.out) {
+            const [vx, vy] = toViewXY(ev.clientX, ev.clientY); mouse.x = vx; mouse.y = vy;
+            ndc.set(vx / viewW * 2 - 1, -(vy / viewH) * 2 + 1); ray.setFromCamera(ndc, camera);
+            o = ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : { x: p.x, z: p.z };
+          } else o = ctl.pt || ultDefaultPt(p, def.ult);
+          clampRange(p, o, def.ult.range); ultCast(o.x, o.z);
+        } else if (ev && ev.type === 'pointercancel') ctl.aiming = false;
+      }
+    };
+    s.addEventListener('pointerdown', on); s.addEventListener('pointermove', onMove); s.addEventListener('pointerup', off); s.addEventListener('pointercancel', off);
+    s.addEventListener('pointerleave', ev => { if (uDrag && uDrag.id === ev.pointerId) return; if (k !== 'atk' || !s.hasPointerCapture || !s.hasPointerCapture(ev.pointerId)) off(ev); });
     el.appendChild(s); return { el: s, k, last: -1, sec: '', cost, oom: false, armed: false };
   });
   syncAutoAtkUI();
@@ -3678,7 +3713,7 @@ function clearWorld() {
   if (player && player.cast) dropMark(player.cast.mark);
   ctl.aiming = false; ctl.target = null; tRing.visible = reticle.visible = rangeRing.visible = false; document.body.classList.remove('aiming');
   toggleChar(false); $('castBar').hidden = true; $('castBar').className = ''; $('errs').innerHTML = ''; clearTaps();
-  aimTouchId = null; lookT.id = null; pinch.a = pinch.b = null; pinch.d = 0;
+  aimTouchId = null; uDrag = null; lookT.id = null; pinch.a = pinch.b = null; pinch.d = 0;
   stick.id = null; stick.dx = stick.dz = 0; syncStickVis();
   for (const e of game.enemies) { scene.remove(e.root); if (e.bar) scene.remove(e.bar.g); }
   for (const c of game.critters) scene.remove(c.root);
@@ -4147,11 +4182,15 @@ function ctlTarget(p) {
 function aimAngle(p) { const t = ctl.target; return t && Math.hypot(t.x - p.x, t.z - p.z) > 0.05 ? Math.atan2(t.x - p.x, t.z - p.z) : ctl.yaw; }
 function updateReticle(p, u) {
   const on = ctl.aiming && inPlay();
-  if (!on) ctl.aiming = false;
+  if (!on) { ctl.aiming = false; uDrag = null; }
   reticle.visible = rangeRing.visible = on; document.body.classList.toggle('aiming', on);
   if (!on) return;
-  ndc.set(mouse.x / viewW * 2 - 1, -(mouse.y / viewH) * 2 + 1); ray.setFromCamera(ndc, camera);
-  const o = ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : { x: p.x, z: p.z };
+  let o;
+  if (uDrag && !uDrag.out) o = ultDefaultPt(p, u);
+  else {
+    ndc.set(mouse.x / viewW * 2 - 1, -(mouse.y / viewH) * 2 + 1); ray.setFromCamera(ndc, camera);
+    o = ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : { x: p.x, z: p.z };
+  }
   clampRange(p, o, u.range); ctl.pt = o;
   reticle.position.set(o.x, 0, o.z); reticle.scale.set(u.zone.r, 1, u.zone.r);
   rangeRing.position.set(p.x, 0.05, p.z); rangeRing.scale.set(u.range, u.range, 1);
@@ -4233,7 +4272,7 @@ function setTouch() {
   if (game.state === 'menu') renderMenu(); syncStickVis();
 }
 const stickEl = $('stick'), lookT = { id: null, x: 0, y: 0, d: 0 }, pinch = { a: null, b: null, d: 0 };
-let aimTouchId = null, lookPauseT = 0;
+let aimTouchId = null, uDrag = null, lookPauseT = 0;
 function touchById(touches, id) {
   for (let i = 0; i < touches.length; i++) if (touches[i].identifier === id) return touches[i];
   return null;
@@ -4273,10 +4312,10 @@ canvas.addEventListener('touchstart', e => {
     const [tx, ty] = toViewXY(t.clientX, t.clientY);
     const inStickZone = stick.id === null && pinch.a === null && tx < viewW * (ctl.aiming || lookT.id !== null ? 0.34 : 0.48) && ((ctl.aiming || lookT.id !== null) ? ty > viewH * 0.48 : true);
     if (inStickZone) {
-      if (ctl.aiming) { ctl.aiming = false; aimTouchId = null; }
+      if (ctl.aiming) { ctl.aiming = false; aimTouchId = null; uDrag = null; }
       stick.id = t.identifier; stick.ox = tx; stick.oy = ty; stick.dx = stick.dz = 0;
       stickEl.style.left = tx + 'px'; stickEl.style.top = ty + 'px'; stickEl.firstElementChild.style.transform = ''; syncStickVis();
-    } else if (ctl.aiming && inPlay() && aimTouchId === null) {
+    } else if (ctl.aiming && inPlay() && aimTouchId === null && !uDrag) {
       aimTouchId = t.identifier; mouse.x = tx; mouse.y = ty;
     } else if (lookT.id !== null && pinch.a === null && inPlay()) {
       startPinch(e.touches, lookT.id, t.identifier);

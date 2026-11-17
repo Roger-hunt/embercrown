@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const zlib = require('zlib');
 const { spawn, execFileSync } = require('child_process');
 const { WebSocketServer } = require('ws');
 
@@ -21,7 +22,10 @@ const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 const ADMIN_PORT = Number(process.env.ADMIN_PORT) || 3001;
 const ADMIN_HOST = process.env.ADMIN_HOST || '127.0.0.1';
-const TRUST_PROXY = process.env.TRUST_PROXY === '1';
+// TRUST_PROXY=1：信任任何来源的 X-Forwarded-For；TRUST_PROXY=ip1,ip2：只信任来自这些反向代理的
+const TP_RAW = String(process.env.TRUST_PROXY || '').trim();
+const TRUST_PROXY = TP_RAW !== '' && TP_RAW !== '0';
+const TRUSTED_PROXIES = TP_RAW === '1' ? null : new Set(TP_RAW.split(',').map(s => s.trim()).filter(Boolean));
 const PUBLIC = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'telemetry.db');
@@ -31,7 +35,9 @@ const ENV_DEMO_PASS = String(process.env.DEMO_PASS || '').trim();
 const DEMO_PASS_AUTO = !ENV_DEMO_PASS;
 const DEMO_PASS = ENV_DEMO_PASS || crypto.randomBytes(9).toString('base64url');
 const PASS_HASH = crypto.createHash('sha256').update(DEMO_PASS).digest();
-const SESSION_KEY = crypto.randomBytes(32);
+// 配置了口令时从口令派生签名密钥，重启后已登录的玩家不用重新输入
+const SESSION_KEY = ENV_DEMO_PASS ? crypto.createHmac('sha256', ENV_DEMO_PASS).update('embercrown-session-v1').digest() : crypto.randomBytes(32);
+const DEV_START_WAVE = envInt('DEV_START_WAVE', 0, 0, 99);   // 调试用：单人模式从第几波开始（与 DEBUG 日志开关无关）
 const SESSION_TTL_MS = 24 * 3600 * 1000;
 const ADMIN_TOKEN = String(process.env.ADMIN_TOKEN || '').trim();
 const ADMIN_HASH = ADMIN_TOKEN ? crypto.createHash('sha256').update(ADMIN_TOKEN).digest() : null;
@@ -40,6 +46,11 @@ const BOT_FILL = envInt('BOT_FILL', 4, 0, MAX_PLAYERS);
 const MAX_CONNECTIONS = 256;
 const MAX_ROOMS = 64;
 const MAX_CONN_PER_IP = 16;
+const QUEUE_HUMANS = envInt('QUEUE_HUMANS', 12, 1, 256);
+const QUEUE_LOAD = Number(process.env.QUEUE_LOAD) || 1.6;
+const QUEUE_TICK_MS = Number(process.env.QUEUE_TICK_MS) || 18;
+const QUEUE_FORCE = process.env.QUEUE_FORCE === '1';
+const REALM_NAME = String(process.env.REALM_NAME || '无尽乌龟').trim();
 
 const TICK = 30, DT = 1 / TICK;
 const KILL_TARGET = envInt('KILL_TARGET', 15, 1, 99), ROUND_TIME = envInt('ROUND_TIME', 240, 30, 3600), END_TIME = 9, RESPAWN = 3, SPAWN_PROT = 1.5;
@@ -76,7 +87,7 @@ const PLAYER_NAMES = ['赤焰', '苍风', '铁壁', '星矢', '孤狼', '寒霜'
 const BOT_DIFF = {
   easy:   { id: 'easy',   name: '简单', dmg: 0.55, spd: 0.78, dtMin: 0.65, dtVar: 0.45, err: 0.95, turn: 3.6, gcd: 1.05, fire: 0.42, q: 0.12, e: 0.08, u: 0.05, roll: 0.04 },
   normal: { id: 'normal', name: '普通', dmg: 0.74, spd: 0.88, dtMin: 0.45, dtVar: 0.35, err: 0.55, turn: 5.4, gcd: 0.65, fire: 0.58, q: 0.20, e: 0.16, u: 0.10, roll: 0.08 },
-  hard:   { id: 'hard',   name: '困难', dmg: 0.88, spd: 0.93, dtMin: 0.34, dtVar: 0.25, err: 0.34, turn: 7.2, gcd: 0.45, fire: 0.68, q: 0.28, e: 0.24, u: 0.16, roll: 0.14 },
+  hard:   { id: 'hard',   name: '困难', dmg: 0.82, spd: 0.90, dtMin: 0.40, dtVar: 0.30, err: 0.44, turn: 6.2, gcd: 0.55, fire: 0.62, q: 0.24, e: 0.20, u: 0.12, roll: 0.10 },
 };
 
 function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
@@ -86,6 +97,7 @@ function r2(v) { return Math.round(v * 100) / 100; }
 function angDiff(a, b) { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
 function cleanText(v, max) { return typeof v === 'string' ? v.replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, max) : ''; }
 function cleanRoomCode(v) { return typeof v === 'string' ? v.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 12) : ''; }
+function cleanRoomPwd(v) { return typeof v === 'string' ? v.replace(/\D/g, '').slice(0, 6) : ''; }
 function checkSecret(v, hash) {
   if (!hash || typeof v !== 'string') return false;
   const h = crypto.createHash('sha256').update(v.trim()).digest();
@@ -109,9 +121,19 @@ function verifySessionToken(tok) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 const authFailures = new Map();
+const AUTH_MSG = { bad: '口令错误，请重试', limited: '尝试过于频繁，请 1 分钟后再试', expired: '登录已失效，请重新输入口令' };
+// 有效令牌永远放行（不受限流影响）；失效令牌不计入口令失败；只有错误口令才计数
+function authState(ip, tok, pass) {
+  if (verifySessionToken(tok)) return 'ok';
+  const hasPass = typeof pass === 'string' && pass.trim() !== '';
+  if (!hasPass && typeof tok === 'string' && tok) return 'expired';
+  if (isRateLimited(ip)) return 'limited';
+  return hasPass && checkPass(pass) ? 'ok' : 'bad';
+}
 function clientIp(req) {
-  let raw = (req.socket && req.socket.remoteAddress) || 'unknown';
-  if (TRUST_PROXY && req.headers) {
+  const peer = String((req.socket && req.socket.remoteAddress) || 'unknown').replace(/^::ffff:/, '');
+  let raw = peer;
+  if (TRUST_PROXY && req.headers && (!TRUSTED_PROXIES || TRUSTED_PROXIES.has(peer))) {
     const xff = req.headers['x-forwarded-for'];
     const parts = typeof xff === 'string' ? xff.split(',').map(s => s.trim()).filter(Boolean) : [];
     raw = (parts.length && parts[parts.length - 1]) || req.headers['x-real-ip'] || raw;
@@ -234,11 +256,12 @@ function logAccess(o) {
     try { fs.appendFileSync(SEC_LOG, ts + ' [FAIL2BAN] EVENT=' + ev + ' HOST=' + ip + ' PATH=' + (o.path || '-') + '\n'); } catch (e) {}
   }
 }
-const HONEYPOT_RE = /^\/(?:\.env|\.git|\.svn|\.aws|\.ssh|\.DS_Store|wp-admin|wp-login(?:\.php)?|wp-content|wp-includes|xmlrpc\.php|phpmyadmin|pma|myadmin|admin\.php|administrator|shell|cmd|eval-stdin|vendor\/phpunit|actuator|cgi-bin|solr|jenkins|manager\/html|config\.php|config\.json|backup|dump\.sql|db\.sql|id_rsa|etc\/passwd|proc\/self|trap-admin)(?:$|\/)/i;
+const HONEYPOT_RE = /^\/(?:\.env|\.git|\.svn|\.aws|\.ssh|\.DS_Store|wp-admin|wp-login(?:\.php)?|wp-content|wp-includes|xmlrpc\.php|phpmyadmin|pma|myadmin|admin\.php|administrator|shell|cmd|eval-stdin|vendor\/phpunit|actuator|cgi-bin|solr|jenkins|manager\/html|config\.php|config\.json|backup|dump\.sql|db\.sql|id_rsa|etc\/passwd|proc\/self|trap-admin)(?:$|[\/.])/i;
 function handleHoneypot(req, res, p, ip, ua) {
-  for (let i = 0; i < 10; i++) recordAuthFail(ip);
+  // 蜜罐只记录和拖延，不再计入口令失败：否则别的网页用一个图片标签就能让访问者被限流
   const h = req.headers || {};
-  logAccess({ ip, ua, event: 'honeypot_hit', method: req.method, path: p, status: 403, detail: { host: cleanText(h.host, 120), ref: cleanText(h.referer, 180), xff: cleanText(h['x-forwarded-for'], 120) } });
+  const xsite = h['sec-fetch-site'] === 'cross-site';     // 浏览器被第三方页面诱导发出的请求，不写入 fail2ban 日志
+  logAccess({ ip, ua, event: xsite ? 'honeypot_xsite' : 'honeypot_hit', method: req.method, path: p, status: 403, detail: { host: cleanText(h.host, 120), ref: cleanText(h.referer, 180), xff: cleanText(h['x-forwarded-for'], 120) } });
   logDebug('WARN', 'honeypot', '蜜罐捕获可疑扫描请求', { ip, method: req.method, path: p, ua });
   setTimeout(() => {
     if (res.destroyed) return;
@@ -259,7 +282,20 @@ function logDebug(level, tag, msg, meta) {
     if (level === 'ERROR') console.error(line); else console.log(line);
   }
 }
-let tickSumMs = 0, tickMaxMs = 0, tickCount = 0, totalWsMsgs = 0, lastCpu = process.cpuUsage(), lastSampleT = Date.now();
+let tickSumMs = 0, tickMaxMs = 0, tickCount = 0, recentTickMs = 0, totalWsMsgs = 0, lastCpu = process.cpuUsage(), lastSampleT = Date.now();
+const loginQueue = [];
+function getLoadStatus() {
+  let humansTotal = 0;
+  for (const r of rooms.values()) humansTotal += humans(r);
+  const load1m = r2(os.loadavg()[0] || 0);
+  const tickMs = r2(recentTickMs);
+  const overloaded = QUEUE_FORCE || humansTotal >= QUEUE_HUMANS || load1m >= QUEUE_LOAD || tickMs >= QUEUE_TICK_MS;
+  return { humans: humansTotal, load1m, tickMs, overloaded, queue: loginQueue.length, realm: REALM_NAME };
+}
+function queueEtaSec(pos) { return Math.max(35, pos * 45); }
+function sendQueueMsg(ws, pos) {
+  send(ws, JSON.stringify({ t: 'queue', realm: REALM_NAME, pos, etaSec: queueEtaSec(pos) }));
+}
 function sampleLoad() {
   const now = Date.now(), dtSec = Math.max(0.1, (now - lastSampleT) / 1000); lastSampleT = now;
   const cpu = process.cpuUsage(lastCpu); lastCpu = process.cpuUsage();
@@ -297,6 +333,17 @@ const SEC_HEADERS = {
 
 /* ---------------- static files ---------------- */
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg' };
+// 文本类静态文件 gzip 后缓存在内存里（按大小 + 修改时间失效），客户端页面和 Three.js 体积降到约四分之一
+const GZ_TYPES = new Set(['.html', '.js', '.css', '.json', '.svg']);
+const gzCache = new Map();
+function gzipped(file, st, cb) {
+  const tag = st.size + '-' + st.mtimeMs, hit = gzCache.get(file);
+  if (hit && hit.tag === tag) return cb(null, hit.buf);
+  fs.readFile(file, (err, raw) => {
+    if (err) return cb(err);
+    zlib.gzip(raw, { level: 9 }, (e2, buf) => { if (e2) return cb(e2); gzCache.set(file, { tag, buf }); cb(null, buf); });
+  });
+}
 const server = http.createServer((req, res) => {
   for (const [k, v] of Object.entries(SEC_HEADERS)) res.setHeader(k, v);
   let p;
@@ -305,40 +352,35 @@ const server = http.createServer((req, res) => {
   const ip = clientIp(req), ua = clientUa(req);
   if (HONEYPOT_RE.test(p)) return handleHoneypot(req, res, p, ip, ua);
   if (req.method === 'POST' && p === '/auth') {
-    if (isRateLimited(ip)) {
-      logAccess({ ip, ua, event: 'rate_limit', method: 'POST', path: '/auth', status: 429 });
-      logDebug('WARN', 'auth', 'IP 触发口令频率限制', { ip });
-      res.writeHead(429, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      return res.end(JSON.stringify({ ok: false, msg: '尝试过于频繁，请 1 分钟后再试' }));
-    }
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > 512) req.destroy(); });
     req.on('end', () => {
       let pass = '', tok = '';
       try { const j = JSON.parse(body); pass = String(j.pass || ''); tok = String(j.token || ''); } catch (e) {}
-      const tokOk = tok ? verifySessionToken(tok) : false;
-      const ok = tokOk || checkPass(pass);
-      logAccess({ ip, ua, event: ok ? 'auth_ok' : 'auth_fail', method: 'POST', path: '/auth', status: ok ? 200 : 401 });
-      if (!ok) { recordAuthFail(ip); logDebug('WARN', 'auth', '口令验证失败', { ip }); }
-      else logDebug('INFO', 'auth', '口令验证通过', { ip });
-      res.writeHead(ok ? 200 : 401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(ok ? { ok: true, token: tokOk ? tok : issueSessionToken(), debug: DEBUG_ON } : { ok: false, msg: '口令错误，请重试' }));
+      const st = authState(ip, tok, pass), ok = st === 'ok', status = ok ? 200 : st === 'limited' ? 429 : 401;
+      logAccess({ ip, ua, event: ok ? 'auth_ok' : st === 'limited' ? 'rate_limit' : st === 'expired' ? 'token_expired' : 'auth_fail', method: 'POST', path: '/auth', status });
+      if (st === 'bad') { recordAuthFail(ip); logDebug('WARN', 'auth', '口令验证失败', { ip }); }
+      else if (st === 'limited') logDebug('WARN', 'auth', 'IP 触发口令频率限制', { ip });
+      else if (ok) logDebug('INFO', 'auth', '口令验证通过', { ip });
+      res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(ok ? { ok: true, token: verifySessionToken(tok) ? tok : issueSessionToken(), ...(DEV_START_WAVE > 1 ? { startWave: DEV_START_WAVE } : {}) } : { ok: false, code: st, msg: AUTH_MSG[st] }));
     });
     return;
   }
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
   if (p === '/healthz') {
-    let players = 0; for (const r of rooms.values()) players += r.players.filter(q => !q.bot).length;
-    res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: true, rooms: rooms.size, players }));
+    const st = getLoadStatus();
+    res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: st.humans, load: st }));
   }
   if (p === '/rooms') {                                // 对战大厅的房间列表（需口令或短期令牌校验）
-    if (isRateLimited(ip) || (!verifySessionToken(req.headers['x-demo-token']) && !checkPass(req.headers['x-demo-pass']))) {
-      if (!isRateLimited(ip)) recordAuthFail(ip);
-      logAccess({ ip, ua, event: 'rooms_denied', method: req.method, path: '/rooms', status: 401 });
+    const rs = authState(ip, req.headers['x-demo-token'], req.headers['x-demo-pass']);
+    if (rs !== 'ok') {
+      if (rs === 'bad') recordAuthFail(ip);
+      logAccess({ ip, ua, event: rs === 'expired' ? 'token_expired' : 'rooms_denied', method: req.method, path: '/rooms', status: 401 });
       res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify([]));
     }
-    const list = [...rooms.values()].map(r => ({ code: r.code, n: humans(r), bots: r.players.length - humans(r), diff: r.diff || 'normal', max: MAX_PLAYERS, ph: r.phase === 'end' ? 1 : 0,
+    const list = [...rooms.values()].map(r => ({ code: r.code, lock: r.pwd ? 1 : 0, fun: r.fun ? 1 : 0, n: humans(r), bots: r.players.length - humans(r), diff: r.diff || 'normal', max: MAX_PLAYERS, ph: r.phase === 'end' ? 1 : 0,
       rt: Math.max(0, Math.ceil(r.phase === 'end' ? r.phaseT : r.roundT)), top: r.players.reduce((m, q) => Math.max(m, q.kills), 0) })).sort((a, b) => b.n - a.n || (a.code < b.code ? -1 : 1));
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end(JSON.stringify(list));
   }
@@ -347,29 +389,59 @@ const server = http.createServer((req, res) => {
   if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
   fs.stat(file, (err, st) => {
     if (err || !st.isFile()) { res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }); return res.end('404'); }
-    const etag = 'W/"' + st.size.toString(16) + '-' + Math.floor(st.mtimeMs).toString(16) + '"';
-    if (req.headers['if-none-match'] === etag) {
-      res.writeHead(304, { 'ETag': etag, 'Cache-Control': 'no-cache' });
-      return res.end();
-    }
-    if (p === '/index.html' && req.method === 'GET') {
-      logAccess({ ip, ua, event: 'http_visit', method: 'GET', path: '/', status: 200 });
+    const etag = 'W/"' + st.size.toString(16) + '-' + Math.floor(st.mtimeMs).toString(16) + '"', ext = path.extname(file), canGz = GZ_TYPES.has(ext);
+    const cached = req.headers['if-none-match'] === etag;
+    if (p === '/index.html' && req.method === 'GET') {         // 缓存命中（304）的回访也算一次访问
+      logAccess({ ip, ua, event: 'http_visit', method: 'GET', path: '/', status: cached ? 304 : 200 });
       logDebug('DEBUG', 'http', '访问首页', { ip, ua });
     }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Content-Length': st.size, 'ETag': etag, 'Cache-Control': 'no-cache' });
-    if (req.method === 'HEAD') return res.end();
-    fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
+    const head = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'ETag': etag, 'Cache-Control': 'no-cache', 'Accept-Ranges': 'bytes' };
+    if (canGz) head['Vary'] = 'Accept-Encoding';
+    if (cached) { res.writeHead(304, head); return res.end(); }
+    const plain = () => {
+      res.writeHead(200, Object.assign(head, { 'Content-Length': st.size }));
+      if (req.method === 'HEAD') return res.end();
+      fs.createReadStream(file).on('error', () => res.destroy()).pipe(res);
+    };
+    const rg = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+    if (rg && (rg[1] || rg[2])) {                              // 单段 Range：iOS Safari 播放音频需要
+      let start, end;
+      if (rg[1] === '') { start = Math.max(0, st.size - Number(rg[2])); end = st.size - 1; }
+      else { start = Number(rg[1]); end = rg[2] === '' ? st.size - 1 : Math.min(Number(rg[2]), st.size - 1); }
+      if (!(start <= end) || start >= st.size) { res.writeHead(416, { 'Content-Range': 'bytes */' + st.size }); return res.end(); }
+      res.writeHead(206, Object.assign(head, { 'Content-Range': 'bytes ' + start + '-' + end + '/' + st.size, 'Content-Length': end - start + 1 }));
+      if (req.method === 'HEAD') return res.end();
+      return void fs.createReadStream(file, { start, end }).on('error', () => res.destroy()).pipe(res);
+    }
+    if (canGz && st.size > 1024 && /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+      return gzipped(file, st, (e, buf) => {
+        if (e || res.destroyed) return e ? plain() : undefined;
+        res.writeHead(200, Object.assign(head, { 'Content-Encoding': 'gzip', 'Content-Length': buf.length }));
+        res.end(req.method === 'HEAD' ? undefined : buf);
+      });
+    }
+    plain();
   });
 });
 
 /* ---------------- rooms ---------------- */
 const rooms = new Map();
-function makeRoom(code, priv, botCount = Math.max(0, BOT_FILL - 1), diff = 'normal') {
+function makeRoom(code, botCount = Math.max(0, BOT_FILL - 1), diff = 'normal', pwd = '', fun = false) {
   const dKey = BOT_DIFF[diff] ? diff : 'normal';
-  const room = { code, priv, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME,
-    nextId: 1, nextObj: 1, pickT: 6, botT: 0, rosterDirty: true, hasFb: false };
+  const room = { code, pwd: cleanRoomPwd(pwd), fun: !!fun, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], bombs: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME,
+    nextId: 1, nextObj: 1, pickT: fun ? 3 : 6, botT: 0, rosterDirty: true, hasFb: false };
   rooms.set(code, room); return room;
 }
+function freshFun() {
+  return { item: '', itemT: 0, itemCd: 0, star: 0, giant: 0, mini: 0, haste: 0, boom: 0, dizzy: 0, snail: 0, boomAng: 0, boomHit: new Map(), starHit: new Map(), pullT: 0, pullX: 0, pullZ: 0 };
+}
+const FUN_ABILITY_CFG = {
+  grip:  { dur: 40, cd: 5 },
+  boom:  { dur: 40, cd: 9 },
+  star:  { dur: 40, cd: 11 },
+  giant: { dur: 40, cd: 11 },
+  haste: { dur: 40, cd: 11 },
+};
 function randomCode() { const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; do { s = ''; for (let i = 0; i < 4; i++) s += abc[Math.random() * abc.length | 0]; } while (rooms.has(s)); return s; }
 function humans(room) { let n = 0; for (const p of room.players) if (!p.bot) n++; return n; }
 
@@ -378,7 +450,8 @@ function makePlayer(room, name, cls, ws) {
     cd: { atk: 0, q: 0, e: 0, u: 0, dodge: 0 }, dashT: 0, dashX: 0, dashZ: 1, dashSp: 0, charging: false, rolling: false, chargeHit: null, chargeTarget: null, chargeTgId: 0, chargeDist: 0,
     cast: 0, castX: 0, castZ: 0, ux: 0, uz: 0,
     inv: 0, prot: 0, stun: 0, stunDR: 0, freeze: 0, slow: 0, dead: false, respawnT: 0, moving: false,
-    mx: 0, mz: 0, a: 0, ax: 0, az: 0, pend: 0, seq: 0, kills: 0, deaths: 0, dmg: 0, streak: 0, maxStreak: 0, mk: 0, mkT: 0,
+    fun: freshFun(),
+    mx: 0, mz: 0, a: 0, ax: 0, az: 0, pend: 0, seq: 0, kills: 0, deaths: 0, dmg: 0, totalKills: 0, totalDeaths: 0, totalDmg: 0, streak: 0, maxStreak: 0, mk: 0, mkT: 0,
     ai: ws ? null : { t: 0, gcd: 0, err: 0, tx: 0, tz: 0, strafe: 1, fire: false, q: false, e: false, u: false, roll: false, jump: false, target: null } };
   room.players.push(p); respawn(room, p); room.rosterDirty = true;
   return p;
@@ -419,7 +492,7 @@ function respawn(room, p) {
     md += Math.random() * 2; if (md > bs || !best) { bs = md; best = { x, z }; }
   }
   Object.assign(p, { x: best.x, z: best.z, y: 0, vy: 0, air: false, hp: CLS[p.cls].hp, res: RES[CLS[p.cls].res].start, calm: 0, dead: false, kx: 0, kz: 0,
-    dashT: 0, charging: false, rolling: false, chargeTarget: null, chargeTgId: 0, chargeDist: 0, cast: 0, inv: 0, prot: SPAWN_PROT, stun: 0, stunDR: 0, freeze: 0, slow: 0 });
+    dashT: 0, charging: false, rolling: false, chargeTarget: null, chargeTgId: 0, chargeDist: 0, cast: 0, inv: 0, prot: SPAWN_PROT, stun: 0, stunDR: 0, freeze: 0, slow: 0, fun: freshFun() });
   p.cd.atk = p.cd.q = p.cd.e = p.cd.dodge = 0;       // 大招冷却不随阵亡重置
   p.face = p.a = Math.atan2(-p.x, -p.z);
   if (p.ai) { p.ai.t = 0; p.ai.gcd = 0.35; }
@@ -446,16 +519,21 @@ function finishCast(room, p) {
   addZone(room, p, u.k, p.castX, p.castZ, u.zone);
 }
 function damage(room, t, amt, by, o) {
-  if (t.dead || t.inv > 0 || t.prot > 0 || room.phase !== 'play') return false;
+  if (t.dead || t.inv > 0 || t.prot > 0 || (t.fun && t.fun.star > 0) || room.phase !== 'play') return false;
   const mul = by && by.bot ? (BOT_DIFF[room.diff] || BOT_DIFF.normal).dmg : 1;
-  let v = amt * mul * (0.92 + Math.random() * 0.16);
+  const funDmg = by && by.fun ? (by.fun.giant > 0 ? 1.45 : by.fun.mini > 0 ? 0.75 : 1) : 1;
+  let v = amt * mul * funDmg * (0.92 + Math.random() * 0.16);
   const crit = Math.random() < 0.08; if (crit) v *= 1.6;
   v = Math.max(1, Math.round(v * CLS[t.cls].armor));
   t.hp -= v;
-  if (by && by !== t) by.dmg = (by.dmg || 0) + v;
+  if (by && by !== t) { by.dmg = (by.dmg || 0) + v; by.totalDmg = (by.totalDmg || 0) + v; }
   if (by && by !== t && by.cls === 'knight') { gain(by, RES.rage.hit); by.calm = RES.rage.calm; }
   if (t.cls === 'knight') { gain(t, v * RES.rage.hurt); t.calm = RES.rage.calm; }
-  if (o && o.kb) { const dx = t.x - o.fx, dz = t.z - o.fz, d = Math.hypot(dx, dz) || 1, kb = o.kb * (t.cls === 'knight' ? 0.6 : 1); t.kx += dx / d * kb; t.kz += dz / d * kb; }
+  if (o && o.kb) {
+    const kMul = by && by.fun && by.fun.giant > 0 ? 1.5 : 1;
+    const dx = t.x - o.fx, dz = t.z - o.fz, d = Math.hypot(dx, dz) || 1, kb = o.kb * kMul * (t.cls === 'knight' ? 0.6 : 1);
+    t.kx += dx / d * kb; t.kz += dz / d * kb;
+  }
   if (o && o.slow) t.slow = Math.max(t.slow, o.slow);
   if (o && (o.stun || o.freeze)) {
     if (o.stun) { const s = t.stunDR > 0 ? o.stun * 0.5 : o.stun; t.stun = Math.max(t.stun, s); t.stunDR = 3.5; }
@@ -463,22 +541,24 @@ function damage(room, t, amt, by, o) {
     t.dashT = 0; t.charging = t.rolling = false; t.chargeTarget = null; cancelCast(room, t);      // 被控制会打断读条
   }
   room.ev.push({ e: 'hit', id: t.id, by: by ? by.id : 0, d: v, c: crit ? 1 : 0, s: o && o.sk ? 1 : 0 });   // s：技能伤害（客户端显示成黄字）
-  if (t.hp <= 0) kill(room, t, by);
+  if (t.hp <= 0) kill(room, t, by, o);
   return true;
 }
-function kill(room, t, by) {
+function kill(room, t, by, o) {
   const prevSt = t.streak || 0;
-  t.hp = 0; t.dead = true; t.respawnT = RESPAWN; t.deaths++; t.streak = 0; t.mk = 0; t.mkT = 0; t.dashT = 0; t.charging = t.rolling = false; t.cast = 0;
+  t.hp = 0; t.dead = true; t.respawnT = RESPAWN; t.deaths++; t.totalDeaths = (t.totalDeaths || 0) + 1; t.streak = 0; t.mk = 0; t.mkT = 0; t.dashT = 0; t.charging = t.rolling = false; t.cast = 0;
   const credit = by && by !== t && room.players.includes(by);
   let st = 0, mk = 0, fb = 0, sd = 0;
   if (credit) {
     if (!room.hasFb) { room.hasFb = true; fb = 1; }
     if (prevSt >= 3) sd = prevSt;
-    by.kills++; by.streak = (by.streak || 0) + 1; st = by.streak;
+    by.kills++; by.totalKills = (by.totalKills || 0) + 1; by.streak = (by.streak || 0) + 1; st = by.streak;
     if (st > (by.maxStreak || 0)) by.maxStreak = st;
     by.mk = (by.mkT > 0 ? (by.mk || 0) : 0) + 1; by.mkT = 10; mk = by.mk;
     if (!by.dead) { const max = CLS[by.cls].hp, got = Math.min(30, max - by.hp); if (got > 0) { by.hp += got; room.ev.push({ e: 'heal', id: by.id, v: Math.round(got) }); } }
   }
+  logAccess({ ip: credit ? (by.bot ? 'bot' : 'human') : 'env', event: 'combat_kill', room: room.code, name: credit ? by.name : null, cls: credit ? by.cls : null,
+    detail: { src: o && o.sk ? 'skill' : 'atk', killerBot: credit ? (by.bot ? 1 : 0) : 0, victimCls: t.cls, victimBot: t.bot ? 1 : 0, diff: room.diff } });
   const ev = { e: 'kill', id: t.id, by: credit ? by.id : 0 };
   if (st >= 2) ev.st = st;
   if (mk >= 2) ev.mk = mk;
@@ -564,10 +644,30 @@ function updatePlayer(room, p) {
   if (p.bot) botThink(room, p);
   const b = p.pend; p.pend = 0;
   if (p.dead) { p.respawnT -= DT; if (p.respawnT <= 0) respawn(room, p); return; }
-  const c = CLS[p.cls], rs = RES[c.res], cd = p.cd; cd.atk -= DT; cd.q -= DT; cd.e -= DT; cd.u -= DT; cd.dodge -= DT;
+  const fn = p.fun || (p.fun = freshFun());
+  if (fn.itemT > 0) {
+    fn.itemT -= DT;
+    if (fn.itemT <= 0) { fn.item = ''; fn.itemT = 0; fn.itemCd = 0; }
+  }
+  if (fn.itemCd > 0) fn.itemCd = Math.max(0, fn.itemCd - DT);
+  if (fn.star > 0) fn.star -= DT;
+  if (fn.giant > 0) fn.giant -= DT;
+  if (fn.mini > 0) fn.mini -= DT;
+  if (fn.haste > 0) { fn.haste -= DT; p.slow = 0; }
+  if (fn.boom > 0) { fn.boom -= DT; fn.boomAng = (fn.boomAng + 4.8 * DT) % TAU; }
+  if (fn.dizzy > 0) fn.dizzy -= DT;
+  if (fn.snail > 0) fn.snail -= DT;
+  const c = CLS[p.cls], rs = RES[c.res], cd = p.cd, cdStep = fn.haste > 0 ? DT * 2 : DT;
+  cd.atk -= cdStep; cd.q -= cdStep; cd.e -= cdStep; cd.u -= cdStep; cd.dodge -= cdStep;
   if (p.inv > 0) p.inv -= DT; if (p.prot > 0) p.prot -= DT; if (p.slow > 0) p.slow -= DT; if (p.stunDR > 0) p.stunDR -= DT; if (p.mkT > 0) p.mkT -= DT;
   if (rs.regen) p.res = Math.min(RES_MAX, p.res + rs.regen * DT);
   else if ((p.calm -= DT) <= 0) p.res = Math.max(0, p.res - rs.decay * DT);
+  if (fn.pullT > 0) {
+    const k = Math.min(1, DT / fn.pullT);
+    p.x += (fn.pullX - p.x) * k; p.z += (fn.pullZ - p.z) * k;
+    fn.pullT -= DT; p.kx = p.kz = 0; p.dashT = 0; p.charging = p.rolling = false; p.moving = false;
+    confine(p); return;
+  }
   p.x += p.kx * DT; p.z += p.kz * DT; const damp = Math.exp(-9 * DT); p.kx *= damp; p.kz *= damp;
   if (p.air) { p.vy -= JUMP.g * DT; p.y += p.vy * DT; if (p.y <= 0) { p.y = 0; p.vy = 0; p.air = false; } }
   p.moving = false;
@@ -597,37 +697,46 @@ function updatePlayer(room, p) {
         if (o === p.chargeTarget) { p.dashT = 0; break; }
       }
       if (p.chargeDist >= CHARGE.maxDist || (!p.chargeTarget && p.chargeDist >= CHARGE.dur * CHARGE.sp)) p.dashT = 0;
+    } else if (p.rocket) {
+      p.face = Math.atan2(p.dashX, p.dashZ);
+      for (const o of foes(room, p)) if (!p.rocketHit.has(o) && Math.hypot(o.x - p.x, o.z - p.z) < PR * 2 + 1.0) {
+        p.rocketHit.add(o); damage(room, o, 28, p, { kb: 12, fx: p.x - p.dashX, fz: p.z - p.dashZ, stun: 0.5, sk: 1 });
+      }
     }
-    if (p.dashT <= 0) { if (p.charging) p.inv = Math.min(p.inv, 0.08); p.charging = p.rolling = false; p.chargeTarget = null; }
+    if (p.dashT <= 0) { if (p.charging) p.inv = Math.min(p.inv, 0.08); p.charging = p.rolling = p.rocket = false; p.chargeTarget = null; }
   } else {
-    const ml = Math.hypot(p.mx, p.mz), sp = c.speed * (p.slow > 0 ? SLOW_K : 1) * (p.bot ? (BOT_DIFF[room.diff] || BOT_DIFF.normal).spd : 1);
+    const dmx = fn.dizzy > 0 ? -p.mx : p.mx, dmz = fn.dizzy > 0 ? -p.mz : p.mz;
+    const funSpd = (fn.haste > 0 ? 1.45 : fn.snail > 0 ? 0.58 : fn.mini > 0 ? 1.25 : 1) * (fn.star > 0 ? 1.25 : 1);
+    const ml = Math.hypot(dmx, dmz), sp = c.speed * (p.slow > 0 ? SLOW_K : 1) * funSpd * (p.bot ? (BOT_DIFF[room.diff] || BOT_DIFF.normal).spd : 1);
     if (p.cast > 0) {                                  // 读条：必须站定，移动 / 跳跃 / 翻滚 / 主动取消都会打断
       if (ml > 0.15 || (b & 88)) cancelCast(room, p);
       else if ((p.cast -= DT) <= 0) finishCast(room, p);
     }
     if (p.cast > 0) { confine(p); return; }
     if (p.air) { p.x += p.jx * DT; p.z += p.jz * DT; }  // 空中保持起跳时的水平速度，不能变向
-    else { p.x += p.mx * sp * DT; p.z += p.mz * sp * DT; p.moving = ml > 0.15; }
+    else { p.x += dmx * sp * DT; p.z += dmz * sp * DT; p.moving = ml > 0.15; }
     p.face = p.a;
     if ((b & 16) && !p.air) {
-      p.air = true; p.vy = JUMP.v; p.jx = p.mx * sp; p.jz = p.mz * sp; p.moving = false;
+      p.air = true; p.vy = JUMP.v; p.jx = dmx * sp; p.jz = dmz * sp; p.moving = false;
       room.ev.push({ e: 'atk', id: p.id, k: 'jump', a: r2(p.face) });
     }
     if ((b & 1) && cd.atk <= 0 && pay(p, 0)) attack(room, p);
     if ((b & 2) && cd.q <= 0 && !p.dead && pay(p, 1)) skill(room, p, 0);
     if ((b & 4) && cd.e <= 0 && !p.dead && pay(p, 2)) skill(room, p, 1);
-    if ((b & 32) && cd.u <= 0 && !p.dead && !p.air && ml <= 0.15 && p.res >= c.cost[3]) startCast(room, p);
+    if ((b & 128) && !p.dead && fn.item) dropFunItem(room, p);
+    if ((b & 32) && !p.dead && fn.item) useFunItem(room, p);
+    else if ((b & 32) && cd.u <= 0 && !p.dead && !p.air && ml <= 0.15 && p.res >= c.cost[3]) startCast(room, p);
     if ((b & 8) && cd.dodge <= 0 && p.dashT <= 0 && !p.dead && mv.k !== 'roll') {
       cd.dodge = mv.cd; p.prot = 0;
       if (mv.k === 'charge') skill(room, p, 2);
       else {                                           // 闪现：朝移动方向（没在移动就朝面向）瞬移，并解除减速
-        const dx = ml > 0.15 ? p.mx / ml : Math.sin(p.face), dz = ml > 0.15 ? p.mz / ml : Math.cos(p.face), fx = p.x, fz = p.z;
+        const dx = ml > 0.15 ? dmx / ml : Math.sin(p.face), dz = ml > 0.15 ? dmz / ml : Math.cos(p.face), fx = p.x, fz = p.z;
         p.x += dx * mv.dist; p.z += dz * mv.dist; confine(p); p.kx = p.kz = 0; p.slow = 0; p.inv = Math.max(p.inv, 0.35);
         room.ev.push({ e: 'atk', id: p.id, k: 'blink', a: r2(Math.atan2(dx, dz)), x: r2(fx), z: r2(fz), tx: r2(p.x), tz: r2(p.z) });
       }
     } else if ((b & 8) && cd.dodge <= 0 && p.dashT <= 0 && !p.dead) {
       cd.dodge = ROLL.cd; p.dashT = ROLL.dur; p.dashSp = ROLL.sp; p.rolling = true; p.charging = false; p.slow = 0;
-      if (p.moving) { p.dashX = p.mx / ml; p.dashZ = p.mz / ml; } else { p.dashX = Math.sin(p.face); p.dashZ = Math.cos(p.face); }
+      if (p.moving) { p.dashX = dmx / ml; p.dashZ = dmz / ml; } else { p.dashX = Math.sin(p.face); p.dashZ = Math.cos(p.face); }
       p.inv = Math.max(p.inv, ROLL.inv);
       room.ev.push({ e: 'atk', id: p.id, k: 'roll', a: r2(Math.atan2(p.dashX, p.dashZ)) });
     }
@@ -688,12 +797,162 @@ function updateZones(room) {
     if (z.done >= z.ticks) zs.splice(i, 1);
   }
 }
+function triggerGrip(room, p) {
+  let tg = null, bestScore = -1;
+  const ax = p.ux !== undefined ? p.ux : p.ax, az = p.uz !== undefined ? p.uz : p.az;
+  const hasAim = Math.hypot(ax - p.x, az - p.z) > 0.3;
+  const aimA = hasAim ? Math.atan2(ax - p.x, az - p.z) : p.face;
+  for (const o of foes(room, p)) {
+    if (o.inv > 0 || (o.fun && o.fun.star > 0)) continue;
+    const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
+    if (d > 22) continue;
+    const da = Math.abs(angDiff(Math.atan2(dx, dz), aimA));
+    const inCone = da < 0.78 ? 120 : 0;
+    const score = inCone + (d >= 3.5 ? 60 + d : 20 - d) - da * 18;
+    if (score > bestScore) { bestScore = score; tg = o; }
+  }
+  if (!tg) return false;
+  const dx = tg.x - p.x, dz = tg.z - p.z, d = Math.hypot(dx, dz) || 1;
+  const dest = { x: p.x + dx / d * 1.75, z: p.z + dz / d * 1.75 };
+  confine(dest);
+  p.face = Math.atan2(dx, dz);
+  tg.fun.pullT = 0.28; tg.fun.pullX = dest.x; tg.fun.pullZ = dest.z;
+  tg.dashT = 0; tg.charging = tg.rolling = false; tg.chargeTarget = null; cancelCast(room, tg);
+  tg.stun = Math.max(tg.stun, 0.95);
+  damage(room, tg, 18, p, { sk: 1 });
+  room.ev.push({ e: 'grip', id: p.id, tg: tg.id, x1: r2(p.x), z1: r2(p.z), x2: r2(tg.x), z2: r2(tg.z) });
+  return true;
+}
+function grantFunSlot(p, it) {
+  const fn = p.fun, ab = FUN_ABILITY_CFG[it];
+  fn.item = it;
+  fn.itemT = ab ? ab.dur : 0;
+  fn.itemCd = 0;
+}
+function dropFunItem(room, p) {
+  const fn = p.fun, it = fn && fn.item;
+  if (!it) return;
+  fn.item = ''; fn.itemT = 0; fn.itemCd = 0;
+  room.picks.push({ id: room.nextObj++, x: p.x, z: p.z, k: it, owner: p.id, grace: room.time + 1.6 });
+  room.ev.push({ e: 'dropit', id: p.id, it });
+}
+function useFunItem(room, p) {
+  const fn = p.fun, it = fn && fn.item;
+  if (!it) return;
+  const ab = FUN_ABILITY_CFG[it];
+  if (ab) {
+    if (fn.itemCd > 0) return;
+    fn.itemCd = ab.cd;
+  } else {
+    fn.item = ''; fn.itemT = 0; fn.itemCd = 0;
+  }
+  const ax = p.ux !== undefined ? p.ux : p.ax, az = p.uz !== undefined ? p.uz : p.az;
+  switch (it) {
+    case 'grip':
+      if (!triggerGrip(room, p)) room.ev.push({ e: 'grip', id: p.id, tg: 0, x1: r2(p.x), z1: r2(p.z), x2: r2(p.x + Math.sin(p.face) * 10), z2: r2(p.z + Math.cos(p.face) * 10) });
+      break;
+    case 'boom': fn.boom = 6; break;
+    case 'star': fn.star = 4; fn.snail = fn.dizzy = 0; p.slow = 0; break;
+    case 'giant': fn.giant = 7; fn.mini = 0; break;
+    case 'haste': fn.haste = 7; fn.snail = 0; p.slow = 0; break;
+    case 'bomb': {
+      const pt = aimPoint(p, 15, ax, az);
+      room.bombs.push({ id: room.nextObj++, o: p, x: pt.x, z: pt.z, t: 0, air: 0.45, fuse: 0.72 });
+      room.ev.push({ e: 'toss', k: 'bomb', id: p.id, x1: r2(p.x), z1: r2(p.z), x2: r2(pt.x), z2: r2(pt.z), air: 0.45, fuse: 0.72 });
+      break;
+    }
+    case 'btrap': {
+      const dist = Math.hypot(ax - p.x, az - p.z);
+      const pt = dist > 1.2 ? aimPoint(p, 12, ax, az) : (() => {
+        const a = p.face + Math.PI, pos = { x: p.x + Math.sin(a) * 1.6, z: p.z + Math.cos(a) * 1.6 };
+        confine(pos); return pos;
+      })();
+      room.picks.push({ id: room.nextObj++, x: pt.x, z: pt.z, k: 'banana', owner: p.id, armAt: room.time + 0.34, grace: room.time + 0.9 });
+      room.ev.push({ e: 'toss', k: 'banana', id: p.id, x1: r2(p.x), z1: r2(p.z), x2: r2(pt.x), z2: r2(pt.z), air: 0.34, fuse: 0 });
+      break;
+    }
+    case 'rocket': {
+      const aa = Math.hypot(ax - p.x, az - p.z) > 0.3 ? Math.atan2(ax - p.x, az - p.z) : p.face;
+      p.face = aa;
+      p.dashT = 0.40; p.dashSp = 34; p.dashX = Math.sin(aa); p.dashZ = Math.cos(aa);
+      p.charging = p.rolling = false; p.rocket = true; p.rocketHit = new Set();
+      p.inv = Math.max(p.inv, 0.42); p.slow = 0;
+      room.ev.push({ e: 'atk', id: p.id, k: 'rocket', a: r2(aa) });
+      break;
+    }
+  }
+  room.ev.push({ e: 'useit', id: p.id, it });
+}
+function applyMysteryRoll(room, p) {
+  const rolls = ['grip', 'boom', 'star', 'giant', 'haste', 'bomb', 'btrap', 'rocket', 'snail', 'dizzy', 'mini'];
+  const weights = [11, 11, 10, 10, 10, 11, 10, 11, 6, 5, 5];
+  let r = Math.random() * 100, eff = rolls[0];
+  for (let i = 0; i < rolls.length; i++) { r -= weights[i]; if (r <= 0) { eff = rolls[i]; break; } }
+  const fn = p.fun;
+  if (eff === 'snail') { if (fn.star <= 0) { fn.snail = 5.5; fn.haste = 0; } }
+  else if (eff === 'dizzy') { if (fn.star <= 0) fn.dizzy = 4.5; }
+  else if (eff === 'mini') { fn.mini = 6; fn.giant = 0; }
+  else grantFunSlot(p, eff);
+  room.ev.push({ e: 'pk', id: p.id, k: 'box', eff, v: 0 });
+}
+function pickFunKind() {
+  const r = Math.random();
+  return r < 0.28 ? 'box' : r < 0.42 ? 'grip' : r < 0.54 ? 'boom' : r < 0.68 ? 'bomb' : r < 0.80 ? 'btrap' : r < 0.90 ? 'rocket' : 'heal';
+}
+function updateFunCombat(room) {
+  if (!room.fun) return;
+  const t = room.time;
+  if (room.bombs && room.bombs.length) {
+    for (let i = room.bombs.length - 1; i >= 0; i--) {
+      const bm = room.bombs[i]; bm.t += DT;
+      if (bm.t >= bm.air + bm.fuse) {
+        for (const o of room.players) {
+          if (o.dead || (o.fun && o.fun.star > 0)) continue;
+          if (Math.hypot(o.x - bm.x, o.z - bm.z) > 4.6 + PR) continue;
+          if (o === bm.o) { const dx = o.x - bm.x, dz = o.z - bm.z, d = Math.hypot(dx, dz) || 1; o.kx += dx / d * 8; o.kz += dz / d * 8; }
+          else damage(room, o, 54, bm.o, { kb: 14, fx: bm.x, fz: bm.z, stun: 0.75, sk: 1 });
+        }
+        room.ev.push({ e: 'bombx', x: r2(bm.x), z: r2(bm.z), r: 4.6 });
+        room.bombs.splice(i, 1);
+      }
+    }
+  }
+  for (const p of room.players) {
+    if (p.dead || !p.fun) continue;
+    const fn = p.fun;
+    if (fn.star > 0) {
+      for (const o of foes(room, p)) {
+        if (Math.hypot(o.x - p.x, o.z - p.z) > PR * 2 + 0.7) continue;
+        const last = fn.starHit.get(o.id) || -9;
+        if (t - last < 0.55) continue;
+        fn.starHit.set(o.id, t);
+        damage(room, o, 24, p, { kb: 12, fx: p.x, fz: p.z, sk: 1 });
+      }
+    }
+    if (fn.boom > 0) {
+      for (let b = 0; b < 3; b++) {
+        const a = fn.boomAng + b * (TAU / 3), bx = p.x + Math.sin(a) * 2.9, bz = p.z + Math.cos(a) * 2.9;
+        for (const o of foes(room, p)) {
+          if (Math.hypot(o.x - bx, o.z - bz) > PR + 0.7) continue;
+          const last = fn.boomHit.get(o.id) || -9;
+          if (t - last < 0.65) continue;
+          fn.boomHit.set(o.id, t);
+          if (damage(room, o, 22, p, { kb: 8.5, fx: p.x, fz: p.z, stun: 0.32, sk: 1 })) {
+            room.ev.push({ e: 'boomhit', id: o.id, by: p.id });
+          }
+        }
+      }
+    }
+  }
+}
 function updatePicks(room) {
   room.pickT -= DT;
+  const maxP = room.fun ? 6 : 4;
   if (room.pickT <= 0) {
-    room.pickT = 7;
-    if (room.picks.length < 4) {
-      const k = { id: room.nextObj++, x: 0, z: 0 };
+    room.pickT = room.fun ? 3.8 : 7;
+    if (room.picks.length < maxP) {
+      const kind = room.fun ? pickFunKind() : 'heal';
+      const k = { id: room.nextObj++, x: 0, z: 0, k: kind };
       for (let n = 0; n < 8; n++) {
         const a = Math.random() * TAU, d = 3 + Math.random() * 16; k.x = Math.sin(a) * d; k.z = Math.cos(a) * d;
         if (PILLARS.every(c => Math.hypot(k.x - c.x, k.z - c.z) > c.r + 1.2)) break;
@@ -702,12 +961,30 @@ function updatePicks(room) {
     }
   }
   for (let i = room.picks.length - 1; i >= 0; i--) {
-    const k = room.picks[i];
+    const k = room.picks[i], kind = k.k || 'heal';
+    if (kind === 'banana' && k.armAt && room.time < k.armAt) continue;
     for (const p of room.players) {
-      const max = CLS[p.cls].hp;
-      if (p.dead || p.hp >= max || Math.hypot(p.x - k.x, p.z - k.z) > 1.1) continue;
-      const got = Math.min(max - p.hp, Math.round(max * 0.35)); p.hp += got;
-      room.ev.push({ e: 'pk', id: p.id, v: got }); room.picks.splice(i, 1); break;
+      if (p.dead || Math.hypot(p.x - k.x, p.z - k.z) > 1.1) continue;
+      if (kind !== 'banana' && kind !== 'heal' && k.owner === p.id && room.time < (k.grace || 0)) continue;
+      if (kind === 'heal') {
+        const max = CLS[p.cls].hp;
+        if (p.hp >= max) continue;
+        const got = Math.min(max - p.hp, Math.round(max * 0.35)); p.hp += got;
+        room.ev.push({ e: 'pk', id: p.id, k: 'heal', v: got }); room.picks.splice(i, 1); break;
+      }
+      if (kind === 'banana') {
+        if ((p.fun && p.fun.star > 0) || (k.owner === p.id && room.time < (k.grace || 0))) continue;
+        p.stun = Math.max(p.stun, 1.35);
+        p.kx += Math.sin(p.face) * 16; p.kz += Math.cos(p.face) * 16;
+        p.dashT = 0; p.charging = p.rolling = p.rocket = false; cancelCast(room, p);
+        room.ev.push({ e: 'slip', id: p.id, x: r2(p.x), z: r2(p.z) }); room.picks.splice(i, 1); break;
+      }
+      if (kind === 'box') {
+        applyMysteryRoll(room, p);
+        room.picks.splice(i, 1); break;
+      }
+      grantFunSlot(p, kind);
+      room.ev.push({ e: 'pk', id: p.id, k: kind, eff: kind, v: 0 }); room.picks.splice(i, 1); break;
     }
   }
 }
@@ -746,8 +1023,13 @@ function botThink(room, p) {
   if (d > want + 1.5) { mx = dx; mz = dz; }
   else if (!melee && d < want - 2.2) { mx = -dx + dz * ai.strafe * 0.45; mz = -dz - dx * ai.strafe * 0.45; }
   else { mx = dz * ai.strafe; mz = -dx * ai.strafe; if (melee) { mx = mx * 0.4 + dx * 0.7; mz = mz * 0.4 + dz * 0.7; } }
-  if (p.hp < CLS[p.cls].hp * 0.35 && room.picks.length) {
-    let bk = null, bd = 12; for (const k of room.picks) { const kd = Math.hypot(k.x - p.x, k.z - p.z); if (kd < bd) { bd = kd; bk = k; } }
+  if (room.picks.length && (p.hp < CLS[p.cls].hp * 0.35 || (room.fun && d > 4.5))) {
+    let bk = null, bd = 12;
+    for (const k of room.picks) {
+      if (k.k === 'banana') continue;
+      if (k.k === 'heal' && p.hp >= CLS[p.cls].hp * 0.85) continue;
+      const kd = Math.hypot(k.x - p.x, k.z - p.z); if (kd < bd) { bd = kd; bk = k; }
+    }
     if (bk) { mx = (bk.x - p.x) / (bd || 1); mz = (bk.z - p.z) / (bd || 1); }
   }
   const ml = Math.hypot(mx, mz); if (ml > 1) { mx /= ml; mz /= ml; }
@@ -757,6 +1039,9 @@ function botThink(room, p) {
   p.ax = ai.tx + ai.err * 2.5; p.az = ai.tz - ai.err * 2.5;
   const aimed = Math.abs(angDiff(wantA, p.a)) < 0.85;
   let b = 0;
+  if (p.fun && p.fun.item && !(p.fun.itemCd > 0) && ai.gcd <= 0 && ((p.fun.item === 'grip' && d > 4 && d < 20) || (p.fun.item === 'bomb' && d < 14) || (p.fun.item !== 'grip' && p.fun.item !== 'bomb' && d < 12))) {
+    ai.gcd = df.gcd; b |= 32;
+  }
   if (ai.fire && aimed && d < (melee ? 3.2 : 15.5)) b |= 1;
   if (ai.gcd <= 0 && aimed) {
     const c = CLS[p.cls];
@@ -777,9 +1062,14 @@ function botThink(room, p) {
 }
 
 /* ---------------- rounds & tick ---------------- */
-function endRound(room) { if (room.phase !== 'play') return; room.phase = 'end'; room.phaseT = END_TIME; room.rosterDirty = true; }
+function endRound(room) {
+  if (room.phase !== 'play') return;
+  room.phase = 'end'; room.phaseT = END_TIME; room.rosterDirty = true;
+  logAccess({ ip: 'room', event: 'round_end', room: room.code, detail: { diff: room.diff, bots: room.botCount,
+    players: room.players.map(p => ({ id: p.id, name: p.name, cls: p.cls, bot: p.bot ? 1 : 0, kills: p.kills, deaths: p.deaths, dmg: Math.round(p.dmg) })) } });
+}
 function startRound(room) {
-  room.phase = 'play'; room.roundT = ROUND_TIME; room.proj.length = room.zones.length = room.picks.length = 0; room.pickT = 6; room.hasFb = false;
+  room.phase = 'play'; room.roundT = ROUND_TIME; room.proj.length = room.zones.length = room.picks.length = 0; if (room.bombs) room.bombs.length = 0; room.pickT = room.fun ? 3 : 6; room.hasFb = false;
   for (const p of room.players) { p.kills = p.deaths = p.dmg = p.streak = p.maxStreak = p.mk = p.mkT = 0; p.dead = false; p.cd.u = 0; }
   for (const p of room.players) respawn(room, p);
   room.rosterDirty = true;
@@ -793,7 +1083,7 @@ function tickRoom(room) {
   else {
     if (room.players.length >= 2) { room.roundT -= DT; if (room.roundT <= 0) endRound(room); }
     for (const p of room.players.slice()) updatePlayer(room, p);
-    separate(room); updateProj(room); updateZones(room); updatePicks(room);
+    separate(room); updateFunCombat(room); updateProj(room); updateZones(room); updatePicks(room);
   }
   broadcast(room);
 }
@@ -807,17 +1097,22 @@ function broadcast(room) {
   const end = room.phase === 'end';
   const shared = JSON.stringify({
     ts: Math.round(room.time * 1000) / 1000, ph: end ? 1 : 0, rt: Math.max(0, Math.ceil(end ? room.phaseT : room.roundT)),
-    p: room.players.map(p => [p.id, r2(p.x), r2(p.z), r2(p.face), Math.max(0, Math.round(p.hp)),
-      (p.dead ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.dashT > 0 && p.rolling ? 4 : 0) | (p.dashT > 0 && p.charging ? 8 : 0) | (p.freeze > 0 ? 16 : 0) |
-      (p.stun > 0 ? 32 : 0) | (p.slow > 0 ? 64 : 0) | (p.prot > 0 ? 128 : 0) | (p.moving ? 256 : 0) | (p.air ? 512 : 0) | (p.cast > 0 ? 1024 : 0),
-      CLS_IDS.indexOf(p.cls), r2(p.y)]),
-    k: room.picks.map(k => [k.id, r2(k.x), r2(k.z)]), ev: room.ev,
+    p: room.players.map(p => {
+      const fn = p.fun || {};
+      return [p.id, r2(p.x), r2(p.z), r2(p.face), Math.max(0, Math.round(p.hp)),
+        (p.dead ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.dashT > 0 && p.rolling ? 4 : 0) | (p.dashT > 0 && p.charging ? 8 : 0) | (p.freeze > 0 ? 16 : 0) |
+        (p.stun > 0 ? 32 : 0) | (p.slow > 0 ? 64 : 0) | (p.prot > 0 ? 128 : 0) | (p.moving ? 256 : 0) | (p.air ? 512 : 0) | (p.cast > 0 ? 1024 : 0) |
+        (fn.star > 0 ? 2048 : 0) | (fn.giant > 0 ? 4096 : 0) | (fn.mini > 0 ? 8192 : 0) | (fn.haste > 0 ? 16384 : 0) |
+        (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0),
+        CLS_IDS.indexOf(p.cls), r2(p.y)];
+    }),
+    k: room.picks.map(k => [k.id, r2(k.x), r2(k.z), k.k || 'heal']), ev: room.ev,
   });
   room.ev = [];
   const cdv = v => v > 0 ? Math.round(v * 20) / 20 : 0;
   // 每个人自己的部分：冷却 [2 号, 3 号, 翻滚, 4 号, 普攻]、资源、读条剩余、重生倒计时
   for (const p of room.players) if (p.ws) send(p.ws, '{"t":"s","ack":' + p.seq + ',"cd":[' + cdv(p.cd.q) + ',' + cdv(p.cd.e) + ',' + cdv(p.cd.dodge) + ',' + cdv(p.cd.u) + ',' + cdv(p.cd.atk) +
-    '],"res":' + Math.round(p.res) + ',"ct":' + cdv(p.cast) + ',"rs":' + cdv(p.dead ? p.respawnT : 0) + ',"w":' + shared + '}');
+    '],"res":' + Math.round(p.res) + ',"ct":' + cdv(p.cast) + ',"rs":' + cdv(p.dead ? p.respawnT : 0) + ',"it":' + JSON.stringify((p.fun && p.fun.item) || '') + ',"itt":' + cdv((p.fun && p.fun.itemT) || 0) + ',"itc":' + cdv((p.fun && p.fun.itemCd) || 0) + ',"w":' + shared + '}');
 }
 let lastT = process.hrtime.bigint(), acc = 0;
 setInterval(() => {
@@ -835,32 +1130,91 @@ setInterval(() => {
       }
     }
     const dtMs = Number(process.hrtime.bigint() - t0) / 1e6;
+    recentTickMs = recentTickMs * 0.9 + dtMs * 0.1;
     tickSumMs += dtMs; if (dtMs > tickMaxMs) tickMaxMs = dtMs; tickCount++;
   }
 }, 5);
 
 /* ---------------- connections ---------------- */
+function admitJoin(ws, ip, ua, m) {
+  if (ws.readyState !== 1 || ws.player) return;
+  const cls = CLS_IDS.includes(m.cls) ? m.cls : 'knight';
+  const code = cleanRoomCode(m.room);
+  const bots = Number.isFinite(Number(m.bots)) ? clamp(Math.floor(Number(m.bots)), 0, MAX_PLAYERS - 1) : Math.max(0, BOT_FILL - 1);
+  const diff = typeof m.diff === 'string' && BOT_DIFF[m.diff] ? m.diff : 'normal';
+  const roomPwd = cleanRoomPwd(m.roomPwd);
+  const fun = !!m.fun;
+  let room, created = false;
+  if (m.create) {                                    // DEMO 禁止自定义房间号：创建房间一律由服务器随机生成 4 位房间号
+    if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
+    room = makeRoom(randomCode(), bots, diff, roomPwd, fun); created = true;
+  } else if (code) {                                 // 仅允许加入已存在的房间，不允许通过自定义房间号新建房间
+    room = rooms.get(code);
+    if (!room) { send(ws, '{"t":"noroom","code":"noroom","msg":"该房间不存在或已结束，请检查房间号"}'); ws.close(1000); return; }
+    if (room.pwd && roomPwd !== room.pwd) {
+      send(ws, JSON.stringify({ t: 'roompass', code: 'roompass', need: !roomPwd, msg: roomPwd ? '房间密码错误' : '该房间已加密，请输入密码' }));
+      ws.close(1000); return;
+    }
+  } else {
+    for (const r of rooms.values()) if (!r.pwd && !!r.fun === fun && r.diff === diff && humans(r) < MAX_PLAYERS && (!room || humans(r) > humans(room))) room = r;
+    if (!room) {
+      if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
+      room = makeRoom(randomCode(), bots, diff, '', fun); created = true;
+    }
+  }
+  if (room.players.length >= MAX_PLAYERS) {
+    const bot = room.players.find(p => p.bot);
+    if (!bot) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
+    removePlayer(room, bot);
+    if (!rooms.has(room.code)) rooms.set(room.code, room);
+  }
+  const used = new Set(room.players.map(q => q.name));
+  const freeNames = PLAYER_NAMES.filter(n => !used.has(n));
+  const autoName = freeNames.length ? freeNames[Math.random() * freeNames.length | 0] : ('勇士' + room.nextId);
+  const p = makePlayer(room, autoName, cls, ws);
+  ws.player = p; ws.room = room; ws.joinAt = Date.now();
+  logAccess({ ip, ua, event: 'ws_join', room: room.code, name: p.name, cls: p.cls, detail: { created, bots: room.botCount, diff: room.diff, fun: room.fun ? 1 : 0, humans: humans(room) } });
+  logDebug('INFO', 'room', (created ? '创建并加入房间 ' : '加入房间 ') + room.code, { ip, room: room.code, name: p.name, cls: p.cls, bots: room.botCount, diff: room.diff, fun: !!room.fun });
+  send(ws, JSON.stringify({ t: 'welcome', id: p.id, name: p.name, cls: p.cls, room: room.code, diff: room.diff, fun: room.fun ? 1 : 0, x: r2(p.x), z: r2(p.z),
+    cfg: { cls: CLS, res: RES, resMax: RES_MAX, ult: ULT, move: MOVE, rollCd: ROLL.cd, rollDur: ROLL.dur, rollSp: ROLL.sp, chargeDur: CHARGE.dur, chargeSp: CHARGE.sp,
+      jumpV: JUMP.v, jumpG: JUMP.g, slowK: SLOW_K, target: KILL_TARGET, max: MAX_PLAYERS } }));
+}
+setInterval(() => {
+  for (let i = loginQueue.length - 1; i >= 0; i--) if (loginQueue[i].ws.readyState !== 1) loginQueue.splice(i, 1);
+  if (loginQueue.length && !getLoadStatus().overloaded) {
+    const entry = loginQueue.shift();
+    entry.ws.queued = false;
+    admitJoin(entry.ws, entry.ip, entry.ua, entry.m);
+  }
+  for (let i = 0; i < loginQueue.length; i++) sendQueueMsg(loginQueue[i].ws, i + 1);
+}, 1500);
+
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 1024 });
 const ipConns = new Map();
 wss.on('connection', (ws, req) => {
   const ip = clientIp(req), ua = clientUa(req), curIp = ipConns.get(ip) || 0;
-  if (wss.clients.size > MAX_CONNECTIONS || curIp >= MAX_CONN_PER_IP || isRateLimited(ip)) {
+  if (wss.clients.size > MAX_CONNECTIONS || curIp >= MAX_CONN_PER_IP) {
     logAccess({ ip, ua, event: 'ws_rejected', status: 1013, detail: { conns: wss.clients.size, curIp } });
     ws.close(1013);
     return;
   }
   ipConns.set(ip, curIp + 1);
-  ws.alive = true; ws.player = null; ws.room = null; ws.msgN = 0; ws.joinAt = 0;
-  const joinTimer = setTimeout(() => { if (!ws.player) ws.terminate(); }, 5000);
+  ws.alive = true; ws.player = null; ws.room = null; ws.queued = false; ws.msgN = 0; ws.joinAt = 0;
+  const joinTimer = setTimeout(() => { if (!ws.player && !ws.queued) ws.terminate(); }, 5000);
   ws.on('pong', () => { ws.alive = true; });
   ws.on('error', err => { logDebug('WARN', 'ws', 'WebSocket 错误', { ip, err: String(err && err.message || err) }); });
   ws.on('close', () => {
     clearTimeout(joinTimer);
+    if (ws.queued) {
+      ws.queued = false;
+      const qi = loginQueue.findIndex(e => e.ws === ws);
+      if (qi >= 0) loginQueue.splice(qi, 1);
+    }
     const n = (ipConns.get(ip) || 1) - 1;
     if (n <= 0) ipConns.delete(ip); else ipConns.set(ip, n);
     if (ws.room && ws.player) {
       const p = ws.player, durSec = ws.joinAt ? Math.round((Date.now() - ws.joinAt) / 1000) : 0;
-      logAccess({ ip, ua, event: 'ws_leave', room: ws.room.code, name: p.name, cls: p.cls, detail: { durSec, kills: p.kills, deaths: p.deaths } });
+      logAccess({ ip, ua, event: 'ws_leave', room: ws.room.code, name: p.name, cls: p.cls, detail: { durSec, kills: p.totalKills, deaths: p.totalDeaths, dmg: Math.round(p.totalDmg), roundKills: p.kills, roundDeaths: p.deaths } });
       logDebug('DEBUG', 'room', '玩家离开房间', { ip, room: ws.room.code, name: p.name, durSec, kills: p.kills, deaths: p.deaths });
       removePlayer(ws.room, ws.player);
     }
@@ -877,54 +1231,29 @@ wss.on('connection', (ws, req) => {
       const s = m.s | 0; if (s <= p.seq) return; p.seq = s;
       let mx = num(m.mx), mz = num(m.mz); const l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
       p.mx = mx; p.mz = mz; p.a = num(m.a) % TAU; p.ax = clamp(num(m.ax), -R, R); p.az = clamp(num(m.az), -R, R);
-      const b = (m.b | 0) & 127;                        // 1 普攻 2/4 技能 8 翻滚 16 跳跃 32 大招读条 64 取消读条
+      const b = (m.b | 0) & 255;                        // 1 普攻 2/4 技能 8 翻滚 16 跳跃 32 大招/道具 64 取消读条 128 丢弃道具
       if (b & 32) { p.ux = p.ax; p.uz = p.az; }         // 记住选定的位置，免得被后面的输入包覆盖
       if (b & 8) p.chargeTgId = m.tg | 0;
       p.pend |= b;
-    } else if (m.t === 'join' && !ws.player) {
-      if (isRateLimited(ip) || (!verifySessionToken(m.token) && !checkPass(m.pass))) {
-        recordAuthFail(ip);
-        logAccess({ ip, ua, event: 'ws_auth_fail', status: 4001 });
-        logDebug('WARN', 'ws', 'WebSocket join 口令错误', { ip });
-        send(ws, JSON.stringify({ t: 'denied', msg: '访问口令错误或已失效' }));
+    } else if (m.t === 'join' && !ws.player && !ws.queued) {
+      const js = authState(ip, m.token, m.pass);
+      if (js !== 'ok') {
+        if (js === 'bad') { recordAuthFail(ip); logDebug('WARN', 'ws', 'WebSocket join 口令错误', { ip }); }
+        logAccess({ ip, ua, event: js === 'expired' ? 'token_expired' : 'ws_auth_fail', status: 4001 });
+        send(ws, JSON.stringify({ t: 'denied', code: js, msg: AUTH_MSG[js] }));
         ws.close(4001);
         return;
       }
-      const cls = CLS_IDS.includes(m.cls) ? m.cls : 'knight';
-      const code = cleanRoomCode(m.room);
-      const bots = Number.isFinite(Number(m.bots)) ? clamp(Math.floor(Number(m.bots)), 0, MAX_PLAYERS - 1) : Math.max(0, BOT_FILL - 1);
-      const diff = typeof m.diff === 'string' && BOT_DIFF[m.diff] ? m.diff : 'normal';
-      let room, created = false;
-      if (m.create) {                                    // DEMO 禁止自定义房间号：创建房间一律由服务器随机生成 4 位房间号
-        if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
-        room = makeRoom(randomCode(), false, bots, diff); created = true;
-      } else if (code) {                                 // 仅允许加入已存在的房间，不允许通过自定义房间号新建房间
-        room = rooms.get(code);
-        if (!room) { send(ws, '{"t":"noroom","msg":"该房间不存在或已结束，请检查房间号"}'); ws.close(1000); return; }
-      } else {
-        for (const r of rooms.values()) if (!r.priv && r.diff === diff && humans(r) < MAX_PLAYERS && (!room || humans(r) > humans(room))) room = r;
-        if (!room) {
-          if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
-          room = makeRoom(randomCode(), false, bots, diff); created = true;
-        }
-      }
-      if (room.players.length >= MAX_PLAYERS) {
-        const bot = room.players.find(p => p.bot);
-        if (!bot) { send(ws, '{"t":"full"}'); ws.close(1000); return; }
-        removePlayer(room, bot);
-        if (!rooms.has(room.code)) rooms.set(room.code, room);
-      }
       clearTimeout(joinTimer);
-      const used = new Set(room.players.map(q => q.name));
-      const freeNames = PLAYER_NAMES.filter(n => !used.has(n));
-      const autoName = freeNames.length ? freeNames[Math.random() * freeNames.length | 0] : ('勇士' + room.nextId);
-      const p = makePlayer(room, autoName, cls, ws);
-      ws.player = p; ws.room = room; ws.joinAt = Date.now();
-      logAccess({ ip, ua, event: 'ws_join', room: room.code, name: p.name, cls: p.cls, detail: { created, bots: room.botCount, diff: room.diff, humans: humans(room) } });
-      logDebug('INFO', 'room', (created ? '创建并加入房间 ' : '加入房间 ') + room.code, { ip, room: room.code, name: p.name, cls: p.cls, bots: room.botCount, diff: room.diff });
-      send(ws, JSON.stringify({ t: 'welcome', id: p.id, name: p.name, cls: p.cls, room: room.code, diff: room.diff, x: r2(p.x), z: r2(p.z),
-        cfg: { cls: CLS, res: RES, resMax: RES_MAX, ult: ULT, move: MOVE, rollCd: ROLL.cd, rollDur: ROLL.dur, rollSp: ROLL.sp, chargeDur: CHARGE.dur, chargeSp: CHARGE.sp,
-          jumpV: JUMP.v, jumpG: JUMP.g, slowK: SLOW_K, target: KILL_TARGET, max: MAX_PLAYERS } }));
+      const st = getLoadStatus();
+      if (st.overloaded || loginQueue.length > 0) {
+        ws.queued = true;
+        loginQueue.push({ ws, ip, ua, m, joinedAt: Date.now() });
+        logDebug('INFO', 'queue', '高负载进入排队', { ip, pos: loginQueue.length, load: st });
+        sendQueueMsg(ws, loginQueue.length);
+        return;
+      }
+      admitJoin(ws, ip, ua, m);
     }
   });
 });
@@ -994,7 +1323,7 @@ adminServer.on('error', err => logDebug('ERROR', 'server', '管理端口启动�
 server.listen(PORT, HOST, () => {
   sampleLoad();
   logDebug('INFO', 'server', '烬冠竞技场 DEMO 服务器已启动', { port: PORT, adminPort: (ADMIN_PORT > 0 && ADMIN_HASH) ? ADMIN_PORT : 0, adminHost: ADMIN_HOST, host: HOST, db: DB_PATH, maxPlayers: MAX_PLAYERS, botFill: BOT_FILL });
-  if (DEMO_PASS_AUTO) logDebug('WARN', 'auth', '未配置 DEMO_PASS 环境变量，本次启动已生成临时随机口令: ' + DEMO_PASS);
+  if (DEMO_PASS_AUTO) console.log('[WARN:auth] 未配置 DEMO_PASS 环境变量，本次启动已生成临时随机口令: ' + DEMO_PASS);   // 只打印，不写入数据库
   for (const list of Object.values(os.networkInterfaces())) for (const i of list || []) if (i.family === 'IPv4' && !i.internal) console.log('  局域网： http://' + i.address + ':' + PORT);
 });
 if (ADMIN_PORT > 0 && ADMIN_HASH) adminServer.listen(ADMIN_PORT, ADMIN_HOST);

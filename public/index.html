@@ -503,7 +503,7 @@ body.touch .skills{
   transform-origin:right bottom;transform:scale(var(--touch-s,1));
 }
 body.touch .skills::before{
-  content:"";position:absolute;right:6px;bottom:6px;width:132px;height:132px;
+  content:"";position:absolute;right:6px;bottom:6px;width:146px;height:146px;
   border-radius:100% 0 0 0;border-left:2px dashed rgba(255,194,61,.22);border-top:2px dashed rgba(255,194,61,.22);
   pointer-events:none;
 }
@@ -526,38 +526,46 @@ body.touch .slot .sname{
 body.touch .slot .sec{font-size:18px;z-index:5}
 body.touch .slot.down{transform:scale(.91)}
 body.touch .slot .auto-tag{right:-4px;top:-4px;font-size:8.5px;padding:0 4px;border:1.5px solid var(--ink);z-index:6}
-/* 普攻小按钮（右下角锚点，短按攻击、长按切换自动普攻） */
+/* 2 号技能核心锚点：右下角大圆主按钮 */
+body.touch .slot[data-k="q"]{
+  right:6px;bottom:6px;width:72px;height:72px;z-index:3;
+  box-shadow:0 0 0 3px var(--gold),0 0 16px rgba(255,194,61,.42),0 5px 12px rgba(0,0,0,.65),inset 0 0 0 2.5px rgba(255,241,210,.35);
+}
+body.touch .slot[data-k="q"]::after{
+  content:"";position:absolute;inset:5px;border-radius:50%;
+  border:1.5px solid rgba(255,241,210,.38);pointer-events:none;
+}
+body.touch .slot[data-k="q"] .ic{width:36px;height:36px}
+body.touch .slot[data-k="q"] .sname{font-size:10px;font-weight:700;color:var(--gold);bottom:-5px;padding:0 6px}
+/* 二技能（左下内弧）、位移（中斜弧）、大招（正上弧） */
+body.touch .slot[data-k="e"]{right:96px;bottom:8px;width:50px;height:50px;z-index:2}
+body.touch .slot[data-k="dodge"]{
+  right:74px;bottom:68px;width:48px;height:48px;z-index:2;
+  box-shadow:0 0 0 2px rgba(95,224,165,.55),0 4px 8px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,241,210,.2);
+}
+body.touch .slot[data-k="dodge"] .ic{width:24px;height:24px}
+body.touch .slot[data-k="dodge"] .sname{font-size:9px;padding:0 4px}
+body.touch .slot[data-k="u"]{
+  right:10px;bottom:92px;width:54px;height:54px;z-index:2;
+  box-shadow:0 0 0 2.5px var(--gold),0 0 12px rgba(255,194,61,.35),0 4px 10px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,241,210,.28);
+}
+body.touch .slot[data-k="u"] .ic{width:28px;height:28px}
+body.touch .slot[data-k="u"] .sname{color:var(--gold);font-weight:700}
+/* 外围辅助小按钮：普攻（外斜上，短按攻击、长按切换自动普攻）与跳跃（最左下） */
 body.touch .slot[data-k="atk"]{
-  right:10px;bottom:10px;width:46px;height:46px;z-index:3;
+  right:134px;bottom:64px;width:44px;height:44px;z-index:2;
   background:radial-gradient(circle at 50% 35%,#8b74ba,#45346b 72%,#261b3d);
-  border:2.5px solid var(--ink);
-  box-shadow:0 0 0 2px rgba(255,194,61,.58),0 4px 8px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,241,210,.24);
+  box-shadow:0 0 0 2px rgba(255,194,61,.5),0 4px 8px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,241,210,.2);
 }
 body.touch .slot[data-k="atk"].auto-on{
   background:radial-gradient(circle at 50% 35%,#ffcf5c,#c96e12 72%,#4a2208);
   box-shadow:0 0 0 2.5px var(--gold),0 0 14px rgba(255,194,61,.5),0 4px 10px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,241,210,.32);
 }
 body.touch .slot[data-k="atk"] .ic{width:22px;height:22px}
-body.touch .slot[data-k="atk"] .sname{font-size:9px;color:var(--cream);bottom:-5px;padding:0 5px}
+body.touch .slot[data-k="atk"] .sname{font-size:9px;color:var(--cream);bottom:-5px;padding:0 4px}
 body.touch .slot[data-k="atk"].auto-on .sname{color:var(--gold);font-weight:700}
-/* 一技能（左下弧位）、二技能（中斜弧位）、大招（右上弧位） */
-body.touch .slot[data-k="q"]{right:76px;bottom:8px;width:50px;height:50px;z-index:2}
-body.touch .slot[data-k="e"]{right:68px;bottom:68px;width:50px;height:50px;z-index:2}
-body.touch .slot[data-k="u"]{
-  right:8px;bottom:88px;width:54px;height:54px;z-index:2;
-  box-shadow:0 0 0 2.5px var(--gold),0 0 12px rgba(255,194,61,.35),0 4px 10px rgba(0,0,0,.6),inset 0 0 0 2px rgba(255,241,210,.28);
-}
-body.touch .slot[data-k="u"] .ic{width:28px;height:28px}
-body.touch .slot[data-k="u"] .sname{color:var(--gold);font-weight:700}
-/* 辅助/召唤师技能位：位移（冲锋/翻滚/闪现）与跳跃 */
-body.touch .slot[data-k="dodge"]{
-  right:140px;bottom:8px;width:44px;height:44px;z-index:2;
-  box-shadow:0 0 0 2px rgba(95,224,165,.55),0 4px 8px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,241,210,.2);
-}
-body.touch .slot[data-k="dodge"] .ic{width:22px;height:22px}
-body.touch .slot[data-k="dodge"] .sname{font-size:9px;padding:0 4px}
 body.touch .slot[data-k="jump"]{
-  right:132px;bottom:64px;width:44px;height:44px;z-index:2;
+  right:160px;bottom:8px;width:44px;height:44px;z-index:2;
   box-shadow:0 0 0 2px rgba(124,196,240,.55),0 4px 8px rgba(0,0,0,.55),inset 0 0 0 1.5px rgba(255,241,210,.2);
 }
 body.touch .slot[data-k="jump"] .ic{width:22px;height:22px}

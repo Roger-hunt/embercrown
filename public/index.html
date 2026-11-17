@@ -2780,9 +2780,19 @@ function updatePlayer(dt) {
       const atkR = p.def.style === 'melee' ? 3.3 * (1 + 0.25 * p.mastery) + (ctl.target ? ctl.target.r || 0 : 0) : 22;
       const atkCone = p.def.style === 'melee' ? Math.min(2.5, 1.15 * (1 + 0.15 * p.mastery)) : 0.22;
       stepAutoTurn(p, dt, ml, atkR, atkCone);
-      const autoHit = autoAtk && !p.cast && !ctl.aiming && (validTarget(ctl.target) ? ctl.target : nearestEnemy(p.x, p.z, p.def.style === 'melee' ? 5.5 : 22));
+      let autoHit = null;
+      if (autoAtk && !p.cast && !ctl.aiming) {
+        const meleeReach = p.def.style === 'melee' ? 3.3 * (1 + 0.25 * p.mastery) : 22;
+        const inHitRange = t => (p.def.style === 'melee' ? Math.hypot(t.x - p.x, t.z - p.z) < meleeReach + (t.r || 0) - 0.05 : Math.hypot(t.x - p.x, t.z - p.z) <= 22);
+        if (validTarget(ctl.target) && inHitRange(ctl.target)) autoHit = ctl.target;
+        else {
+          let best = null, bd = Infinity;
+          for (const e of game.enemies) if (!e.dead && inHitRange(e)) { const d = Math.hypot(e.x - p.x, e.z - p.z); if (d < bd) { bd = d; best = e; } }
+          autoHit = best;
+        }
+      }
       if ((held('atk') || autoHit) && p.cds.atk <= 0) {
-        const atkAng = !held('atk') && autoHit && !validTarget(ctl.target) ? Math.atan2(autoHit.x - p.x, autoHit.z - p.z) : fa;
+        const atkAng = !held('atk') && autoHit ? Math.atan2(autoHit.x - p.x, autoHit.z - p.z) : fa;
         heroAttack(p, atkAng);
       }
       if (held('q')) useSkill(p, 0, fa);
@@ -5337,17 +5347,22 @@ function mpUpdate(dt) {
   if (!frozen && !dead) {
     if (!cc && !(net.ct > 0)) stepAutoTurn(lp, dt, ml, def.style === 'melee' ? 3.75 : 22, def.style === 'melee' ? 1.15 : 0.22);
     else ctl.autoTurn = false;
-    let mpAuto = false;
+    let mpAuto = null;
     if (autoAtk && !net.ct && !ctl.aiming) {
-      const range = def.style === 'melee' ? 5.5 : 22;
-      if (validTarget(ctl.target) && Math.hypot(ctl.target.x - lp.x, ctl.target.z - lp.z) <= range) mpAuto = true;
+      const range = def.style === 'melee' ? 3.7 : 22;
+      if (validTarget(ctl.target) && Math.hypot(ctl.target.x - lp.x, ctl.target.z - lp.z) <= range) mpAuto = ctl.target;
       else {
-        for (const e of net.ents.values()) if (!e.mine && !e.dead && Math.hypot(e.x - lp.x, e.z - lp.z) <= range) { mpAuto = true; break; }
+        let best = null, bd = range;
+        for (const e of net.ents.values()) if (!e.mine && !e.dead) { const d = Math.hypot(e.x - lp.x, e.z - lp.z); if (d <= bd) { bd = d; best = e; } }
+        mpAuto = best;
       }
     }
     if (held('atk') || mpAuto) net.pendB |= 1; if (held('q')) net.pendB |= 2; if (held('e')) net.pendB |= 4;
     if (held('dodge')) net.pendB |= 8; if (held('jump')) net.pendB |= 16;
-    if ((net.pendB & 7) || ((net.pendB & 8) && net.cls === 'knight')) { lp.aimT = 0.45; lp.aimA = ta; }
+    if ((net.pendB & 7) || ((net.pendB & 8) && net.cls === 'knight')) {
+      lp.aimT = 0.45;
+      lp.aimA = !held('atk') && !held('q') && !held('e') && !(held('dodge') && net.cls === 'knight') && mpAuto ? Math.atan2(mpAuto.x - lp.x, mpAuto.z - lp.z) : ta;
+    }
     if (taps.q || taps.e) { const i = taps.q ? 0 : 1; if (net.cd[i] > 0.3) showErr(t('技能还没准备好', 'Skill not ready')); else if (net.res < def.cost[i + 1]) showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res))); }
     if (taps.u) ultPress();
   }

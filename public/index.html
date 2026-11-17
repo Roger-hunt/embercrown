@@ -490,7 +490,7 @@ li.me .nm{color:var(--gold);font-weight:700}
 @media (max-height:800px){.panel{gap:9px}.panel .tag{display:none}}
 
 /* ---------- 移动端：横屏全屏 + 王者荣耀风格扇形技能轮盘 ---------- */
-#rotTip{display:none;align-self:start;justify-self:center;z-index:12;pointer-events:auto;align-items:center;gap:10px;padding:6px 12px;background:rgba(35,26,51,.94);border:2.5px solid var(--gold);border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.6);font-size:12.5px}
+#rotTip{display:none;align-self:start;justify-self:center;margin-top:4px;z-index:19;pointer-events:auto;align-items:center;gap:10px;padding:6px 12px;background:rgba(35,26,51,.94);border:2.5px solid var(--gold);border-radius:99px;box-shadow:0 4px 12px rgba(0,0,0,.6);font-size:12.5px;white-space:nowrap}
 #rotTip button{padding:3px 12px;border-radius:99px;border:2px solid var(--ink);background:var(--gold);color:var(--ink);font-family:var(--f-display);font-size:13px}
 body.touch .hud-bottom{position:absolute;left:0;right:0;bottom:0;height:0;overflow:visible;pointer-events:none}
 body.touch #castBar{position:absolute;left:50%;bottom:calc(14px * var(--touch-s,1));transform:translateX(-50%);width:min(210px,36%);z-index:4}
@@ -558,7 +558,7 @@ body.touch .slot[data-k="jump"]{
 }
 body.touch .slot[data-k="jump"] .ic{width:22px;height:22px}
 body.touch .slot[data-k="jump"] .sname{font-size:9px;padding:0 4px}
-@media (orientation:portrait){body.touch:not(.rot90) #rotTip:not([hidden]){display:inline-flex}}
+@media (orientation:portrait){body.touch:not(.rot90) #rotTip:not([hidden]){display:inline-flex}body.touch:not(.rot90) #login .login-head{margin-top:clamp(44px,6vh,56px)}}
 body.touch .hud-top{transform-origin:top center}
 body.touch .frames,body.rot90 .frames{flex-wrap:nowrap;gap:6px}
 body.touch .hero-plate,body.rot90 .hero-plate{padding:3px 7px 3px 3px;flex:0 1 148px;min-width:102px;gap:5px}
@@ -5384,20 +5384,33 @@ function mpHUD() {
 
 /* ================= camera & loop ================= */
 let ultCamK = 0;
+function setCamFov(fov) {
+  if (Math.abs(camera.fov - fov) > 0.05) {
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+  }
+}
 function updateCamera(dt) {
   if (game.state === 'login') {
     ultCamK = 0;
     const t = game.time, wide = aspect > 1.05, a = Math.sin(t * 0.28) * 0.38, rad = wide ? 6.4 : 8.2;
-    const sx = Math.sin(t * 0.16) * 0.22, sy = 1.82 + Math.sin(t * 0.4) * 0.04, sz = R_ARENA + 6.4;
-    const slx = 0, sly = 1.32, slz = 0;
+    const sx = Math.sin(t * 0.16) * 0.22, sy = 1.82 + Math.sin(t * 0.4) * 0.04;
+    const sz = R_ARENA + (aspect < 1 ? lerp(6.4, 9.2, clamp((1 - aspect) / 0.55, 0, 1)) : 6.4);
+    const baseTan = Math.tan(21 * Math.PI / 180);
+    const loginFov = aspect < 1
+      ? clamp(2 * Math.atan(Math.max(baseTan, 2.02 / ((sz - (R_ARENA + 1.95)) * Math.max(aspect, 0.36)))) * 180 / Math.PI, 42, 72)
+      : 42;
+    const slx = 0, sly = aspect < 1 ? 1.18 : 1.32, slz = 0;
     const rawK = loginOpening ? clamp((loginOpenT - 0.12) / 0.88, 0, 1) : 0;
     const k = rawK * rawK * (3 - 2 * rawK);
+    setCamFov(lerp(loginFov, 42, k));
     const tx = Math.sin(a) * rad, ty = wide ? 2.35 : 2.8, tz = Math.cos(a) * rad;
     const tlx = 0, tly = wide ? 1.1 : 0.85, tlz = 0;
     camera.position.set(lerp(sx, tx, k), lerp(sy, ty, k), lerp(sz, tz, k));
     v3.set(lerp(slx, tlx, k), lerp(sly, tly, k), lerp(slz, tlz, k));
     camera.lookAt(v3); return;
   }
+  setCamFov(42);
   if (game.state === 'menu') {
     ultCamK = 0;
     const t = game.time, wide = aspect > 1.05, a = Math.sin(t * 0.28) * 0.38, rad = wide ? 6.4 : 8.2;

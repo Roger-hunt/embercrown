@@ -849,6 +849,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
     <div class="plate card login-card">
       <h2 id="aboutTitle">关于烬冠竞技场</h2>
       <p id="aboutDesc">低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。</p>
+      <p id="aboutDownload">单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 单机离线版 (ZIP)</a></p>
       <p>GitHub：<a href="https://github.com/Roger-hunt/embercrown" target="_blank" rel="noopener noreferrer">https://github.com/Roger-hunt/embercrown</a></p>
       <p>致谢：<a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> 社区</p>
       <button type="button" class="go" id="btnAboutClose">确定</button>
@@ -4525,6 +4526,10 @@ function applyI18n() {
   );
   setQ('#aboutTitle', '关于烬冠竞技场', 'About Embercrown Arena');
   setQ('#aboutDesc', '低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。', 'A low-poly dark fantasy arena featuring endless solo waves and 8-player online FFA.');
+  setH('#aboutDownload',
+    '单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 单机离线版 (ZIP)</a>',
+    'Solo Download: <a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 Offline Solo (ZIP)</a>'
+  );
   setQ('#btnVerClose', '确定', 'Close');
   setQ('#btnAboutClose', '确定', 'Close');
   setH('#menuEyebrow', '单人闯关 · 8 人联机混战 <span id="best"></span>', 'Solo Waves · 8-Player FFA <span id="best"></span>');
@@ -5667,7 +5672,8 @@ preloadAssets((p, done) => {
     }
   }
 });
-try { const saved = sessionStorage.getItem('embercrown-demo-token'); if (saved) submitGate(saved); } catch (e) {}
+if (location.protocol === 'file:') { demoToken = 'offline'; show('gate', false); }
+else { try { const saved = sessionStorage.getItem('embercrown-demo-token'); if (saved) submitGate(saved); } catch (e) {} }
 window.__arenaCtl = ctl;
 window.__arena = { info: renderer.info, cam: camera, net, game, get player() { return player; }, startGame, spawnEnemy, hurtEnemy, openUpgrade, keys, mouse, aim };
 })();

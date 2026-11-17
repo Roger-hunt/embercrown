@@ -121,7 +121,7 @@ body.rot90 #ui{
 .skills{display:flex;gap:5px;padding:5px;background:rgba(35,26,51,.82);border:3px solid var(--ink);border-radius:12px;box-shadow:0 0 0 2px #7d6a3a,0 4px 0 var(--ink);transition:opacity .12s}
 body.touch.aiming #skills{opacity:0}
 body.touch.aiming #skills .slot{pointer-events:none}
-body.touch.aiming #skills .slot[data-k="u"]{pointer-events:auto}
+body.touch.aiming.u-dragging #skills .slot[data-k="u"]{pointer-events:auto}
 .slot{pointer-events:auto;touch-action:none;position:relative;width:60px;height:60px;display:grid;place-items:center;overflow:hidden;
   background:radial-gradient(circle at 50% 32%,var(--c1,#5d4a8a),var(--c2,#33264d));border:2px solid #0e0a17;border-radius:8px;box-shadow:inset 0 0 0 2px rgba(255,241,210,.18)}
 .slot .ico{display:grid;place-items:center;margin-top:-10px;color:var(--cream);filter:drop-shadow(0 2px 0 rgba(20,12,34,.7))}
@@ -3509,6 +3509,7 @@ let holdTid = 0;
         if (ctl.aiming) {
           const r = s.getBoundingClientRect();
           uDrag = { id: ev.pointerId, btn: s, cx: r.left + r.width / 2, cy: r.top + r.height / 2, rad: Math.max(r.width, r.height) * 0.56, out: false };
+          document.body.classList.add('u-dragging');
           try { s.setPointerCapture(ev.pointerId); } catch (e) {}
         }
         return;
@@ -3534,16 +3535,18 @@ let holdTid = 0;
       if (holdTid) { clearTimeout(holdTid); holdTid = 0; }
       act[k] = false; s.classList.remove('down');
       if (k === 'u' && uDrag && (!ev || uDrag.id === ev.pointerId)) {
-        const d = uDrag; uDrag = null;
+        const d = uDrag; uDrag = null; document.body.classList.remove('u-dragging');
         if (ev && ev.type === 'pointerup' && ctl.aiming && inPlay()) {
-          const p = game.state === 'mp' ? net.lp : player, def = game.state === 'mp' ? CLASSES[net.cls] : player.def;
-          let o;
           if (d.out) {
+            const p = game.state === 'mp' ? net.lp : player, def = game.state === 'mp' ? CLASSES[net.cls] : player.def;
             const [vx, vy] = toViewXY(ev.clientX, ev.clientY); mouse.x = vx; mouse.y = vy;
             ndc.set(vx / viewW * 2 - 1, -(vy / viewH) * 2 + 1); ray.setFromCamera(ndc, camera);
-            o = ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : { x: p.x, z: p.z };
-          } else o = ctl.pt || ultDefaultPt(p, def.ult);
-          clampRange(p, o, def.ult.range); ultCast(o.x, o.z);
+            const o = ray.ray.intersectPlane(ground, hitV) ? { x: hitV.x, z: hitV.z } : { x: p.x, z: p.z };
+            clampRange(p, o, def.ult.range); ultCast(o.x, o.z);
+          } else if (ctl.pt) {
+            v3.set(ctl.pt.x, 0.05, ctl.pt.z).project(camera);
+            mouse.x = (v3.x * 0.5 + 0.5) * viewW; mouse.y = (-v3.y * 0.5 + 0.5) * viewH;
+          }
         } else if (ev && ev.type === 'pointercancel') ctl.aiming = false;
       }
     };
@@ -4201,7 +4204,7 @@ function aimAngle(p) { const t = ctl.target; return t && Math.hypot(t.x - p.x, t
 function updateReticle(p, u) {
   const on = ctl.aiming && inPlay();
   if (!on) { ctl.aiming = false; uDrag = null; }
-  reticle.visible = rangeRing.visible = on; document.body.classList.toggle('aiming', on);
+  reticle.visible = rangeRing.visible = on; document.body.classList.toggle('aiming', on); document.body.classList.toggle('u-dragging', on && !!uDrag);
   if (!on) return;
   let o;
   if (uDrag && !uDrag.out) o = ultDefaultPt(p, u);

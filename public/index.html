@@ -824,7 +824,7 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
       <button type="button" class="login-enter" id="btnEnterGame" disabled>进入游戏</button>
     </div>
     <div class="login-foot">
-      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.5.0（最近更新）</button>
+      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.5.0patch1（最近更新）</button>
       <div class="login-links">
         <button type="button" class="mini-btn" id="btnAbout">关于</button>
         <button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button>
@@ -834,13 +834,12 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 
   <div id="verModal" class="screen center login-modal" hidden>
     <div class="plate card login-card">
-      <h2 id="verTitle">版本 v1.5.0 · 最近更新</h2>
+      <h2 id="verTitle">版本 v1.5.0patch1 · 最近更新</h2>
       <ul id="verList">
-        <li>新增 PVP「娱乐乱斗」模式：支持快速匹配与创建娱乐房间。</li>
-        <li>娱乐模式新增 40 秒限时能力（死亡之握拉回风筝、3 把随动回旋镖、无敌星、狂暴巨人、闪电超载），临时替换 4 号大招位并带外圈暗黄进度描边倒计时。</li>
-        <li>娱乐模式新增可投掷/使用道具（定时炸弹、香蕉皮陷阱踩中滑倒晕眩、火箭靴）及神秘盲盒随机增益/整蛊诅咒；按 G 或点角标 × 可丢弃手中道具。</li>
-        <li>新增恶搞登录大门：双深潜者把守竞技场南门铁闸、异步预加载，点击「进入游戏」伴随门响穿门直入场中央。</li>
-        <li>新增单人怪物「深潜者斥候」（第 1 波起刷新）及服务器「无尽乌龟」排队提示。</li>
+        <li>联机模式新增中立小鸡：房间同步生成可交互小鸡，支持点击或手柄锁定，骑士冲锋与挥砍命中可攒怒气。</li>
+        <li>优化移动端触控技能轮盘：右下角核心大按钮改为 2 号技能，普攻移至外圈并支持长按切换自动普攻（AUTO）。</li>
+        <li>优化触屏大招与自动普攻：大招按下即进入瞄准并支持拖放施放、快点保留点选；自动普攻仅在射程内触发并自动朝向锁定目标。</li>
+        <li>优化界面与弹窗适配：紧凑化移动端「模式与难度」弹窗，修复竖屏旋转提示层级并调整双深潜者构图。</li>
       </ul>
       <button type="button" class="go" id="btnVerClose">确定</button>
     </div>
@@ -4511,20 +4510,18 @@ function applyI18n() {
   setQ('#btnGate', '验证并进入', 'Verify & Enter');
   setQ('#loginTitle', '烬冠竞技场', 'Embercrown Arena');
   setQ('#btnEnterGame', '进入游戏', 'Enter Game');
-  setQ('#btnVer', '版本 v1.5.0（最近更新）', 'Version v1.5.0 (Changelog)');
+  setQ('#btnVer', '版本 v1.5.0patch1（最近更新）', 'Version v1.5.0patch1 (Changelog)');
   setQ('#btnAbout', '关于', 'About');
-  setQ('#verTitle', '版本 v1.5.0 · 最近更新', 'Version v1.5.0 · Recent Updates');
+  setQ('#verTitle', '版本 v1.5.0patch1 · 最近更新', 'Version v1.5.0patch1 · Recent Updates');
   setH('#verList',
-    '<li>新增 PVP「娱乐乱斗」模式：支持快速匹配与创建娱乐房间。</li>' +
-    '<li>娱乐模式新增 40 秒限时能力（死亡之握拉回风筝、3 把随动回旋镖、无敌星、狂暴巨人、闪电超载），临时替换 4 号大招位并带外圈暗黄进度描边倒计时。</li>' +
-    '<li>娱乐模式新增可投掷/使用道具（定时炸弹、香蕉皮陷阱踩中滑倒晕眩、火箭靴）及神秘盲盒随机增益/整蛊诅咒；按 G 或点角标 × 可丢弃手中道具。</li>' +
-    '<li>新增恶搞登录大门：双深潜者把守竞技场南门铁闸、异步预加载，点击「进入游戏」伴随门响穿门直入场中央。</li>' +
-    '<li>新增单人怪物「深潜者斥候」（第 1 波起刷新）及服务器「无尽乌龟」排队提示。</li>',
-    '<li>Added PVP Chaos Fun Mode for both Quick Match and custom rooms.</li>' +
-    '<li>Added 40s timed abilities (Death Grip pull, 3 orbiting Boomerangs, Super Star, Giant Rage, Overdrive) temporarily replacing Skill 4.</li>' +
-    '<li>Added throwable/usable gadgets (Time Bomb, slippery stun Banana Peel trap, Rocket Boots) and Mystery Box buffs/curses; press G or × to drop.</li>' +
-    '<li>Added spoof login gatehouse guarded by two Deep Ones with async preloading and a seamless fly-through into the arena.</li>' +
-    '<li>Added Deep One Scout enemy (from Wave 1) and server load queue modal.</li>'
+    '<li>联机模式新增中立小鸡：房间同步生成可交互小鸡，支持点击或手柄锁定，骑士冲锋与挥砍命中可攒怒气。</li>' +
+    '<li>优化移动端触控技能轮盘：右下角核心大按钮改为 2 号技能，普攻移至外圈并支持长按切换自动普攻（AUTO）。</li>' +
+    '<li>优化触屏大招与自动普攻：大招按下即进入瞄准并支持拖放施放、快点保留点选；自动普攻仅在射程内触发并自动朝向锁定目标。</li>' +
+    '<li>优化界面与弹窗适配：紧凑化移动端「模式与难度」弹窗，修复竖屏旋转提示层级并调整双深潜者构图。</li>',
+    '<li>Added synced neutral chickens to Multiplayer rooms, targetable by click or gamepad and granting Knight Rage on Charge or Slash hits.</li>' +
+    '<li>Refined mobile touch wheel: moved Skill 2 to the bottom-right core slot and Attack to the outer rim with long-press Auto Attack (AUTO) toggle.</li>' +
+    '<li>Improved touch Ult & Auto Attack: pressing Ult enters aiming (drag out to cast, quick tap keeps tap-to-cast); Auto Attack triggers only in range and auto-faces targets.</li>' +
+    '<li>Polished UI layout: compacted mobile Mode & Difficulty modal, fixed portrait rotate hint z-index, and framed both Deep One guards.</li>'
   );
   setQ('#aboutTitle', '关于烬冠竞技场', 'About Embercrown Arena');
   setQ('#aboutDesc', '低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。', 'A low-poly dark fantasy arena featuring endless solo waves and 8-player online FFA.');

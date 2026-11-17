@@ -1,6 +1,6 @@
 [中文](README.md) | **English**
 
-# Embercrown Arena (v1.5.0)
+# Embercrown Arena (v1.5.0patch1)
 
 A low-poly stylized 3D Western-fantasy arena ARPG built with **Three.js + Node.js (WebSocket)**, co-developed with **Claude Fable 5.2 + Gemini Argon**.
 
@@ -54,7 +54,13 @@ Open `http://localhost:3000` (LAN players can connect via the LAN address printe
 - `public/vendor/three.min.js`: Three.js r128 (MIT)
 - `public/greta_yell.mp3`, `public/godlike.mp3`: Boss yell & Godlike announcement audio
 
-## Recent Updates (v1.5.0)
+## Recent Updates (v1.5.0patch1)
+
+- **Multiplayer Neutral Chickens**: Added synced neutral chickens to multiplayer rooms; clickable/gamepad-targetable, hittable by skills/projectiles/Charge, and grant Knight Rage on Charge or Slash hits.
+- **Mobile Touch & Auto-Attack Improvements**: Moved Skill 2 to the bottom-right core touch slot and Attack to the outer rim with long-press `AUTO` toggle; Ult enters aiming on press (drag out to cast, quick tap keeps tap-to-cast); Auto Attack triggers only in range and auto-faces locked targets.
+- **UI & Gatehouse Polish**: Compacted mobile Mode & Difficulty modal, fixed portrait login rotate hint z-index, framed both Deep One guards, and removed redundant language toggle from the main menu.
+
+### Previous (v1.5.0)
 
 - **PVP Fun Mode**: Added Mystery Crates, 40s timed abilities (Death Grip, Boomerang, Invincible Star, Giant Rage, Lightning Overload) with an outer dim-yellow cooldown border ring on Slot `4`, throwable/triggerable items (Time Bomb, Banana Peel Trap, Rocket Boots), `G` / corner `×` drop, and server-side movement sync.
 - **Deep One Login Gatehouse & New Monster**: Added a 3D gatehouse login screen guarded by twin Deep One sentries with asset preloading, door-opening fly-through transition, and the Deep One Scout enemy in Solo waves.

@@ -1,6 +1,6 @@
 [中文](README.md) | **English**
 
-# Embercrown Arena (v1.5.0patch1)
+# Embercrown Arena (v1.5.0patch2)
 
 A low-poly stylized 3D Western-fantasy arena ARPG built with **Three.js + Node.js (WebSocket)**, co-developed with **Claude Fable 5.2 + Gemini Argon**.
 
@@ -54,7 +54,24 @@ Open `http://localhost:3000` (LAN players can connect via the LAN address printe
 - `public/vendor/three.min.js`: Three.js r128 (MIT)
 - `public/greta_yell.mp3`, `public/godlike.mp3`: Boss yell & Godlike announcement audio
 
-## Recent Updates (v1.5.0patch1)
+## Documentation
+
+| Document | Contents |
+| --- | --- |
+| [DEVNOTE.md](DEVNOTE.md) | Engineering notes: the four deployment flavors, code-level pitfalls, balancing & telemetry methodology, idea pool, known issues, environment cheat sheet |
+| [ROADMAP.md](ROADMAP.md) | Boss mechanic assignment and DBM-style warning system design (not implemented yet) |
+| [BALANCE-SOLO.md](BALANCE-SOLO.md) | Solo difficulty curve: design, diagnosis, tuning guide, measured data loop |
+| [SYNC.md](SYNC.md) | eccf ↔ upstream sync boundary, deploy-surface inventory, solo packaging and VPS rollout |
+| [tests/README.md](tests/README.md) | Regression tests (`bash tests/run.sh`): what each group guards, how to point at the tools, how to add a test |
+| [handover/](handover/) | Daily working notes, one file per day |
+
+## Recent Updates (v1.5.0patch2)
+
+- **Controls & Camera**: `A`/`D` now strafe by default (`Q`/`E` as backup, arrow keys still turn); Auto Attack is on by default on PC, tap `1` to toggle instantly (hold `1` still attacks); new **Camera Follow** toggle in the pause menu, **off by default**; the wave-skip prompt now matches your input (Space / gamepad `A` / click).
+- **Data & Privacy**: each solo run posts one anonymous summary (class, per-wave duration, kills by enemy type, damage taken, boss TTK, blessings) used to recalibrate the difficulty curve. The About dialog now has a **Data & Privacy** tab listing what is sent, what is never sent, how it is used, the 180-day retention, plus a one-click opt-out. The offline solo build ships with all telemetry stripped out.
+- **Solo Difficulty Curve**: enemy HP now scales quadratically (16.2x at wave 30) with matching damage; spawns are weighted by cost with an on-screen cap of 26; blessings are trimmed and halved past stack 5; `Iron Body` is now percentage-based; boss HP scales independently. See `BALANCE-SOLO.md`.
+
+### Previous (v1.5.0patch1)
 
 - **Multiplayer Neutral Chickens**: Added synced neutral chickens to multiplayer rooms; clickable/gamepad-targetable, hittable by skills/projectiles/Charge, and grant Knight Rage on Charge or Slash hits.
 - **Mobile Touch & Auto-Attack Improvements**: Moved Skill 2 to the bottom-right core touch slot and Attack to the outer rim with long-press `AUTO` toggle; Ult enters aiming on press (drag out to cast, quick tap keeps tap-to-cast); Auto Attack triggers only in range and auto-faces locked targets.

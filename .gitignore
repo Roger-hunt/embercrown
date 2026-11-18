@@ -1,14 +1,33 @@
+# ===== 文档：只跟踪 README 与 LICENSE =====
+# 开发笔记、随手记、路线图、专题设计等一律不入库
+*.md
+!README.md
+!README_EN.md
+
+# 交接补丁跟随手记走，不入库
+handover/patches/
+
+# ===== 依赖与构建产物 =====
 node_modules/
+dist/
+.wrangler/
 data/
-*.db
-*.db-shm
-*.db-wal
+
+# ===== 备份 / 临时 / 日志 =====
 *.log
+*.tgz
+*.zip
+.bak-*/
+.bak*/
+tmp/
+
+# ===== 环境与本地配置 =====
 .env
 .env.*
-.*/
-!.gitattributes
-!.gitignore
-agent/
-skills/
-skills-lock.json
+!.env.example
+.DS_Store
+scripts/self_ips.txt
+*self_ips*
+
+# ===== 工具目录（会话记忆、缓存） =====
+.workbuddy/

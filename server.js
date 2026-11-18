@@ -53,7 +53,7 @@ const QUEUE_FORCE = process.env.QUEUE_FORCE === '1';
 const REALM_NAME = String(process.env.REALM_NAME || '无尽乌龟').trim();
 
 const TICK = 30, DT = 1 / TICK;
-const KILL_TARGET = envInt('KILL_TARGET', 15, 1, 99), ROUND_TIME = envInt('ROUND_TIME', 240, 30, 3600), END_TIME = 9, RESPAWN = 3, SPAWN_PROT = 1.5;
+const KILL_TARGET = envInt('KILL_TARGET', 10, 1, 99), ROUND_TIME = envInt('ROUND_TIME', 150, 30, 3600), END_TIME = 9, RESPAWN = 3, SPAWN_PROT = 1.5;
 const R = 24, PR = 0.5, TAU = Math.PI * 2;
 const PILLARS = [0, 1, 2, 3].map(k => { const a = k * Math.PI / 2 + Math.PI / 4; return { x: Math.sin(a) * 12, z: Math.cos(a) * 12, r: 1.4 }; });
 const ROLL = { cd: 2.8, dur: 0.26, sp: 22, inv: 0.34 };
@@ -66,19 +66,19 @@ const RES_MAX = 100;
 const CLS_IDS = ['knight', 'ranger', 'mage'];
 // q / e / u：2、3、4 号技能的冷却；cast / range：4 号大招的读条时间和施法距离；cost：[普攻, 2 号, 3 号, 4 号] 的资源消耗
 const CLS = {
-  knight: { hp: 215, speed: 6.8, atkCd: 0.41, armor: 0.74, q: 5.2, e: 7.5, u: 20, cast: 0.95, range: 15, res: 'rage', cost: [0, 0, 20, 35] },
+  knight: { hp: 215, speed: 6.8, atkCd: 0.41, armor: 0.74, q: 2.2, e: 14.0, u: 20, cast: 0, range: 3.4, res: 'rage', cost: [0, 18, 0, 35] },
   ranger: { hp: 140, speed: 7.1, atkCd: 0.37, armor: 0.90, q: 6.5, e: 8.5, u: 21, cast: 1.05, range: 19, res: 'energy', cost: [0, 25, 30, 45] },
   mage: { hp: 136, speed: 6.6, atkCd: 0.46, armor: 0.90, q: 7.5, e: 9.2, u: 24, cast: 1.25, range: 19, res: 'mana', cost: [0, 20, 30, 45] },
 };
 // 怒气：造成 / 受到伤害时获得，脱战后衰减；能量、法力：随时间恢复
 const RES = {
-  rage: { start: 20, regen: 0, decay: 2, calm: 6.5, hit: 12, hurt: 0.65, charge: 25, bash: 15 },
+  rage: { start: 20, regen: 0, decay: 2, calm: 6.5, hit: 14, hurt: 0.65, charge: 25 },
   energy: { start: 100, regen: 9.0 },
   mana: { start: 100, regen: 6.5 },
 };
-// 4 号大招：读条完成后在选定位置生成的区域
+// 4 号大招：读条完成后在选定位置生成的区域（或骑士自身持续移动旋风斩）
 const ULT = {
-  knight: { k: 'blade', zone: { r: 5, delay: 0.45, dmg: 78, stun: 1.2 } },
+  knight: { k: 'spin', self: 1, dur: 2.4, iv: 0.3, r: 3.4, dmg: 9, zone: { r: 3.4, delay: 0, dmg: 9 } },
   ranger: { k: 'storm', zone: { r: 6, delay: 0.4, ticks: 8, iv: 0.3, dmg: 13, slow: 1.3 } },
   mage: { k: 'inferno', zone: { r: 6.2, delay: 0.5, ticks: 3, iv: 0.45, dmg: 46, kb: 7 } },
 };
@@ -191,6 +191,26 @@ const INIT_SQL = `
     meta TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_debug_ts ON debug_logs(ts);
+
+  CREATE TABLE IF NOT EXISTS solo_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,
+    ip TEXT,
+    build TEXT,
+    cls TEXT,
+    start_wave INTEGER,
+    end_wave INTEGER,
+    resumed INTEGER,
+    reason TEXT,
+    dur_sec REAL,
+    kills INTEGER,
+    dmg INTEGER,
+    waves_n INTEGER,
+    boons TEXT,
+    payload TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_solo_ts ON solo_runs(ts);
+  CREATE INDEX IF NOT EXISTS idx_solo_cls ON solo_runs(cls, end_wave);
 `;
 function sqlLit(v) {
   if (v === null || v === undefined) return 'NULL';
@@ -205,10 +225,12 @@ function openSqlite(dbPath) {
     const sAcc = inst.prepare('INSERT INTO access_logs (ts, ip, event, method, path, status, ua, room, player_name, cls, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const sLd = inst.prepare('INSERT INTO load_metrics (ts, rss_mb, heap_mb, cpu_pct, load_1m, tick_avg_ms, tick_max_ms, ws_conns, rooms, humans, bots, msg_per_sec) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     const sDbg = inst.prepare('INSERT INTO debug_logs (ts, level, tag, msg, meta) VALUES (?, ?, ?, ?, ?)');
+    const sSolo = inst.prepare('INSERT INTO solo_runs (ts, ip, build, cls, start_wave, end_wave, resumed, reason, dur_sec, kills, dmg, waves_n, boons, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
     return {
       insertAccess: a => sAcc.run(...a),
       insertLoad: a => sLd.run(...a),
       insertDebug: a => sDbg.run(...a),
+      insertSolo: a => sSolo.run(...a),
       exec: sql => inst.exec(sql),
       query: sql => { try { return inst.prepare(sql).all(); } catch (e) { return []; } },
       close: () => inst.close(),
@@ -221,10 +243,12 @@ function openSqlite(dbPath) {
       const sAcc = inst.prepare('INSERT INTO access_logs (ts, ip, event, method, path, status, ua, room, player_name, cls, detail) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const sLd = inst.prepare('INSERT INTO load_metrics (ts, rss_mb, heap_mb, cpu_pct, load_1m, tick_avg_ms, tick_max_ms, ws_conns, rooms, humans, bots, msg_per_sec) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       const sDbg = inst.prepare('INSERT INTO debug_logs (ts, level, tag, msg, meta) VALUES (?, ?, ?, ?, ?)');
+    const sSolo = inst.prepare('INSERT INTO solo_runs (ts, ip, build, cls, start_wave, end_wave, resumed, reason, dur_sec, kills, dmg, waves_n, boons, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
       return {
         insertAccess: a => sAcc.run(...a),
         insertLoad: a => sLd.run(...a),
         insertDebug: a => sDbg.run(...a),
+      insertSolo: a => sSolo.run(...a),
         exec: sql => inst.exec(sql),
         query: sql => { try { return inst.prepare(sql).all(); } catch (e) { return []; } },
         close: () => inst.close(),
@@ -238,6 +262,7 @@ function openSqlite(dbPath) {
         insertAccess: a => sendSql('INSERT INTO access_logs (ts, ip, event, method, path, status, ua, room, player_name, cls, detail) VALUES (' + a.map(sqlLit).join(',') + ')'),
         insertLoad: a => sendSql('INSERT INTO load_metrics (ts, rss_mb, heap_mb, cpu_pct, load_1m, tick_avg_ms, tick_max_ms, ws_conns, rooms, humans, bots, msg_per_sec) VALUES (' + a.map(sqlLit).join(',') + ')'),
         insertDebug: a => sendSql('INSERT INTO debug_logs (ts, level, tag, msg, meta) VALUES (' + a.map(sqlLit).join(',') + ')'),
+        insertSolo: a => sendSql('INSERT INTO solo_runs (ts, ip, build, cls, start_wave, end_wave, resumed, reason, dur_sec, kills, dmg, waves_n, boons, payload) VALUES (' + a.map(sqlLit).join(',') + ')'),
         exec: sql => sendSql(sql),
         query: sql => { try { const out = execFileSync('sqlite3', ['-json', dbPath, sql], { encoding: 'utf8', timeout: 2000 }).trim(); return out ? JSON.parse(out) : []; } catch (e) { return []; } },
         close: () => { try { proc.stdin.end('.quit\n'); } catch (e) {} },
@@ -344,6 +369,76 @@ function gzipped(file, st, cb) {
     zlib.gzip(raw, { level: 9 }, (e2, buf) => { if (e2) return cb(e2); gzCache.set(file, { tag, buf }); cb(null, buf); });
   });
 }
+
+/* ---------------- 单人难度遥测 ---------------- */
+const soloRate = new Map();
+const authOkRate = new Map();
+function winAllow(map, ip, limit) {
+  const now = Date.now(), hit = map.get(ip);
+  if (!hit || now - hit.t > 60000) { if (map.size > 4000) map.clear(); map.set(ip, { t: now, n: 1 }); return true; }
+  hit.n++;
+  return hit.n <= limit;
+}
+function soloAllow(ip) { return winAllow(soloRate, ip, 60); }
+function authOkAllow(ip) { return winAllow(authOkRate, ip, 60); }
+function soloNum(v, lo, hi, d) { const n = +v; return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; }
+function soloStr(v, max) { return String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u001f]/g, '').slice(0, max || 64); }
+function soloCounts(o) {
+  const out = {};
+  if (!o || typeof o !== 'object') return out;
+  for (const k of Object.keys(o).slice(0, 40)) {
+    if (!/^[a-z0-9*_-]{1,24}$/.test(k)) continue;
+    out[k] = soloNum(o[k], 0, 100000, 0);
+  }
+  return out;
+}
+function sanitizeSolo(j, ip) {
+  const waves = Array.isArray(j.waves) ? j.waves.slice(0, 80).map(w => ({
+    n: soloNum(w && w.n, 0, 9999, 0), dur: soloNum(w && w.dur, 0, 86400, 0), k: soloNum(w && w.k, 0, 100000, 0),
+    dmg: soloNum(w && w.dmg, 0, 1000000000, 0), hpEnd: soloNum(w && w.hpEnd, 0, 1000000000, 0), hpPct: soloNum(w && w.hpPct, 0, 100, 0),
+    by: soloCounts(w && w.by),
+    boss: w && w.boss && typeof w.boss === 'object' ? { t: soloStr(w.boss.t, 24), win: w.boss.win === 0 ? 0 : 1, ttk: soloNum(w.boss.ttk, 0, 86400, 0), hpMax: soloNum(w.boss.hpMax, 0, 1000000000, 0), hpLeft: soloNum(w.boss.hpLeft, 0, 1000000000, 0), mul: soloNum(w.boss.mul, 0, 1000000, 1) } : null,
+  })) : [];
+  const boons = Array.isArray(j.boons) ? j.boons.slice(0, 60).map(b => ({ r: soloStr(b && b.r, 8), n: soloStr(b && b.n, 24), c: soloNum(b && b.c, 0, 999, 0) })) : [];
+  const clean = {
+    v: 1, build: soloStr(j.build, 24), lang: soloStr(j.lang, 8), cls: soloStr(j.cls, 16), input: soloStr(j.input, 8), resumed: j.resumed ? 1 : 0,
+    startWave: soloNum(j.startWave, 0, 9999, 1), endWave: soloNum(j.endWave, 0, 9999, 1), reason: soloStr(j.reason, 16),
+    durSec: soloNum(j.durSec, 0, 86400, 0), kills: soloNum(j.kills, 0, 100000, 0), dmg: soloNum(j.dmg, 0, 1000000000, 0),
+    bosses: soloNum(j.bosses, 0, 999, 0), left: soloNum(j.left, 0, 9999, 0), totalKills: soloCounts(j.by), waves, boons,
+  };
+  let payload = JSON.stringify(clean);
+  if (payload.length > 60000) { clean.waves = clean.waves.slice(0, 30); payload = JSON.stringify(clean); }
+  if (payload.length > 60000) { clean.waves = []; payload = JSON.stringify(clean); }
+  const ts = new Date().toISOString();
+  return {
+    input: clean.input, cls: clean.cls, endWave: clean.endWave, reason: clean.reason, dur: clean.durSec, kills: clean.kills, resumed: clean.resumed,
+    cols: [ts, String(ip || 'unknown'), clean.build, clean.cls, clean.startWave, clean.endWave, clean.resumed, clean.reason,
+      clean.durSec, clean.kills, clean.dmg, clean.waves.length, JSON.stringify(clean.boons), payload],
+  };
+}
+
+/* P2P 房主上报：只收匿名摘要（不含昵称、不含玩家 IP），落 access_logs 的 mp_summary 事件。
+   官服到期后只剩 P2P 形态，没有这条通道就等于联机侧完全没有数据。 */
+function sanitizeMp(j) {
+  const pickInput = v => (['touch', 'pad', 'kbm'].includes(v) ? v : '');
+  const players = Array.isArray(j.players) ? j.players.slice(0, MAX_PLAYERS).map(p => ({
+    cls: soloStr(p && p.cls, 16), bot: p && p.bot ? 1 : 0, input: pickInput(p && p.input),
+    kills: soloNum(p && p.kills, 0, 999, 0), deaths: soloNum(p && p.deaths, 0, 999, 0),
+    dmg: soloNum(p && p.dmg, 0, 100000000, 0),
+  })) : [];
+  const humans = players.filter(p => !p.bot);
+  return {
+    room: soloStr(j.room, 12).toUpperCase(),
+    detail: {
+      mode: 'p2p', diff: BOT_DIFF[j.diff] ? j.diff : 'normal', build: soloStr(j.build, 24),
+      bots: players.length - humans.length, humans: humans.length,
+      durSec: soloNum(j.durSec, 0, 3600, 0), round: soloNum(j.round, 0, 999, 0),
+      kills: soloNum(j.kills, 0, 9999, 0), input: pickInput(j.input),
+      killTarget: soloNum(j.killTarget, 0, 999, 0), players,
+    },
+  };
+}
+
 const server = http.createServer((req, res) => {
   for (const [k, v] of Object.entries(SEC_HEADERS)) res.setHeader(k, v);
   let p;
@@ -357,7 +452,9 @@ const server = http.createServer((req, res) => {
     req.on('end', () => {
       let pass = '', tok = '';
       try { const j = JSON.parse(body); pass = String(j.pass || ''); tok = String(j.token || ''); } catch (e) {}
-      const st = authState(ip, tok, pass), ok = st === 'ok', status = ok ? 200 : st === 'limited' ? 429 : 401;
+      let st = authState(ip, tok, pass);
+      if (st === 'ok' && !authOkAllow(ip)) st = 'limited';
+      const ok = st === 'ok', status = ok ? 200 : st === 'limited' ? 429 : 401;
       logAccess({ ip, ua, event: ok ? 'auth_ok' : st === 'limited' ? 'rate_limit' : st === 'expired' ? 'token_expired' : 'auth_fail', method: 'POST', path: '/auth', status });
       if (st === 'bad') { recordAuthFail(ip); logDebug('WARN', 'auth', '口令验证失败', { ip }); }
       else if (st === 'limited') logDebug('WARN', 'auth', 'IP 触发口令频率限制', { ip });
@@ -367,7 +464,59 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (req.method === 'POST' && p === '/telemetry/solo') {      // 单人难度遥测：一局一包
+    if (!soloAllow(ip)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end('{"ok":false,"code":"limited"}'); }
+    let body = '', over = false;
+    req.on('data', chunk => {
+      if (over) return;
+      body += chunk;
+      if (body.length > 65536) {
+        over = true; body = '';
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end('{"ok":false,"code":"too_large"}');
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (over) return;
+      let j; try { j = JSON.parse(body || '{}'); } catch (e) { res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end('{"ok":false,"code":"bad_json"}'); }
+      const r = sanitizeSolo(j, ip);
+      try { db.insertSolo(r.cols); } catch (e) {}
+      logAccess({ ip, ua, event: 'solo_run', method: 'POST', path: '/telemetry/solo', status: 204, cls: r.cls,
+        detail: { wave: r.endWave, reason: r.reason, dur: r.dur, kills: r.kills, resumed: r.resumed, input: r.input || '' } });
+      res.writeHead(204, { 'Cache-Control': 'no-store' }); res.end();
+    });
+    return;
+  }
+  if (req.method === 'POST' && p === '/telemetry/mp') {        // P2P 房主上报：一局一包（匿名）
+    if (!soloAllow(ip)) { res.writeHead(429, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end('{"ok":false,"code":"limited"}'); }
+    let body = '', over = false;
+    req.on('data', chunk => {
+      if (over) return;
+      body += chunk;
+      if (body.length > 16384) {
+        over = true; body = '';
+        res.writeHead(413, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end('{"ok":false,"code":"too_large"}');
+        req.destroy();
+      }
+    });
+    req.on('end', () => {
+      if (over) return;
+      let j; try { j = JSON.parse(body || '{}'); } catch (e) { res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end('{"ok":false,"code":"bad_json"}'); }
+      const r = sanitizeMp(j);
+      if (!r.room) { res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); return res.end('{"ok":false,"code":"bad_room"}'); }
+      logAccess({ ip, ua, event: 'mp_summary', method: 'POST', path: '/telemetry/mp', status: 204, room: r.room, detail: r.detail });
+      res.writeHead(204, { 'Cache-Control': 'no-store' }); res.end();
+    });
+    return;
+  }
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405); return res.end(); }
+  if (p === '/version') {
+    const v = (() => { try { return 'v' + String(JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8')).version || '').replace(/^v/, ''); } catch { return 'unknown'; } })();
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify({ ok: true, v }));
+  }
   if (p === '/healthz') {
     const st = getLoadStatus();
     res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: st.humans, load: st }));
@@ -508,10 +657,17 @@ function cancelCast(room, p) {
   p.cast = 0; p.cd.u = Math.max(p.cd.u, 1); room.ev.push({ e: 'cc', id: p.id });
 }
 function startCast(room, p) {
-  const c = CLS[p.cls], t = aimPoint(p, c.range, p.ux, p.uz);   // ux / uz：按下大招键那一刻鼠标选定的位置
+  const c = CLS[p.cls], u = ULT[p.cls];
+  if (u.self) {
+    p.cd.u = c.u; p.res = Math.max(0, p.res - c.cost[3]); p.prot = 0; p.stun = p.freeze = p.slow = 0;
+    p.spinUltT = u.dur || 3.2; p.spinTickT = 0; p.spinHealed = 0;
+    room.ev.push({ e: 'atk', id: p.id, k: 'ult', a: r2(p.face) });
+    return;
+  }
+  const t = aimPoint(p, c.range, p.ux, p.uz);   // ux / uz：按下大招键那一刻鼠标选定的位置
   p.cast = c.cast; p.castX = t.x; p.castZ = t.z; p.prot = 0;
   if (Math.hypot(t.x - p.x, t.z - p.z) > 0.2) p.face = Math.atan2(t.x - p.x, t.z - p.z);
-  room.ev.push({ e: 'cs', id: p.id, x: r2(t.x), z: r2(t.z), d: c.cast, r: ULT[p.cls].zone.r });
+  room.ev.push({ e: 'cs', id: p.id, x: r2(t.x), z: r2(t.z), d: c.cast, r: u.zone.r });
 }
 function finishCast(room, p) {
   const c = CLS[p.cls], u = ULT[p.cls];
@@ -525,18 +681,18 @@ function damage(room, t, amt, by, o) {
   const funDmg = by && by.fun ? (by.fun.giant > 0 ? 1.45 : by.fun.mini > 0 ? 0.75 : 1) : 1;
   let v = amt * mul * funDmg * (0.92 + Math.random() * 0.16);
   const crit = Math.random() < 0.08; if (crit) v *= 1.6;
-  v = Math.max(1, Math.round(v * CLS[t.cls].armor));
+  v = Math.max(1, Math.round(v * CLS[t.cls].armor * (t.wallT > 0 ? 0.45 : 1)));
   t.hp -= v;
   if (by && by !== t) { by.dmg = (by.dmg || 0) + v; by.totalDmg = (by.totalDmg || 0) + v; }
-  if (by && by !== t && by.cls === 'knight') { gain(by, RES.rage.hit); by.calm = RES.rage.calm; }
+  if (by && by !== t && by.cls === 'knight' && !(o && o.sk)) { gain(by, RES.rage.hit); by.calm = RES.rage.calm; }
   if (t.cls === 'knight') { gain(t, v * RES.rage.hurt); t.calm = RES.rage.calm; }
   if (o && o.kb) {
     const kMul = by && by.fun && by.fun.giant > 0 ? 1.5 : 1;
     const dx = t.x - o.fx, dz = t.z - o.fz, d = Math.hypot(dx, dz) || 1, kb = o.kb * kMul * (t.cls === 'knight' ? 0.6 : 1);
     t.kx += dx / d * kb; t.kz += dz / d * kb;
   }
-  if (o && o.slow) t.slow = Math.max(t.slow, o.slow);
-  if (o && (o.stun || o.freeze)) {
+  if (o && o.slow && !(t.spinUltT > 0)) t.slow = Math.max(t.slow, o.slow);
+  if (o && (o.stun || o.freeze) && !(t.spinUltT > 0)) {
     if (o.stun) { const s = t.stunDR > 0 ? o.stun * 0.5 : o.stun; t.stun = Math.max(t.stun, s); t.stunDR = 3.5; }
     else t.freeze = Math.max(t.freeze, o.freeze);
     t.dashT = 0; t.charging = t.rolling = false; t.chargeTarget = null; cancelCast(room, t);      // 被控制会打断读条
@@ -547,7 +703,7 @@ function damage(room, t, amt, by, o) {
 }
 function kill(room, t, by, o) {
   const prevSt = t.streak || 0;
-  t.hp = 0; t.dead = true; t.respawnT = RESPAWN; t.deaths++; t.totalDeaths = (t.totalDeaths || 0) + 1; t.streak = 0; t.mk = 0; t.mkT = 0; t.dashT = 0; t.charging = t.rolling = false; t.cast = 0;
+  t.hp = 0; t.dead = true; t.respawnT = RESPAWN; t.deaths++; t.totalDeaths = (t.totalDeaths || 0) + 1; t.streak = 0; t.mk = 0; t.mkT = 0; t.dashT = 0; t.charging = t.rolling = false; t.cast = 0; t.spinUltT = 0; t.wallT = 0;
   const credit = by && by !== t && room.players.includes(by);
   let st = 0, mk = 0, fb = 0, sd = 0;
   if (credit) {
@@ -559,7 +715,8 @@ function kill(room, t, by, o) {
     if (!by.dead) { const max = CLS[by.cls].hp, got = Math.min(30, max - by.hp); if (got > 0) { by.hp += got; room.ev.push({ e: 'heal', id: by.id, v: Math.round(got) }); } }
   }
   logAccess({ ip: credit ? (by.bot ? 'bot' : 'human') : 'env', event: 'combat_kill', room: room.code, name: credit ? by.name : null, cls: credit ? by.cls : null,
-    detail: { src: o && o.sk ? 'skill' : 'atk', killerBot: credit ? (by.bot ? 1 : 0) : 0, victimCls: t.cls, victimBot: t.bot ? 1 : 0, diff: room.diff } });
+    detail: { src: o && o.sk ? 'skill' : 'atk', killerBot: credit ? (by.bot ? 1 : 0) : 0, victimCls: t.cls, victimBot: t.bot ? 1 : 0, diff: room.diff,
+      killerIp: credit && !by.bot ? (by.ip || '') : '', victimIp: t.bot ? '' : (t.ip || '') } });
   const ev = { e: 'kill', id: t.id, by: credit ? by.id : 0 };
   if (st >= 2) ev.st = st;
   if (mk >= 2) ev.mk = mk;
@@ -591,12 +748,13 @@ function attack(room, p) {
   const a = p.face; p.cd.atk = CLS[p.cls].atkCd; p.prot = 0;
   if (p.cls === 'knight') {
     room.ev.push({ e: 'atk', id: p.id, k: 'slash', a: r2(a) });
-    let hitAny = false;
+    let best = null, bd = Infinity;
     for (const o of foes(room, p)) {
       const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 3.3 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.15)) { damage(room, o, 24, p, { kb: 2.5, fx: p.x, fz: p.z }); hitAny = true; }
+      if (d < 3.3 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 0.95) && d < bd) { bd = d; best = o; }
     }
-    if (hitCrittersInArc(room, p.x, p.z, a, 3.3, 1.15, p) && !hitAny) { gain(p, RES.rage.hit); p.calm = RES.rage.calm; }
+    if (best) damage(room, best, 23, p, { kb: 2.2, fx: p.x, fz: p.z });
+    else if (hitCrittersInArc(room, p.x, p.z, a, 3.3, 0.95, p)) { gain(p, RES.rage.hit); p.calm = RES.rage.calm; }
   } else if (p.cls === 'ranger') {
     room.ev.push({ e: 'atk', id: p.id, k: 'shoot', a: r2(a) });
     shoot(room, p, 'arrow', a, { speed: 30, dmg: 14, life: 1.0, pierce: 1 });
@@ -607,27 +765,24 @@ function attack(room, p) {
 }
 function skill(room, p, slot) {
   const c = CLS[p.cls], a = p.face; if (slot < 2) p.cd[slot ? 'e' : 'q'] = slot ? c.e : c.q; p.prot = 0;
-  if (p.cls === 'knight' && !slot) {                   // 盾牌猛击：面前扇形，击晕
-    room.ev.push({ e: 'atk', id: p.id, k: 'bash', a: r2(a) }); gain(p, RES.rage.bash); p.calm = RES.rage.calm;
+  if (p.cls === 'knight' && !slot) {                   // 顺劈斩：消耗 18 怒气，面前扇形群伤
+    room.ev.push({ e: 'atk', id: p.id, k: 'cleave', a: r2(a) });
     for (const o of foes(room, p)) {
       const dx = o.x - p.x, dz = o.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 3.1 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.05)) damage(room, o, 28, p, { kb: 4, fx: p.x, fz: p.z, stun: 0.95, sk: 1 });
+      if (d < 3.6 + PR && (d < 1.35 || Math.abs(angDiff(Math.atan2(dx, dz), a)) < 1.25)) damage(room, o, 34, p, { kb: 3.5, fx: p.x, fz: p.z, sk: 1 });
     }
-    hitCrittersInArc(room, p.x, p.z, a, 3.1, 1.05, p);
+    hitCrittersInArc(room, p.x, p.z, a, 3.6, 1.25, p);
   } else if (slot === 2) {                             // 冲锋（骑士的 5 号位移技能）
     const tg = p.chargeTgId ? (foes(room, p).find(o => o.id === p.chargeTgId && Math.hypot(o.x - p.x, o.z - p.z) <= CHARGE.maxDist)
-      || (room.critters || []).find(c => c.id === p.chargeTgId && Math.hypot(c.x - p.x, c.z - p.z) <= CHARGE.maxDist)) : null;
+      || (room.critters || []).find(c => c.id === p.chargeTgId && Math.hypot(c.x - p.x, o.z - p.z) <= CHARGE.maxDist)) : null;
     const ca = tg ? Math.atan2(tg.x - p.x, tg.z - p.z) : a;
     p.chargeTarget = tg; p.chargeTgId = 0; p.chargeDist = 0;
     p.dashT = tg ? 0.6 : CHARGE.dur; p.dashSp = CHARGE.sp; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.inv = Math.max(p.inv, 0.45);
     gain(p, RES.rage.charge); p.calm = RES.rage.calm;                       // 冲锋不耗怒气，反而攒怒气
     room.ev.push({ e: 'atk', id: p.id, k: 'charge', a: r2(ca), ...(tg ? { tg: tg.id, dur: 0.6 } : {}) });
-  } else if (p.cls === 'knight') {
-    room.ev.push({ e: 'atk', id: p.id, k: 'spin', a: r2(a) });
-    let hits = 0;
-    for (const o of foes(room, p)) if (Math.hypot(o.x - p.x, o.z - p.z) < 4.4 + PR) { if (damage(room, o, 48, p, { kb: 6, fx: p.x, fz: p.z, sk: 1 })) hits++; }
-    hitCrittersInRadius(room, p.x, p.z, 4.4, p);
-    if (hits && !p.dead) { const max = CLS.knight.hp, got = Math.min(27, hits * 9, max - p.hp); if (got > 0) { p.hp += got; room.ev.push({ e: 'heal', id: p.id, v: Math.round(got) }); } }
+  } else if (p.cls === 'knight') {                     // 破釜沉舟：80% 减伤 3.0s
+    p.wallT = 3.0;
+    room.ev.push({ e: 'atk', id: p.id, k: 'wall', a: r2(a) });
   } else if (p.cls === 'ranger' && !slot) {
     room.ev.push({ e: 'atk', id: p.id, k: 'shoot', a: r2(a) });
     const grp = new Map();
@@ -667,6 +822,21 @@ function updatePlayer(room, p) {
   const c = CLS[p.cls], rs = RES[c.res], cd = p.cd, cdStep = fn.haste > 0 ? DT * 2 : DT;
   cd.atk -= cdStep; cd.q -= cdStep; cd.e -= cdStep; cd.u -= cdStep; cd.dodge -= cdStep;
   if (p.inv > 0) p.inv -= DT; if (p.prot > 0) p.prot -= DT; if (p.slow > 0) p.slow -= DT; if (p.stunDR > 0) p.stunDR -= DT; if (p.mkT > 0) p.mkT -= DT;
+  if (p.wallT > 0) p.wallT -= DT;
+  if (p.spinUltT > 0) {
+    p.spinUltT -= DT; p.spinTickT -= DT;
+    if (p.spinTickT <= 0) {
+      p.spinTickT += 0.3;
+      room.ev.push({ e: 'atk', id: p.id, k: 'spin', a: r2(p.face) });
+      let hits = 0;
+      for (const o of foes(room, p)) if (Math.hypot(o.x - p.x, o.z - p.z) < 3.4 + PR) { if (damage(room, o, 9, p, { kb: 0.8, fx: p.x, fz: p.z, sk: 1 })) hits++; }
+      hitCrittersInRadius(room, p.x, p.z, 3.4, p);
+      if (hits && !p.dead && p.spinHealed < 16) {
+        const max = CLS.knight.hp, got = Math.min(16 - p.spinHealed, hits * 2, max - p.hp);
+        if (got > 0) { p.spinHealed += got; p.hp += got; room.ev.push({ e: 'heal', id: p.id, v: Math.round(got) }); }
+      }
+    }
+  }
   if (rs.regen) p.res = Math.min(RES_MAX, p.res + rs.regen * DT);
   else if ((p.calm -= DT) <= 0) p.res = Math.max(0, p.res - rs.decay * DT);
   if (fn.pullT > 0) {
@@ -720,7 +890,7 @@ function updatePlayer(room, p) {
   } else {
     const dmx = fn.dizzy > 0 ? -p.mx : p.mx, dmz = fn.dizzy > 0 ? -p.mz : p.mz;
     const funSpd = (fn.haste > 0 ? 1.45 : fn.snail > 0 ? 0.58 : fn.mini > 0 ? 1.25 : 1) * (fn.star > 0 ? 1.25 : 1);
-    const ml = Math.hypot(dmx, dmz), sp = c.speed * (p.slow > 0 ? SLOW_K : 1) * funSpd * (p.bot ? (BOT_DIFF[room.diff] || BOT_DIFF.normal).spd : 1);
+    const ml = Math.hypot(dmx, dmz), sp = c.speed * (p.spinUltT > 0 ? 0.82 : 1) * (p.slow > 0 ? SLOW_K : 1) * funSpd * (p.bot ? (BOT_DIFF[room.diff] || BOT_DIFF.normal).spd : 1);
     if (p.cast > 0) {                                  // 读条：必须站定，移动 / 跳跃 / 翻滚 / 主动取消都会打断
       if (ml > 0.15 || (b & 88)) cancelCast(room, p);
       else if ((p.cast -= DT) <= 0) finishCast(room, p);
@@ -733,12 +903,12 @@ function updatePlayer(room, p) {
       p.air = true; p.vy = JUMP.v; p.jx = dmx * sp; p.jz = dmz * sp; p.moving = false;
       room.ev.push({ e: 'atk', id: p.id, k: 'jump', a: r2(p.face) });
     }
-    if ((b & 1) && cd.atk <= 0 && pay(p, 0)) attack(room, p);
-    if ((b & 2) && cd.q <= 0 && !p.dead && pay(p, 1)) skill(room, p, 0);
+    if (!(p.spinUltT > 0) && (b & 1) && cd.atk <= 0 && pay(p, 0)) attack(room, p);
+    if (!(p.spinUltT > 0) && (b & 2) && cd.q <= 0 && !p.dead && pay(p, 1)) skill(room, p, 0);
     if ((b & 4) && cd.e <= 0 && !p.dead && pay(p, 2)) skill(room, p, 1);
     if ((b & 128) && !p.dead && fn.item) dropFunItem(room, p);
     if ((b & 32) && !p.dead && fn.item) useFunItem(room, p);
-    else if ((b & 32) && cd.u <= 0 && !p.dead && !p.air && ml <= 0.15 && p.res >= c.cost[3]) startCast(room, p);
+    else if ((b & 32) && cd.u <= 0 && !p.dead && !p.air && (ULT[p.cls].self || ml <= 0.15) && p.res >= c.cost[3]) startCast(room, p);
     if ((b & 8) && cd.dodge <= 0 && p.dashT <= 0 && !p.dead && mv.k !== 'roll') {
       cd.dodge = mv.cd; p.prot = 0;
       if (mv.k === 'charge') skill(room, p, 2);
@@ -1151,15 +1321,15 @@ function botThink(room, p) {
   if (ai.fire && aimed && d < (melee ? 3.2 : 15.5)) b |= 1;
   if (ai.gcd <= 0 && aimed) {
     const c = CLS[p.cls];
-    if (ai.u && p.cd.u <= 0 && !p.air && p.res >= c.cost[3] && d > 3.5 && d < c.range) {
-      ai.u = false; ai.gcd = df.gcd + 0.4; p.mx = p.mz = 0; p.ux = p.ax; p.uz = p.az; b = 32;
+    if (ai.u && p.cd.u <= 0 && !p.air && p.res >= c.cost[3] && (melee ? d < 4.2 : (d > 3.5 && d < c.range))) {
+      ai.u = false; ai.gcd = df.gcd + 0.4; if (!melee) p.mx = p.mz = 0; p.ux = p.ax; p.uz = p.az; b = 32;
     } else if (melee && d > 4.2 && d < 14 && ai.roll && p.cd.dodge <= 0) {
       ai.roll = false; ai.gcd = df.gcd; p.chargeTgId = t.id; b |= 8;
     } else if (!melee && p.cd.dodge <= 0 && ((ai.roll && d < 5.5) || d < 3.4 || p.stun > 0.2 || p.freeze > 0.2)) {
       ai.roll = false; ai.gcd = df.gcd; p.mx = -dx; p.mz = -dz; b |= 8;
-    } else if (ai.q && p.cd.q <= 0 && (melee ? d < 3.0 : p.cls === 'ranger' ? d < 9.5 : d < 5.6)) {
+    } else if (ai.q && p.cd.q <= 0 && (melee ? d < 3.6 : p.cls === 'ranger' ? d < 9.5 : d < 5.6)) {
       ai.q = false; ai.gcd = df.gcd; b |= 2;
-    } else if (ai.e && p.cd.e <= 0 && (melee ? d < 3.8 : d < 14)) {
+    } else if (ai.e && p.cd.e <= 0 && (melee ? (p.hp < c.hp * 0.78 && d < 5.5) : d < 14)) {
       ai.e = false; ai.gcd = df.gcd; b |= 4;
     }
   }
@@ -1172,12 +1342,13 @@ function endRound(room) {
   if (room.phase !== 'play') return;
   room.phase = 'end'; room.phaseT = END_TIME; room.rosterDirty = true;
   logAccess({ ip: 'room', event: 'round_end', room: room.code, detail: { diff: room.diff, bots: room.botCount,
-    players: room.players.map(p => ({ id: p.id, name: p.name, cls: p.cls, bot: p.bot ? 1 : 0, kills: p.kills, deaths: p.deaths, dmg: Math.round(p.dmg) })) } });
+    ips: [...new Set(room.players.filter(p => !p.bot && p.ip).map(p => p.ip))].slice(0, MAX_PLAYERS),
+    players: room.players.map(p => ({ input: p.input || '', id: p.id, name: p.name, cls: p.cls, bot: p.bot ? 1 : 0, kills: p.kills, deaths: p.deaths, dmg: Math.round(p.dmg) })) } });
 }
 function startRound(room) {
   room.phase = 'play'; room.roundT = ROUND_TIME; room.proj.length = room.zones.length = room.picks.length = 0; if (room.bombs) room.bombs.length = 0; room.pickT = room.fun ? 3 : 6; room.hasFb = false;
   initCritters(room);
-  for (const p of room.players) { p.kills = p.deaths = p.dmg = p.streak = p.maxStreak = p.mk = p.mkT = 0; p.dead = false; p.cd.u = 0; }
+  for (const p of room.players) { p.kills = p.deaths = p.dmg = p.streak = p.maxStreak = p.mk = p.mkT = 0; p.dead = false; p.cd.u = 0; p.spinUltT = 0; p.wallT = 0; }
   for (const p of room.players) respawn(room, p);
   room.rosterDirty = true;
 }
@@ -1210,7 +1381,7 @@ function broadcast(room) {
         (p.dead ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.dashT > 0 && p.rolling ? 4 : 0) | (p.dashT > 0 && p.charging ? 8 : 0) | (p.freeze > 0 ? 16 : 0) |
         (p.stun > 0 ? 32 : 0) | (p.slow > 0 ? 64 : 0) | (p.prot > 0 ? 128 : 0) | (p.moving ? 256 : 0) | (p.air ? 512 : 0) | (p.cast > 0 ? 1024 : 0) |
         (fn.star > 0 ? 2048 : 0) | (fn.giant > 0 ? 4096 : 0) | (fn.mini > 0 ? 8192 : 0) | (fn.haste > 0 ? 16384 : 0) |
-        (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0),
+        (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0) | (p.wallT > 0 ? 262144 : 0),
         CLS_IDS.indexOf(p.cls), r2(p.y)];
     }),
     k: room.picks.map(k => [k.id, r2(k.x), r2(k.z), k.k || 'heal']),
@@ -1253,6 +1424,7 @@ function admitJoin(ws, ip, ua, m) {
   const diff = typeof m.diff === 'string' && BOT_DIFF[m.diff] ? m.diff : 'normal';
   const roomPwd = cleanRoomPwd(m.roomPwd);
   const fun = !!m.fun;
+  const input = ['touch', 'pad', 'kbm'].includes(m.input) ? m.input : '';
   let room, created = false;
   if (m.create) {                                    // DEMO 禁止自定义房间号：创建房间一律由服务器随机生成 4 位房间号
     if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
@@ -1266,6 +1438,7 @@ function admitJoin(ws, ip, ua, m) {
     }
   } else {
     for (const r of rooms.values()) if (!r.pwd && !!r.fun === fun && r.diff === diff && humans(r) < MAX_PLAYERS && (!room || humans(r) > humans(room))) room = r;
+    if (!room) for (const r of rooms.values()) if (!r.pwd && !!r.fun === fun && humans(r) < MAX_PLAYERS && (!room || humans(r) > humans(room))) room = r;
     if (!room) {
       if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
       room = makeRoom(randomCode(), bots, diff, '', fun); created = true;
@@ -1281,8 +1454,8 @@ function admitJoin(ws, ip, ua, m) {
   const freeNames = PLAYER_NAMES.filter(n => !used.has(n));
   const autoName = freeNames.length ? freeNames[Math.random() * freeNames.length | 0] : ('勇士' + room.nextId);
   const p = makePlayer(room, autoName, cls, ws);
-  ws.player = p; ws.room = room; ws.joinAt = Date.now();
-  logAccess({ ip, ua, event: 'ws_join', room: room.code, name: p.name, cls: p.cls, detail: { created, bots: room.botCount, diff: room.diff, fun: room.fun ? 1 : 0, humans: humans(room) } });
+  ws.player = p; ws.room = room; ws.joinAt = Date.now(); p.input = input; p.ip = ip;
+  logAccess({ ip, ua, event: 'ws_join', room: room.code, name: p.name, cls: p.cls, detail: { created, bots: room.botCount, diff: room.diff, fun: room.fun ? 1 : 0, humans: humans(room), input: p.input || '' } });
   logDebug('INFO', 'room', (created ? '创建并加入房间 ' : '加入房间 ') + room.code, { ip, room: room.code, name: p.name, cls: p.cls, bots: room.botCount, diff: room.diff, fun: !!room.fun });
   send(ws, JSON.stringify({ t: 'welcome', id: p.id, name: p.name, cls: p.cls, room: room.code, diff: room.diff, fun: room.fun ? 1 : 0, x: r2(p.x), z: r2(p.z),
     cfg: { cls: CLS, res: RES, resMax: RES_MAX, ult: ULT, move: MOVE, rollCd: ROLL.cd, rollDur: ROLL.dur, rollSp: ROLL.sp, chargeDur: CHARGE.dur, chargeSp: CHARGE.sp,
@@ -1323,7 +1496,7 @@ wss.on('connection', (ws, req) => {
     if (n <= 0) ipConns.delete(ip); else ipConns.set(ip, n);
     if (ws.room && ws.player) {
       const p = ws.player, durSec = ws.joinAt ? Math.round((Date.now() - ws.joinAt) / 1000) : 0;
-      logAccess({ ip, ua, event: 'ws_leave', room: ws.room.code, name: p.name, cls: p.cls, detail: { durSec, kills: p.totalKills, deaths: p.totalDeaths, dmg: Math.round(p.totalDmg), roundKills: p.kills, roundDeaths: p.deaths } });
+      logAccess({ ip, ua, event: 'ws_leave', room: ws.room.code, name: p.name, cls: p.cls, detail: { durSec, kills: p.totalKills, deaths: p.totalDeaths, dmg: Math.round(p.totalDmg), roundKills: p.kills, roundDeaths: p.deaths, input: p.input || '' } });
       logDebug('DEBUG', 'room', '玩家离开房间', { ip, room: ws.room.code, name: p.name, durSec, kills: p.kills, deaths: p.deaths });
       removePlayer(ws.room, ws.player);
     }
@@ -1381,6 +1554,7 @@ setInterval(() => {
       DELETE FROM access_logs WHERE id NOT IN (SELECT id FROM access_logs ORDER BY id DESC LIMIT 50000);
       DELETE FROM load_metrics WHERE id NOT IN (SELECT id FROM load_metrics ORDER BY id DESC LIMIT 20000);
       DELETE FROM debug_logs WHERE id NOT IN (SELECT id FROM debug_logs ORDER BY id DESC LIMIT 20000);
+      DELETE FROM solo_runs WHERE substr(ts,1,10) < date('now','-180 days');  -- 单人遥测只留 180 天
     `);
   } catch (e) {}
 }, 3600000);

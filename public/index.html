@@ -675,13 +675,24 @@ body.pad.touch .slot .ico{margin-top:-10px}
 body.pad.touch .slot .ic{width:30px;height:30px}
 body.pad.touch .slot .sname{left:0;right:0;bottom:0;transform:none;border-radius:0;border:none;box-shadow:none;background:rgba(20,12,34,.72);font-size:9.5px;padding:0}
 body.pad.touch .slot[data-k="atk"]::after{display:none}
-.pad-guide{width:100%;max-width:520px;padding:10px 12px;border-radius:12px;background:rgba(20,12,34,.72);border:2px solid rgba(255,194,61,.32);text-align:left;display:grid;gap:6px}
-.pad-guide-h{display:flex;align-items:center;justify-content:space-between;font-family:var(--f-display);font-size:14px;color:var(--gold)}
-.pad-guide-h small{font-family:var(--f-body);font-size:11px;color:var(--muted);font-weight:400}
-.pad-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:4px 10px;font-size:12px;color:var(--cream)}
-.pad-grid span{display:flex;align-items:center;gap:6px;white-space:nowrap}
-.pad-grid kbd{display:inline-block;min-width:26px;padding:1px 6px;border-radius:6px;background:var(--plate-2);border:1.5px solid var(--ink);font-family:var(--f-num);font-size:11px;color:var(--gold);text-align:center}
-@media (max-height:540px){.pad-guide{padding:7px 10px;gap:4px}.pad-grid{font-size:11px;gap:3px 8px}}
+.pad-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(136px,1fr));gap:6px 12px;width:100%;font-size:12.5px;color:var(--cream);text-align:left}
+.pad-grid span{display:flex;align-items:center;gap:7px;white-space:nowrap}
+.pad-grid kbd,.kb-grid kbd{display:inline-block;min-width:28px;padding:2px 8px;border-radius:7px;background:var(--plate-2);border:1.5px solid var(--ink);box-shadow:0 2px 0 var(--ink);font-family:var(--f-num);font-size:11.5px;color:var(--gold);text-align:center;white-space:nowrap}
+.kb-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:100%}
+.kb-grid .bind-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;padding:8px 12px;border-radius:10px;background:rgba(20,12,34,.55);border:1.5px solid rgba(255,194,61,.24);color:var(--cream);font:inherit;font-size:13.5px;cursor:pointer;text-align:left;white-space:nowrap;transition:border-color .15s,background .15s}
+.kb-grid .bind-btn:hover{background:rgba(255,194,61,.12);border-color:rgba(255,194,61,.55)}
+.kb-grid .bind-btn.listening{background:rgba(104,224,180,.15);border-color:var(--mint);color:var(--mint)}
+.kb-grid .bind-btn.listening kbd{color:var(--mint);border-color:var(--mint)}
+.kb-foot{font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px}
+body.touch #menu #hint{display:none}
+body.touch:not(.pad) #btnKeybinds{display:none}
+#keybinds{z-index:21}
+#keybinds::before{background:rgba(16,11,28,.75);backdrop-filter:blur(4px)}
+.keybinds-card{width:min(500px,92vw);padding:20px 22px}
+.keybinds-card .row{width:100%;justify-content:center}
+.keybinds-card .row .go{flex:1;max-width:170px;min-width:128px;text-align:center}
+@media (max-width:440px){.kb-grid{grid-template-columns:1fr}}
+@media (max-height:540px){.kb-grid{gap:6px}.kb-grid .bind-btn{padding:6px 10px;font-size:12.5px}.pad-grid{font-size:11.5px;gap:4px 8px}}
 #gate{z-index:20}
 #gate::before{background:rgba(16,11,28,.9);backdrop-filter:blur(6px)}
 #wowQueue{z-index:22}
@@ -698,6 +709,11 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 .login-head{text-align:center;margin-top:clamp(4px,1.5vh,18px)}
 .login-title{margin:0;font-family:var(--f-display);font-size:clamp(36px,6.5vw,62px);font-weight:400;color:var(--gold);-webkit-text-stroke:7px var(--ink);paint-order:stroke fill;text-shadow:0 5px 0 var(--ink),0 10px 24px rgba(0,0,0,.65)}
 .login-mid{margin:auto auto 12px;display:flex;flex-direction:column;align-items:center;gap:12px;width:min(340px,86vw)}
+.local-realm-card{width:min(280px,100%);display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:2px;padding:8px 12px;border-radius:12px;border:2.5px solid var(--gold);background:var(--plate-2);color:var(--cream);box-shadow:0 3px 0 var(--ink),inset 0 0 0 1.5px rgba(255,194,61,.32);backdrop-filter:blur(4px)}
+.local-realm-card[hidden]{display:none}
+.local-realm-card b{font-family:var(--f-display);font-weight:400;font-size:15.5px;color:var(--gold);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.local-realm-card em{font-style:normal;font-size:10px;font-family:var(--f-body);padding:1px 5px;border-radius:5px;border:1.5px solid var(--ink);background:rgba(20,12,34,.65);color:var(--gold)}
+.local-realm-card small{font-size:11px;line-height:1.25;opacity:.9;color:var(--cream)}
 .login-prog{width:100%;height:24px;background:var(--plate);border:3px solid var(--ink);border-radius:12px;position:relative;overflow:hidden;box-shadow:0 4px 0 var(--ink)}
 .login-prog i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--ember),var(--gold));transition:width .2s ease}
 .login-prog b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-display);font-size:13px;font-weight:400;color:var(--cream);-webkit-text-stroke:3px var(--ink);paint-order:stroke fill}
@@ -709,6 +725,8 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 .login-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .login-ver-btn{background:none;border:none;padding:4px 2px;font:inherit;font-size:13px;color:var(--cream);text-shadow:0 2px 0 var(--ink);cursor:pointer;opacity:.92}
 .login-ver-btn:hover{opacity:1;color:var(--gold);text-decoration:underline}
+.login-ver-btn.stale{color:var(--gold);font-weight:700}
+.ver-stale{margin:0 0 10px;padding:7px 10px;border-radius:9px;border:1.5px solid rgba(255,194,61,.55);background:rgba(255,194,61,.12);color:var(--gold);font-size:13px;line-height:1.45;text-align:center}
 .login-modal{z-index:24}
 .login-modal::before{backdrop-filter:blur(4px)}
 .login-card{width:min(500px,92vw);text-align:left;align-items:stretch;gap:12px}
@@ -717,6 +735,21 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 .login-card p{color:var(--cream);font-size:14.5px;line-height:1.65}
 .login-card a{color:var(--gold);text-decoration:underline;word-break:break-all}
 .login-card .go{align-self:center;font-size:20px;padding:8px 34px 10px}
+.about-tabs{display:flex;gap:6px}
+.about-tab{flex:1;font:inherit;font-size:14px;font-weight:800;padding:7px 8px;color:var(--muted);background:var(--ink);border:3px solid var(--plate-2);border-radius:12px;cursor:pointer;transition:color .15s,background .15s,border-color .15s}
+.about-tab:hover{color:var(--cream)}
+.about-tab.on{color:var(--ink);background:var(--gold);border-color:var(--gold)}
+.about-pane{display:flex;flex-direction:column;gap:8px;max-height:min(66vh,600px);overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;padding:0 2px 20px 0;mask-image:linear-gradient(to bottom,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 22px),transparent)}
+.about-pane[hidden]{display:none}
+.about-pane::-webkit-scrollbar{width:8px}
+.about-pane::-webkit-scrollbar-thumb{background:var(--plate-2);border-radius:4px}
+.about-pane::-webkit-scrollbar-thumb:hover{background:var(--gold)}
+.about-pane h3{margin:2px 0 -3px;font-size:13px;color:var(--gold);letter-spacing:.04em}
+.about-pane ul{padding-left:17px;font-size:12.5px;line-height:1.5;color:var(--cream)}
+.about-pane li+li{margin-top:2px}
+.about-opt{display:flex;align-items:center;gap:9px;margin:4px 0 0;font-size:13.5px;color:var(--cream);cursor:pointer}
+.about-opt[hidden]{display:none}
+.about-opt input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:var(--gold);cursor:pointer}
 .gate-card{width:min(400px,92vw);gap:12px}
 .gate-card input{width:100%;font:inherit;font-size:16px;text-align:center;letter-spacing:.12em;color:var(--cream);background:var(--ink);border:3px solid var(--plate-2);border-radius:12px;padding:10px 14px;-webkit-user-select:text;user-select:text}
 .gate-card input:focus-visible{outline:none;border-color:var(--gold)}
@@ -821,10 +854,11 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
     </div>
     <div class="login-mid">
       <div class="login-prog" id="loginProgWrap"><i id="loginProgBar"></i><b id="loginProgTxt">正在加载资源… 0%</b></div>
+      <div class="local-realm-card" id="localRealmInfo" hidden></div>
       <button type="button" class="login-enter" id="btnEnterGame" disabled>进入游戏</button>
     </div>
     <div class="login-foot">
-      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.5.0patch1（最近更新）</button>
+      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.6.0（最近更新）</button>
       <div class="login-links">
         <button type="button" class="mini-btn" id="btnAbout">关于</button>
         <button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button>
@@ -834,13 +868,16 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
 
   <div id="verModal" class="screen center login-modal" hidden>
     <div class="plate card login-card">
-      <h2 id="verTitle">版本 v1.5.0patch1 · 最近更新</h2>
+      <h2 id="verTitle">版本 v1.6.0 · 最近更新</h2>
+      <p id="verStale" class="ver-stale" hidden><span id="verStaleText"></span></p>
       <ul id="verList">
-        <li>联机模式新增中立小鸡：房间同步生成可交互小鸡，支持点击或手柄锁定，骑士冲锋与挥砍命中可攒怒气。</li>
-        <li>优化移动端触控技能轮盘：右下角核心大按钮改为 2 号技能，普攻移至外圈并支持长按切换自动普攻（AUTO）。</li>
-        <li>优化触屏大招与自动普攻：大招按下即进入瞄准并支持拖放施放、快点保留点选；自动普攻仅在射程内触发并自动朝向锁定目标。</li>
-        <li>优化界面与弹窗适配：紧凑化移动端「模式与难度」弹窗，修复竖屏旋转提示层级并调整双深潜者构图。</li>
+        <li>键位自定义：暂停菜单新增独立「键位设置」弹窗，支持战斗动作改键（本地持久保存）与恢复默认。</li>
+        <li>按键解耦：1 键不再切换自动普攻（移至暂停菜单开关），释放 Q / E / F 供自由改键。</li>
+        <li>界面优化：触屏端隐藏键盘提示与键位入口；本地/官服直连登录页服务器信息卡片样式与联机选服卡片统一。</li>
+        <li>遥测完善：补充首领遇敌与战败剩余血量记录，更准确统计首领通关率。</li>
+        <li>上一版 v1.5.0patch3：遥测迁移至 Cloudflare 边缘入库、IP 脱敏（加盐哈希与地级市）及联机输入方式上报修正。</li>
       </ul>
+      <button type="button" class="go" id="btnVerReload" hidden>刷新页面</button>
       <button type="button" class="go" id="btnVerClose">确定</button>
     </div>
   </div>
@@ -848,11 +885,53 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
   <div id="aboutModal" class="screen center login-modal" hidden>
     <div class="plate card login-card">
       <h2 id="aboutTitle">关于烬冠竞技场</h2>
+      <div class="about-tabs" role="tablist" aria-label="关于">
+        <button type="button" class="about-tab on" id="aboutTabInfo" role="tab" aria-selected="true" aria-controls="aboutPaneInfo">关于</button>
+        <button type="button" class="about-tab" id="aboutTabPriv" role="tab" aria-selected="false" aria-controls="aboutPanePriv">数据与隐私</button>
+      </div>
+      <div class="about-pane" id="aboutPaneInfo" role="tabpanel" aria-labelledby="aboutTabInfo">
       <p id="aboutDesc">低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。</p>
-      <p id="aboutServerNote" style="color:var(--gold)">联机服务器还有6天到期。</p>
-      <p id="aboutDownload">单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 单机离线版 (ZIP)</a></p>
+      <p id="aboutServerNote" style="color:var(--gold)">正在读取官服到期时间…</p>
+      <p id="aboutDownload">单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.6.0/embercrown-solo-v1.6.0.zip" target="_blank" rel="noopener noreferrer">v1.6.0 单机离线版 (ZIP)</a></p>
       <p>GitHub：<a href="https://github.com/Roger-hunt/embercrown" target="_blank" rel="noopener noreferrer">https://github.com/Roger-hunt/embercrown</a></p>
-      <p>致谢：<a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> 社区</p>
+      <p id="aboutThanks">致谢：<a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> 社区</p>
+      </div>
+      <div class="about-pane" id="aboutPanePriv" role="tabpanel" aria-labelledby="aboutTabPriv" hidden>
+        <p id="privLead">单人每局结束、联机每局结束都会回传一份匿名摘要（不含账号、聊天与设备信息），统一上传到 Cloudflare，只用来调整难度与平衡。连接 IP 在写入数据库前就已脱敏：只保留加盐哈希与地级市，原始地址不保存。以下为全部内容。</p>
+        <h3 id="privH1">会上传 · 单人模式</h3>
+        <ul id="privCollectL">
+          <li>职业、是否续玩、起止波次、结束原因（阵亡或退出）</li>
+          <li>每波时长、击杀数与怪物种类、该波受伤、波末剩余血量%</li>
+          <li>首领遭遇：类型、击杀耗时、最大血量倍率</li>
+          <li>当局拿到的祝福（符文与层数）</li>
+          <li>客户端版本号、界面语言、输入方式（键鼠 / 触屏 / 手柄）</li>
+        </ul>
+        <h3 id="privH1b">会上传 · 联机模式</h3>
+        <ul id="privMpL">
+          <li>进房与离开：房间号、时间、连接 IP 的脱敏值（加盐哈希 + 地级市）、浏览器 UA、进房时填的昵称、职业、输入方式</li>
+          <li>每局结束：难度、电脑人数量、各玩家的职业／击杀／死亡／伤害／输入方式</li>
+          <li>每次击杀：击杀方与死亡方是真人还是电脑人、职业、是否技能击杀；真人会带同一个脱敏值，用于把同一个人在不同房间关联起来</li>
+          <li>P2P 直连房间由房主额外上报一份摘要（发往 Cloudflare），不含昵称、不含玩家 IP</li>
+        </ul>
+        <h3 id="privH2">不会上传</h3>
+        <ul id="privNeverL">
+          <li>没有账号、密码、邮箱、手机号或通讯录（不需要注册）</li>
+          <li>没有可还原的 IP 地址、精确定位、设备唯一标识或浏览器指纹</li>
+          <li>没有聊天内容，也没有按键与操作记录（只记「键鼠 / 触屏 / 手柄」这一档）</li>
+          <li>没有广告标识符与支付信息</li>
+          <li>单机离线版只写本机 localStorage，不发任何请求</li>
+        </ul>
+        <h3 id="privH3">用途与保存</h3>
+        <ul id="privUsageL">
+          <li>只用于调难度与平衡：不做用户画像、不投放广告，不出售也不共享</li>
+          <li>连接 IP 只以加盐哈希形式保存（用于限流、防刷与排障），不可还原成地址，也不对外展示；地理信息只到地级市</li>
+          <li>存放位置：所有上报数据统一存放在 Cloudflare 边缘数据库；官服本机只留一份副本，随 2026-11-23 下线删除</li>
+          <li>所有日志保留 180 天，单人明细与访问日志另限最多 5 万行（谁先到删谁）</li>
+          <li>关掉下面的开关，单人明细与 P2P 房主摘要立刻停止上传，本机仍留最近 10 局</li>
+          <li>联机时服务器仍会记录进房／离开与对局结束：这两类日志用于维持房间运行与限流，开关关不掉</li>
+        </ul>
+      </div>
+      <label class="about-opt" id="privOptRow" hidden><input type="checkbox" id="privOpt" checked><span id="privOptLbl">允许上传单人明细与房主摘要</span></label>
       <button type="button" class="go" id="btnAboutClose">确定</button>
     </div>
   </div>
@@ -887,14 +966,14 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
           <button class="go ember" id="btnOnline"><span id="btnOnlineTxt">联机对战</span><i class="menu-badge" id="onlineBadge" hidden>0</i></button>
         </div>
       </div>
-      <p class="hint" id="hint"><b>WASD</b> 移动 · <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性</p>
+      <p class="hint" id="hint"><b>WASD</b> 移动（<b>A/D</b> 平移）· <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>1</b> 切换自动攻击 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性</p>
     </div>
   </div>
 
   <div id="lobby" class="screen center" hidden>
     <div class="plate card lobby">
       <h2>对战大厅</h2>
-      <p>8 人自由混战，先拿到 15 次击杀获胜</p>
+      <p>8 人自由混战，先拿到 10 次击杀获胜</p>
       <div class="lobby-cls" id="lobbyCls"></div>
       <div class="lobby-actions">
         <button type="button" class="lobby-act primary" id="btnQuick"><b>快速匹配</b><span>选择难度后自动匹配或开启战局</span></button>
@@ -1012,28 +1091,27 @@ body.pad.touch .slot[data-k="atk"]::after{display:none}
         <button type="button" class="ptool" id="btnFs" aria-label="全屏横屏"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 3v-3h2v5h-5v-2h3z"/></svg><span>全屏横屏</span></button>
         <button type="button" class="ptool" id="btnSound" aria-label="开关声音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h4.5L14 4.5v15l-5.5-5H4v-5zm12.8-2.3a6.8 6.8 0 0 1 0 9.6l-1.5-1.5a4.7 4.7 0 0 0 0-6.6l1.5-1.5z"/></svg><span>音效：开</span></button>
         <button type="button" class="ptool" id="btnCrowd" aria-label="开关观众"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 19c0-3 2.7-5 6-5s6 2 6 5v1H2v-1zm13.5 1v-1c0-1.6-.6-3-1.6-4.1.7-.2 1.4-.3 2.1-.3 3.3 0 6 2 6 5v.4h-6.5z"/></svg><span>观众：开</span></button>
+        <button type="button" class="ptool" id="btnCamFollow" aria-label="视角自动跟随敌人"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9 4.4-10 7 1 2.6 5 7 10 7s9-4.4 10-7c-1-2.6-5-7-10-7zm0 11.4a4.4 4.4 0 1 1 0-8.8 4.4 4.4 0 0 1 0 8.8zm0-1.9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg><span>视角跟随：关</span></button>
+        <button type="button" class="ptool" id="btnAutoAtk" aria-label="开关自动普攻"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg><span>自动普攻：开</span></button>
+        <button type="button" class="ptool" id="btnKeybinds" aria-label="键位设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z"/></svg><span>键位设置</span></button>
         <button type="button" class="ptool lang-btn" data-lang-btn aria-label="Language"><span>EN</span></button>
-      </div>
-      <div class="pad-guide">
-        <div class="pad-guide-h"><span>蓝牙手柄键位（标准 Xbox 手柄）</span><small>接入自动隐藏虚拟按键</small></div>
-        <div class="pad-grid">
-          <span><kbd>左摇杆</kbd>移动</span>
-          <span><kbd>右摇杆</kbd>视角转向</span>
-          <span><kbd>X / RT</kbd>普通攻击</span>
-          <span><kbd>Y</kbd>1 号技能</span>
-          <span><kbd>B</kbd>2 号技能</span>
-          <span><kbd>RB</kbd>终极大招</span>
-          <span><kbd>LB</kbd>位移/冲锋</span>
-          <span><kbd>A</kbd>跳跃</span>
-          <span><kbd>LT</kbd>切换目标</span>
-          <span><kbd>View</kbd>排行榜</span>
-          <span><kbd>D-Pad ↑</kbd>个人属性</span>
-          <span><kbd>Menu</kbd>暂停/菜单</span>
-        </div>
       </div>
       <div class="row">
         <button class="go" id="btnResume">继续战斗</button>
         <button class="go alt" id="btnQuit">返回主菜单</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="keybinds" class="screen center" hidden>
+    <div class="plate card keybinds-card">
+      <h2 id="kbTitle">键位设置</h2>
+      <p id="kbSub">点击动作后按新键 · Esc 取消</p>
+      <div class="kb-grid" id="kbGrid"></div>
+      <div class="kb-foot" id="kbFoot"></div>
+      <div class="row">
+        <button type="button" class="go alt" id="btnResetBinds">恢复默认</button>
+        <button type="button" class="go" id="btnCloseBinds">完成</button>
       </div>
     </div>
   </div>
@@ -1117,15 +1195,15 @@ const EN_DATA = {
   cls: {
     knight: {
       name: 'Ironvow Knight', tag: 'Knight', rune: 'K', role: 'Melee · Bulwark',
-      blurb: 'Heavy plate and shield; 26% damage reduction and Whirlwind lifesteal.',
-      atkName: 'Slash', atkDesc: 'Wide cleave in front, generating Rage on hit',
-      mastery: 'Slash arc +25%',
+      blurb: 'Heavy plate and shield; 26% passive reduction, Last Stand shield wall, and moving Whirlwind.',
+      atkName: 'Heavy Strike', atkDesc: 'Single-target strike that generates 14 Rage on hit',
+      mastery: 'Heavy Strike cleaves +1 target (+15% solo DMG), Cleave area +15%',
       move: { name: 'Charge', desc: 'Rush toward target (or forward), stunning enemies, brief immunity; +25 Rage on hit' },
       skills: [
-        { name: 'Shield Bash', desc: 'Smash enemies ahead for heavy damage, stun, and +15 Rage' },
-        { name: 'Whirlwind', desc: 'Spin to strike all nearby foes and heal per enemy hit' },
+        { name: 'Cleave', desc: 'Spend 18 Rage to cleave enemies in a frontal arc' },
+        { name: 'Last Stand', desc: 'Gain 80% damage reduction for 3 seconds' },
       ],
-      ult: { name: 'Skyfall Blade', desc: 'Cast 0.95s on target area; a giant blade crashes down, dealing heavy damage and stun' },
+      ult: { name: 'Whirlwind', desc: 'Spin for 2.4s while moving, slicing nearby enemies and leeching up to 16 HP' },
     },
     ranger: {
       name: 'Verdant Ranger', tag: 'Ranger', rune: 'R', role: 'Ranged · Agile',
@@ -1143,7 +1221,7 @@ const EN_DATA = {
       name: 'Ember Mage', tag: 'Mage', rune: 'M', role: 'Caster · Burst',
       blurb: 'What fire can solve needs no extra words.',
       atkName: 'Fireball', atkDesc: 'Explodes on impact, hitting nearby enemies',
-      mastery: 'Fireball blast radius +35%',
+      mastery: 'Fireball blast radius +25% & spell damage +15%',
       move: { name: 'Blink', desc: 'Teleport in move direction, cleansing stuns and slows' },
       skills: [
         { name: 'Frost Nova', desc: 'Freezes all enemies around you' },
@@ -1164,15 +1242,15 @@ const EN_DATA = {
     blackKnight: { name: 'Greta the Dark Knight', quote: 'Rats! How dare you break down my gate!' },
   },
   boons: {
-    巨人之力: { rune: 'P', name: 'Giant Might', desc: 'All damage +20%' },
-    疾风之手: { rune: 'S', name: 'Gale Hands', desc: 'Attack speed +18%' },
-    铁石之躯: { rune: 'V', name: 'Iron Body', desc: 'Max HP +30 and heal 30' },
+    巨人之力: { rune: 'P', name: 'Giant Might', desc: 'All damage +18% (+9% after 4 stacks)' },
+    疾风之手: { rune: 'S', name: 'Gale Hands', desc: 'Attack speed +14% (+7% after 4 stacks)' },
+    铁石之躯: { rune: 'V', name: 'Iron Body', desc: 'Max HP +18% for the first 8 stacks, then +24 flat' },
     迅捷之靴: { rune: 'F', name: 'Swift Boots', desc: 'Move speed +10%' },
-    嗜血獠牙: { rune: 'L', name: 'Blood Fang', desc: 'Heal 3 HP per kill' },
-    致命直觉: { rune: 'C', name: 'Lethal Instinct', desc: 'Crit chance +12% (2x damage)' },
-    奥术沙漏: { rune: 'H', name: 'Arcane Hourglass', desc: 'Skill cooldowns -15%' },
+    嗜血獠牙: { rune: 'L', name: 'Blood Fang', desc: 'Heal 3 HP per kill (at most 2% max HP per second)' },
+    致命直觉: { rune: 'C', name: 'Lethal Instinct', desc: 'Crit chance +10% (2x damage)' },
+    奥术沙漏: { rune: 'H', name: 'Arcane Hourglass', desc: 'Skill cooldowns -12%' },
     武艺精通: { rune: 'M', name: 'Mastery' },
-    守护符文: { rune: 'G', name: 'Guard Rune', desc: 'Damage taken -12%' },
+    守护符文: { rune: 'G', name: 'Guard Rune', desc: 'Damage taken -10%' },
     生命泉水: { rune: 'R', name: 'Vital Spring', desc: 'Instantly heal 60% HP' },
     轻羽披风: { rune: 'D', name: 'Feather Cloak', desc: 'Mobility skill (5) cooldown -25%' },
   },
@@ -1444,10 +1522,16 @@ const pillars = [];
 const flames = [], flags = [], occluders = [];
 let crowdBody, crowdHead; const crowd = [];
 let crowdOn = true, crowdT = -1; try { crowdOn = localStorage.getItem('ec_crowd') !== '0'; } catch (e) {}
+let camFollow = false; try { camFollow = localStorage.getItem('ec_camfollow') === '1'; } catch (e) {}   // 视角跟随敌人，默认关
 function syncCrowd() {
   if (crowdBody) crowdBody.visible = crowdHead.visible = crowdOn;
   const b = $('btnCrowd'); if (!b) return;
   b.classList.toggle('off', !crowdOn); b.querySelector('span').textContent = crowdOn ? t('观众：开', 'Crowd: On') : t('观众：关', 'Crowd: Off');
+}
+function syncCamFollow() {
+  const b = $('btnCamFollow'); if (!b) return;
+  b.classList.toggle('off', !camFollow);
+  b.querySelector('span').textContent = camFollow ? t('视角跟随：开', 'Cam Follow: On') : t('视角跟随：关', 'Cam Follow: Off');
 }
 const cloudRig = new T.Group();
 const dummy = new T.Object3D();
@@ -2309,10 +2393,131 @@ const sfx = {
 
 /* ================= game state ================= */
 const game = {
-  state: 'login', time: 0, wave: 0, kills: 0, phase: '', phaseT: 0, waveHp: 1, waveDmg: 1,
+  state: 'login', time: 0, wave: 0, kills: 0, phase: '', phaseT: 0, waveHp: 1, waveDmg: 1, bossHp: 1,
   enemies: [], critters: [], critterTimers: [], corpses: [], projectiles: [], zones: [], pickups: [], fx: [], spawnQ: [], spawnT: 0,
   shake: 0, hitstop: 0, excite: 0, boss: null,
 };
+/* 页面自认为的版本。与 wrangler.jsonc 的 vars.APP_VERSION、package.json 的 version 三处保持一致。
+   加载后若服务器上的版本比它新，左下角版本按钮变成「待更新」——只改文案，不弹窗、不打断。 */
+const APP_VER = 'v1.6.0';
+let verStale = false, verNew = '', verProbedAt = 0;
+/* 非侵入式版本检查：只拉一个字符串，版本不同才把左下角文案换成「待更新」。
+   不弹窗、不打断、不写遥测；失败静默（离线版 file:// 与没有 /version 的官服会自动忽略）。
+   版本号形如 v1.5.0patch3，不是 semver，比不出大小——发版时三处同步改，服务端恒为最新，
+   所以「与页面不同」即视为服务端已换版。节流 5 分钟，打开版本弹窗时强制刷一次。 */
+function probeVersion(force) {
+  if (location.protocol === 'file:') return;
+  if (!force && Date.now() - verProbedAt < 300000) return;
+  verProbedAt = Date.now();
+  let ctrl;
+  try { ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 2500); } catch (e) {}
+  fetch('/version', { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined })
+    .then(r => r.ok ? r.json() : null)
+    .then(d => {
+      const v = d && d.ok ? String(d.v || '') : '';
+      if (!v || v === 'unknown' || v === APP_VER || (verStale && verNew === v)) return;
+      verNew = v;
+      verStale = true;
+      try { applyI18n(); } catch (e) {}
+    })
+    .catch(() => {});
+}
+// 输入方式：手柄优先于触屏（触屏机上接手柄时以手柄为准）；两者都没触发就是键鼠。
+function inpMode() { try { return padMode ? 'pad' : touchMode ? 'touch' : 'kbm'; } catch (e) { return ''; } }
+/* ================= 单人难度遥测（每局一包，POST /telemetry/solo） =================
+   目的：给 BALANCE-SOLO.md 的难度曲线提供真实数据（每波耗时/受伤/残血、小怪击杀构成、
+   首领 TTK、死亡波次、祝福组合）。单机离线版（file://）只写本地 localStorage 不上报。   */
+const TP_BUILD = 'v1.6.0', TP_KEY = 'ec_solo_log_v1';
+// 上报一律走「页面自己的源」：CF 版由 Workers 收下写进 D1，官服版由 server.js 写进本地 sqlite。
+// 2026-11-23 官服到期后只剩 CF 这条链路，所以这里不能写死绝对地址。
+function tpUrl() { return '/telemetry/solo'; }
+const TP_OPT_KEY = 'ec_tp_optout';
+function tpUploadAllowed() { try { return localStorage.getItem(TP_OPT_KEY) !== '1'; } catch (e) { return true; } }
+const tp = { on: false, ended: true, t0: 0, cls: '', resumed: false, start: 0, waves: [], cur: null, dmg: 0, kills: 0, by: {}, bosses: 0 };
+function tpStartRun(cls, resumed, wave) {
+  if (tp.on && !tp.ended) tpEndRun('restart');
+  tp.on = true; tp.ended = false; tp.t0 = Date.now(); tp.cls = String(cls || '');
+  tp.resumed = !!resumed; tp.start = (wave | 0) || 1; tp.waves = []; tp.cur = null;
+  tp.dmg = 0; tp.kills = 0; tp.by = {}; tp.bosses = 0;
+}
+function tpWaveStart(n) {
+  if (!tp.on || tp.ended) return;
+  tp.cur = { n: (n | 0) || 1, t: Date.now(), k: 0, by: {}, dmg: 0, hpMax: Math.round(player ? player.maxHp : 0), boss: null, banked: false };
+}
+function tpKill(e) {
+  if (!tp.on || tp.ended || !tp.cur || !e) return;
+  const key = e.type + (e.tier ? '*' + e.tier : '');
+  tp.cur.k++; tp.cur.by[key] = (tp.cur.by[key] || 0) + 1;
+  tp.kills++; tp.by[key] = (tp.by[key] || 0) + 1;
+  if (e.boss) {
+    tp.bosses++;
+    tp.cur.boss = { t: e.type, win: 1, ttk: +((Date.now() - tp.cur.t) / 1000).toFixed(1), hpMax: Math.round(e.maxHp), hpLeft: 0, mul: +(+game.bossHp || 1).toFixed(3) };
+  }
+}
+function tpHurt(v) { if (!tp.on || tp.ended) return; tp.dmg += v; if (tp.cur) tp.cur.dmg += v; }
+function tpWaveEnd() {
+  const c = tp.cur; if (!c || c.banked) return;
+  c.banked = true;
+  c.dur = +((Date.now() - c.t) / 1000).toFixed(1); delete c.t;
+  if (!c.boss && game.boss && !game.boss.dead) {
+    c.boss = { t: game.boss.type, win: 0, ttk: c.dur, hpMax: Math.round(game.boss.maxHp), hpLeft: Math.max(0, Math.round(game.boss.hp)), mul: +(+game.bossHp || 1).toFixed(3) };
+  }
+  c.hpEnd = player ? Math.max(0, Math.round(player.hp)) : 0;
+  c.hpPct = player && player.maxHp ? Math.max(0, Math.round(player.hp / player.maxHp * 100)) : 0;
+  tp.waves.push(c); tp.cur = null;
+}
+function tpBoons() {
+  try { return (player.boons || []).map(x => ({ r: x.boon.rune, n: x.boon.name, c: x.count | 0 })); } catch (e) { return []; }
+}
+function tpEndRun(reason) {
+  if (!tp.on || tp.ended) return;
+  if (reason === 'hide' && !tp.waves.length && (!tp.cur || !tp.cur.k)) return;
+  tp.ended = true; tp.on = false;
+  tpWaveEnd();
+  const body = {
+    v: 1, build: TP_BUILD, lang: typeof lang !== 'undefined' ? lang : '', cls: tp.cls,
+    resumed: tp.resumed, input: inpMode(), startWave: tp.start, endWave: (game.wave | 0) || tp.start, reason: String(reason || ''),
+    durSec: +((Date.now() - tp.t0) / 1000).toFixed(1),
+    kills: tp.kills, dmg: tp.dmg, bosses: tp.bosses,
+    left: (game.spawnQ ? game.spawnQ.length : 0) + (game.enemies ? game.enemies.length : 0),
+    waves: tp.waves.slice(-60), boons: tpBoons(),
+  };
+  tp.waves = [];
+  try { const prev = JSON.parse(localStorage.getItem(TP_KEY) || '[]'); prev.push(body); localStorage.setItem(TP_KEY, JSON.stringify(prev.slice(-10))); } catch (e) {}
+  if (reason === 'hide' && player && !player.dead && (game.state === 'playing' || game.state === 'paused' || game.state === 'upgrade')) {
+    tp.on = true; tp.ended = false; tp.t0 = Date.now(); tp.resumed = true;
+    tp.start = (game.wave | 0) || 1; tp.dmg = 0; tp.kills = 0; tp.by = {}; tp.bosses = 0;
+    if (game.phase === 'fight') tpWaveStart(game.wave);
+  }
+  if (location.protocol === 'file:' || !tpUploadAllowed()) return;
+  try { fetch(tpUrl(), { method: 'POST', mode: 'cors', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {}); } catch (e) {}
+}
+/* P2P 房主端：一局结束上报匿名摘要（不含昵称、不含玩家 IP）。
+   官服 2026-11-23 到期后只剩 P2P 形态，没有这条通道联机侧就完全没有数据。
+   注：P2P 形态只在 eccf（Cloudflare 版）启用；上游保留同源实现，无调用方即不产生任何请求。 */
+function mpUrl() { return '/telemetry/mp'; }
+function reportMpSummary(r) {
+  try {
+    if (!r || location.protocol === 'file:' || !tpUploadAllowed()) return;
+    const players = (r.players || []).map(p => ({
+      cls: p.cls, bot: p.bot ? 1 : 0, input: p.input || '',
+      kills: p.kills | 0, deaths: p.deaths | 0, dmg: Math.round(p.dmg || 0),
+      ...(p.h ? { h: p.h } : {}),
+    }));
+    const humans = players.filter(p => !p.bot);
+    const body = {
+      v: 1, build: TP_BUILD, room: r.code, diff: r.diff || 'normal', fun: r.fun ? 1 : 0,
+      bots: players.length - humans.length, humans: humans.length,
+      durSec: Math.max(0, Math.round((r.time || 0) - (r.roundT0 || 0))),
+      round: r.roundNo || 1, kills: players.reduce((s, p) => s + p.kills, 0),
+      input: inpMode(), players,
+    };
+    fetch(mpUrl(), { method: 'POST', mode: 'cors', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => {});
+  } catch (e) {}
+}
+window.addEventListener('pagehide', () => { if (tp.on) tpEndRun('close'); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && tp.on) tpEndRun('hide'); });
+
 let loginStage = null;
 function buildLoginStage() {
   if (loginStage) return loginStage;
@@ -2396,11 +2601,11 @@ const ZCOL = { rain: 0x9fe870, storm: 0x9fe870, meteor: 0xff8a2f, inferno: 0xff8
 // cost: [1 普攻, 2, 3, 4 大招] 的资源消耗；ult：4 号键，先用鼠标选范围，再站定读条
 const CLASSES = {
   knight: {
-    id: 'knight', name: '铁誓骑士', tag: '骑士', rune: '骑', role: '近战 · 坚韧', blurb: '重甲剑盾，一步不退；自带 26% 伤害减免与旋风斩吸血。', pips: [5, 4, 2],
-    hp: 215, armor: 0.74, speed: 6.8, atkCd: 0.41, atkDur: 0.22, style: 'melee', build: buildKnight, atkName: '挥砍', atkIco: 'slash', atkDesc: '宽幅扇形斩击面前敌人，命中获得大量怒气',
-    mastery: '挥砍范围 +25%', move: { name: '冲锋', ico: 'dash', desc: '优先锁定当前目标突进，无目标时朝面向冲锋，撞晕沿途敌人、短暂免伤，命中目标获得 25 怒气', cd: 5, kind: 'charge' }, res: 'rage', cost: [0, 0, 20, 35],
-    skills: [{ name: '盾牌猛击', ico: 'bash', desc: '用重盾猛砸面前敌人，造成高额伤害、击晕并获得 15 怒气', cd: 5.2 }, { name: '旋风斩', ico: 'spin', desc: '横扫周身所有敌人，造成重创并根据命中数量回复生命', cd: 7.5 }],
-    ult: { name: '天降神剑', ico: 'blade', desc: '选定范围后快速读条 0.95 秒，巨剑坠落重创并强晕敌人', cd: 20, cast: 0.95, range: 15, kind: 'blade', zone: { r: 5, delay: 0.45, dmg: 165, stun: 1.8 } },
+    id: 'knight', name: '铁誓骑士', tag: '骑士', rune: '骑', role: '近战 · 坚韧', blurb: '重甲剑盾，一步不退；自带 26% 减伤、破釜沉舟与旋风斩。', pips: [5, 4, 2],
+    hp: 215, armor: 0.74, speed: 6.8, atkCd: 0.41, atkDur: 0.22, style: 'melee', build: buildKnight, atkName: '重斩', atkIco: 'slash', atkDesc: '单体劈砍面前敌人，命中获得 14 怒气',
+    mastery: '重斩额外溅射 +1 目标（单挑伤害 +15%），顺劈范围 +15%', move: { name: '冲锋', ico: 'dash', desc: '优先锁定当前目标突进，无目标时朝面向冲锋，撞晕沿途敌人、短暂免伤，命中目标获得 25 怒气', cd: 5, kind: 'charge' }, res: 'rage', cost: [0, 18, 0, 35],
+    skills: [{ name: '顺劈斩', ico: 'slash', desc: '消耗 18 怒气，横扫面前扇形群敌造成范围伤害并击退（2.2 秒冷却）', cd: 2.2 }, { name: '破釜沉舟', ico: 'bash', desc: '架起盾墙，持续 3 秒获得 80% 伤害减免', cd: 14.0 }],
+    ult: { name: '旋风斩', ico: 'spin', desc: '持续 2.4 秒移动旋转（移速略降）切割近身敌人，并根据命中回复生命', cd: 20, cast: 0, range: 3.4, self: true, dur: 2.4, iv: 0.3, dmg: 19, kind: 'spin', zone: { r: 3.4, delay: 0, dmg: 19 } },
   },
   ranger: {
     id: 'ranger', name: '翠林游侠', tag: '游侠', rune: '弓', role: '远程 · 迅捷', blurb: '箭总比敌人的脚步快。', pips: [3, 5, 5],
@@ -2412,7 +2617,7 @@ const CLASSES = {
   mage: {
     id: 'mage', name: '余烬法师', tag: '法师', rune: '焰', role: '法术 · 爆发', blurb: '火能解决的事，不必多说。', pips: [3, 3, 5],
     hp: 136, armor: 0.90, speed: 6.6, atkCd: 0.46, atkDur: 0.2, style: 'cast', build: buildMage, atkName: '火球', atkIco: 'fire', atkDesc: '命中后爆炸，波及周围敌人',
-    mastery: '火球爆炸范围 +35%', move: { name: '闪现', ico: 'blink', desc: '朝移动方向瞬间传送并解除控制与减速', cd: 6.5, kind: 'blink', dist: 7.2 }, res: 'mana', cost: [0, 20, 30, 45],
+    mastery: '火球爆炸范围 +25%，法术伤害 +15%', move: { name: '闪现', ico: 'blink', desc: '朝移动方向瞬间传送并解除控制与减速', cd: 6.5, kind: 'blink', dist: 7.2 }, res: 'mana', cost: [0, 20, 30, 45],
     skills: [{ name: '冰霜新星', ico: 'nova', desc: '冻结身边一圈敌人', cd: 7.5 }, { name: '陨石术', ico: 'meteor', desc: '片刻后陨石砸在目标处，范围巨额伤害', cd: 9.2 }],
     ult: { name: '炼狱火海', ico: 'inferno', desc: '选定范围后读条 1.25 秒，烈焰在大范围内连续爆发三次', cd: 24, cast: 1.25, range: 19, kind: 'inferno', zone: { r: 6.2, delay: 0.5, dmg: 78, ticks: 3, interval: 0.45, kb: 7 } },
   },
@@ -2433,15 +2638,19 @@ const ENEMY = {
 };
 
 const BOONS = [
-  { rune: '力', ico: 'slash', name: '巨人之力', desc: '所有伤害 +20%', apply: p => p.dmgMul *= 1.2 },
-  { rune: '疾', ico: 'spin', name: '疾风之手', desc: '攻击速度 +18%', apply: p => p.atkMul *= 1.18 },
-  { rune: '体', ico: 'heart', name: '铁石之躯', desc: '生命上限 +30，并回复 30 点', apply: p => { p.maxHp += 30; heal(30); } },
+  { rune: '力', ico: 'slash', name: '巨人之力', desc: '所有伤害 +18%（第 5 次起 +9%）', apply: p => { p.nDmg = (p.nDmg || 0) + 1; p.dmgMul *= 1 + (p.nDmg > 4 ? 0.09 : 0.18); } },
+  { rune: '疾', ico: 'spin', name: '疾风之手', desc: '攻击速度 +14%（第 5 次起 +7%）', apply: p => { p.nAtk = (p.nAtk || 0) + 1; p.atkMul *= 1 + (p.nAtk > 4 ? 0.07 : 0.14); } },
+  { rune: '体', ico: 'heart', name: '铁石之躯', desc: '生命上限 +18%（前 8 次，之后每次 +24）', apply: p => {
+    p.nHp = (p.nHp || 0) + 1;
+    const g = p.nHp <= 8 ? Math.max(24, Math.round(p.maxHp * 0.18)) : 24;
+    p.maxHp += g; heal(g);
+  } },
   { rune: '风', ico: 'dash', name: '迅捷之靴', desc: '移动速度 +10%', apply: p => p.speed *= 1.1 },
-  { rune: '血', ico: 'fang', name: '嗜血獠牙', desc: '每次击杀回复 3 点生命', apply: p => p.killHeal += 3 },
-  { rune: '暴', ico: 'crit', name: '致命直觉', desc: '暴击率 +12%，暴击造成双倍伤害', apply: p => p.crit += 0.12, cond: p => p.crit < 0.6 },
-  { rune: '智', ico: 'nova', name: '奥术沙漏', desc: '技能冷却缩短 15%', apply: p => p.cdr *= 0.85, cond: p => p.cdr > 0.45 },
+  { rune: '血', ico: 'fang', name: '嗜血獠牙', desc: '每次击杀回复 3 点生命（每秒最多回复最大生命的 2%）', apply: p => p.killHeal += 3 },
+  { rune: '暴', ico: 'crit', name: '致命直觉', desc: '暴击率 +10%，暴击造成双倍伤害', apply: p => p.crit += 0.10, cond: p => p.crit < 0.6 },
+  { rune: '智', ico: 'nova', name: '奥术沙漏', desc: '技能冷却缩短 12%', apply: p => p.cdr *= 0.88, cond: p => p.cdr > 0.5 },
   { rune: '艺', ico: 'blade', name: '武艺精通', desc: p => p.def.mastery, apply: p => p.mastery++, cond: p => p.mastery < 4 },
-  { rune: '盾', ico: 'bash', name: '守护符文', desc: '受到的伤害 -12%', apply: p => p.armor *= 0.88, cond: p => p.armor > 0.42 },
+  { rune: '盾', ico: 'bash', name: '守护符文', desc: '受到的伤害 -10%', apply: p => p.armor *= 0.90, cond: p => p.armor > 0.42 },
   { rune: '愈', ico: 'heal', instant: true, name: '生命泉水', desc: '立刻回复 60% 生命', apply: p => heal(p.maxHp * 0.6), cond: p => p.hp < p.maxHp * 0.7 },
   { rune: '翔', ico: 'blink', name: '轻羽披风', desc: '位移技能（5 号键）冷却缩短 25%', apply: p => p.dodgeMul *= 0.75, cond: p => p.dodgeMul > 0.4 },
 ];
@@ -2468,6 +2677,17 @@ function heal(v) {
   const before = p.hp; p.hp = Math.min(p.maxHp, p.hp + v);
   const got = Math.round(p.hp - before); if (got > 0) floatText(p.x, 2.2, p.z, '+' + got, 'heal');
 }
+/* 击杀回血单独走预算：每 1 秒最多回复最大生命的 2%，防止高密度刷怪时无限吸血 */
+function healKill(v) {
+  const p = player; if (!p || p.dead || !v) return;
+  const now = performance.now() / 1000;
+  if (!(now - (p.hkAt || 0) < 1)) { p.hkAt = now; p.hkGot = 0; }
+  const room = Math.max(0, p.maxHp * 0.02 - (p.hkGot || 0));
+  const g = Math.min(v, room);
+  if (g <= 0.5) return;
+  p.hkGot = (p.hkGot || 0) + g;
+  heal(g);
+}
 function banner(h, sub = '') {
   const b = $('banner'); $('banH').textContent = h; $('banP').textContent = sub;
   b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
@@ -2482,7 +2702,7 @@ function makePlayer(cls) {
     hp: def.hp, maxHp: def.hp, speed: def.speed, dmgMul: 1, atkMul: 1, crit: 0.05, cdr: 1, killHeal: 0, armor: def.armor ?? 1, mastery: 0, dodgeMul: 1, boons: [],
     res: RES[def.res].start, calm: RES.rage.calm, cast: null, casting: false, aimT: 0, aimA: Math.PI,
     cds: { atk: 0, q: 0, e: 0, u: 0, dodge: 0 }, cdMax: { atk: 1, q: 1, e: 1, u: 1, dodge: 1 },
-    dashT: 0, dashDur: 1, dashSpeed: 0, dashX: 0, dashZ: 1, charging: false, rolling: false, chargeHit: null, chargeTarget: null, chargeDist: 0, spinT: 0,
+    dashT: 0, dashDur: 1, dashSpeed: 0, dashX: 0, dashZ: 1, charging: false, rolling: false, chargeHit: null, chargeTarget: null, chargeDist: 0, spinT: 0, spinUltT: 0, spinTickT: 0, spinHealed: 0, wallT: 0,
     inv: 0, flash: 0, dead: false, deadT: 0,
     walk: 0, moving: false, windK: 0, atkT: 0, atkDur: def.atkDur, style: def.style, seed: 0,
   };
@@ -2495,7 +2715,8 @@ function pay(p, i) {
 }
 function hurtPlayer(dmg, sx, sz, kb = 7) {
   const p = player; if (!p || p.dead || p.inv > 0) return;
-  const v = Math.max(1, Math.round(dmg * p.armor));
+  const v = Math.max(1, Math.round(dmg * p.armor * (p.wallT > 0 ? 0.2 : 1)));
+  tpHurt(v);
   p.hp -= v; p.inv = 0.5; p.flash = 0.1; setFlash(p, true); gainRage(p, v * 0.65);
   const dx = p.x - sx, dz = p.z - sz, d = Math.hypot(dx, dz) || 1, k = kb * (p.def.id === 'knight' ? 0.6 : 1);
   p.kx = dx / d * k; p.kz = dz / d * k;
@@ -2579,21 +2800,28 @@ function updateCritters(dt) {
 function heroAttack(p, fa) {
   const d = p.def; p.cds.atk = d.atkCd / p.atkMul; p.atkT = p.atkDur; p.aimA = fa; p.aimT = 0.45;
   if (d.id === 'knight') {
-    const range = 3.3 * (1 + 0.25 * p.mastery), half = Math.min(2.5, 1.15 * (1 + 0.15 * p.mastery));
-    slashFx(p.x, p.z, fa, range, half, 0xfff2b0, 0.9 + p.y); sfx.swing();
-    let n = 0;
+    const range = 3.3, half = 0.95;
+    slashFx(p.x, p.z, fa, range, Math.min(1.05, 0.52 + 0.12 * p.mastery), 0xfff2b0, 0.9 + p.y); sfx.swing();
+    const list = [];
     for (const e of game.enemies.slice()) {
+      if (!e || e.dead || e.isCritter) continue;
       const dx = e.x - p.x, dz = e.z - p.z, dd = Math.hypot(dx, dz);
-      if (dd < range + e.r && (dd < e.r + 0.85 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < half)) { hurtEnemy(e, 28, { kb: 3.5, fx: p.x, fz: p.z }); n++; }
+      if (dd < range + e.r && (dd < e.r + 0.85 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < half)) list.push({ e, dd });
     }
+    list.sort((a, b) => (a.e === ctl.target ? -1 : b.e === ctl.target ? 1 : a.dd - b.dd));
+    const maxHits = 1 + p.mastery, n = Math.min(list.length, maxHits);
+    for (let i = 0; i < n; i++) {
+      const dmg = i === 0 ? (list.length === 1 ? Math.round(30 * (1 + 0.15 * p.mastery)) : 30) : Math.round(30 * 0.65);
+      hurtEnemy(list[i].e, dmg, { kb: 2.5, fx: p.x, fz: p.z });
+    }
+    if (n) { game.hitstop = 0.035; gainRage(p, 14); }
     hitCrittersInArc(p.x, p.z, fa, range, half);
-    if (n) { game.hitstop = 0.035; gainRage(p, 8 + n * 3); }
   } else if (d.id === 'ranger') {
     const n = 1 + p.mastery;
     for (let i = 0; i < n; i++) spawnProj({ team: 0, kind: 'arrow', x: p.x + Math.sin(fa) * 0.6, z: p.z + Math.cos(fa) * 0.6, a: fa + (i - (n - 1) / 2) * 0.11, speed: 30, dmg: 16, pierce: 1, life: 1.1, r: 0.4 });
     sfx.shoot();
   } else {
-    spawnProj({ team: 0, kind: 'fire', x: p.x + Math.sin(fa) * 0.7, z: p.z + Math.cos(fa) * 0.7, a: fa, speed: 24.5, dmg: 24, splash: 2.35 * (1 + 0.35 * p.mastery), life: 1.35, r: 0.5 });
+    spawnProj({ team: 0, kind: 'fire', x: p.x + Math.sin(fa) * 0.7, z: p.z + Math.cos(fa) * 0.7, a: fa, speed: 24.5, dmg: Math.round(24 * (1 + 0.15 * p.mastery)), splash: 2.35 * (1 + 0.25 * p.mastery), life: 1.35, r: 0.5 });
     sfx.fire();
   }
 }
@@ -2608,18 +2836,17 @@ function useSkill(p, slot, fa) {
   const s = p.def.skills[slot]; p.cds[key] = p.cdMax[key] = s.cd * p.cdr;
   const id = p.def.id; p.atkT = p.atkDur; p.aimA = fa; p.aimT = 0.45;
   if (id === 'knight' && slot === 0) {
-    slashFx(p.x, p.z, fa, 3.1, 1.0, 0xbfd4ff, 0.9 + p.y); sfx.thud(); gainRage(p, 15);
+    const range = 3.6 * (1 + 0.15 * p.mastery), half = 1.25;
+    slashFx(p.x, p.z, fa, range, half, 0xffd27a, 0.9 + p.y); sfx.swing(); sfx.thud();
     for (const e of game.enemies.slice()) {
       const dx = e.x - p.x, dz = e.z - p.z, dd = Math.hypot(dx, dz);
-      if (dd < 3.1 + e.r && (dd < e.r + 0.85 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < 1.05)) hurtEnemy(e, 38, { kb: 4, fx: p.x, fz: p.z, stun: 1.6, sk: 1 });
+      if (dd < range + e.r && (dd < e.r + 0.9 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < half)) hurtEnemy(e, 52, { kb: 3.5, fx: p.x, fz: p.z, sk: 1 });
     }
-    hitCrittersInArc(p.x, p.z, fa, 3.1, 1.05);
+    hitCrittersInArc(p.x, p.z, fa, range, half);
   } else if (id === 'knight') {
-    slashFx(p.x, p.z, fa, 4.4, Math.PI, 0xffd27a, 0.9 + p.y); shockFx(p.x, p.z, 4.4, 0xfff2b0); p.spinT = 0.35; sfx.swing(); sfx.thud(); game.shake = Math.max(game.shake, 0.3);
-    let hits = 0;
-    for (const e of game.enemies.slice()) if (Math.hypot(e.x - p.x, e.z - p.z) < 4.4 + e.r) { hurtEnemy(e, 68, { kb: 6, fx: p.x, fz: p.z, sk: 1 }); hits++; }
-    hitCrittersInRadius(p.x, p.z, 4.4);
-    if (hits) heal(Math.min(25, hits * 5));
+    p.wallT = 3.0;
+    shockFx(p.x, p.z, 2.6, 0xffd859, 0.4); burst(p.x, 1, p.z, 0xffd859, 12, 4, 0.2, 0.5); sfx.thud();
+    floatText(p.x, 2.3 + p.y, p.z, t('破釜沉舟', 'Last Stand'), 'boon');
   } else if (id === 'ranger' && slot === 0) {
     for (let i = -3; i <= 3; i++) spawnProj({ team: 0, kind: 'arrow', x: p.x, z: p.z, a: fa + i * 0.13, speed: 30, dmg: 16, pierce: 2, life: 1.1, r: 0.4, slow: 1.8, sk: 1 });
     sfx.shoot(); tone(700, 0.12, 'triangle', 0.1, 1200);
@@ -2629,15 +2856,17 @@ function useSkill(p, slot, fa) {
   } else if (id === 'mage' && slot === 0) {
     shockFx(p.x, p.z, 5.8, 0xaee8ff, 0.5); sfx.freeze();
     for (let i = 0; i < 26; i++) { const a = i / 26 * TAU; spark(p.x, 0.6, p.z, Math.sin(a) * 13, rand(1, 3), Math.cos(a) * 13, 0xcff3ff, 0.2, 0.45, 4); }
-    for (const e of game.enemies.slice()) if (Math.hypot(e.x - p.x, e.z - p.z) < 5.8 + e.r) hurtEnemy(e, 28, { freeze: 2.4, sk: 1 });
+    const mDmg = Math.round(28 * (1 + 0.15 * p.mastery));
+    for (const e of game.enemies.slice()) if (Math.hypot(e.x - p.x, e.z - p.z) < 5.8 + e.r) hurtEnemy(e, mDmg, { freeze: 2.4, sk: 1 });
     hitCrittersInRadius(p.x, p.z, 5.8);
   } else {
     const t = aimPoint(p, 17);
-    addZone({ x: t.x, z: t.z, r: 4.6, delay: 0.62, dmg: 105, team: 0, color: ZCOL.meteor, kind: 'meteor', kb: 9 }); sfx.cast();
+    addZone({ x: t.x, z: t.z, r: 4.6, delay: 0.62, dmg: Math.round(105 * (1 + 0.15 * p.mastery)), team: 0, color: ZCOL.meteor, kind: 'meteor', kb: 9 }); sfx.cast();
   }
 }
 /* ---- 5 号位移技能：骑士冲锋 / 游侠翻滚 / 法师闪现 ---- */
 function heroCharge(p, fa, tg) {
+  ctl.aiming = false;
   const valid = tg && !tg.dead && Math.hypot(tg.x - p.x, tg.z - p.z) <= 18 ? tg : null;
   const ca = valid ? Math.atan2(valid.x - p.x, valid.z - p.z) : fa;
   p.chargeTarget = valid; p.chargeDist = 0; p.dashT = p.dashDur = valid ? 0.6 : 0.28; p.dashSpeed = 30; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.chargeRaged = false; p.inv = Math.max(p.inv, 0.55); sfx.dash();
@@ -2656,7 +2885,7 @@ function makeMark(x, z, r, color) {
 function dropMark(g) { if (!g) return; scene.remove(g); g.traverse(o => { if (o.isMesh) o.material.dispose(); }); }
 function canStartUlt() {
   const mp = game.state === 'mp', def = mp ? CLASSES[net.cls] : player.def, u = def.ult, p = mp ? net.lp : player;
-  if (mp ? (net.ct > 0 || !net.me || net.me.dead) : (p.cast || p.dead)) return null;
+  if (mp ? (net.ct > 0 || !net.me || net.me.dead || p.dashT > 0) : (p.cast || p.dead || p.dashT > 0)) return null;
   if ((mp ? net.cd[3] : p.cds.u) > 0) { showErr(t('技能还没准备好', 'Skill not ready')); return null; }
   if ((mp ? net.res : p.res) < def.cost[3]) { showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res))); return null; }
   return { mp, def, u, p };
@@ -2686,6 +2915,7 @@ function ultPress() {
     clampRange(p, o, u.range); ultCast(o.x, o.z); return;
   }
   if (!canStartUlt()) return;
+  if (u.self) { ultCast(p.x, p.z); return; }
   stopMoveInput();
   const o = ultDefaultPt(p, u);
   ctl.pt = o;
@@ -2703,12 +2933,17 @@ function clampRange(p, o, range) {
 }
 function ultCast(x, z) {
   ctl.aiming = false;
-  const mp = game.state === 'mp', p = mp ? net.lp : player;
+  const mp = game.state === 'mp', p = mp ? net.lp : player, def = mp ? CLASSES[net.cls] : p.def, u = def.ult;
   if (p.air || p.dashT > 0) return showErr('必须站定才能施法');
-  stopMoveInput();
+  if (!u.self) stopMoveInput();
   if (mp) { net.ultPt = { x, z }; net.pendB |= 32; return; }
-  if (p.dead || p.cast) return;
-  const u = p.def.ult;
+  if (p.dead || p.cast || p.spinUltT > 0) return;
+  if (u.self) {
+    p.res = Math.max(0, p.res - p.def.cost[3]); p.cds.u = p.cdMax.u = u.cd * p.cdr;
+    p.spinUltT = u.dur || 3.2; p.spinTickT = 0; p.spinHealed = 0;
+    sfx.horn(); game.shake = Math.max(game.shake, 0.3);
+    return;
+  }
   p.cast = { t: 0, dur: u.cast, x, z, mark: makeMark(x, z, u.zone.r, ZCOL[u.kind]) };
   if (Math.hypot(x - p.x, z - p.z) > 0.2) p.aimA = Math.atan2(x - p.x, z - p.z);
   castShow(clsText(p.def).ult.name); sfx.cast();
@@ -2722,7 +2957,8 @@ function castDone(p) {
   const u = p.def.ult, c = p.cast; p.cast = null; dropMark(c.mark);
   p.res = Math.max(0, p.res - p.def.cost[3]); p.cds.u = p.cdMax.u = u.cd * p.cdr; p.atkT = p.atkDur; p.aimT = 0.5;
   castEnd(true); sfx.horn();
-  addZone(Object.assign({ x: c.x, z: c.z, team: 0, color: ZCOL[u.kind], kind: u.kind }, u.zone));
+  const zDmg = p.def.id === 'mage' ? Math.round(u.zone.dmg * (1 + 0.15 * p.mastery)) : u.zone.dmg;
+  addZone(Object.assign({ x: c.x, z: c.z, team: 0, color: ZCOL[u.kind], kind: u.kind }, u.zone, { dmg: zDmg }));
 }
 function updatePlayer(dt) {
   const p = player;
@@ -2736,6 +2972,22 @@ function updatePlayer(dt) {
   const fa = aimAngle(p);
   for (const k in p.cds) if (p.cds[k] > 0) p.cds[k] -= dt;
   if (p.inv > 0) p.inv -= dt; if (p.aimT > 0) p.aimT -= dt; if (p.landT > 0) p.landT -= dt;
+  if (p.wallT > 0) {
+    p.wallT -= dt;
+    if (Math.random() < 0.35) spark(p.x + rand(-0.6, 0.6), 0.9, p.z + rand(-0.6, 0.6), 0, 1.5, 0, 0xffd859, 0.16, 0.3, 0);
+  }
+  if (p.spinUltT > 0) {
+    p.spinUltT -= dt; p.spinTickT -= dt;
+    if (p.spinTickT <= 0) {
+      p.spinTickT += 0.3; p.spinT = 0.3;
+      const sr = 3.4 * (1 + 0.1 * p.mastery);
+      slashFx(p.x, p.z, p.face, sr, Math.PI, 0xffd27a, 0.9 + p.y); shockFx(p.x, p.z, sr, 0xfff2b0); sfx.swing();
+      let hits = 0;
+      for (const e of game.enemies.slice()) if (Math.hypot(e.x - p.x, e.z - p.z) < sr + e.r) { hurtEnemy(e, 19, { kb: 1.2, fx: p.x, fz: p.z, sk: 1 }); hits++; }
+      hitCrittersInRadius(p.x, p.z, sr);
+      if (hits && p.spinHealed < 16) { const got = Math.min(16 - p.spinHealed, hits * 2); p.spinHealed += got; heal(got); }
+    }
+  }
   const rs = RES[p.def.res];
   if (rs.regen) p.res = Math.min(100, p.res + rs.regen * dt); else if ((p.calm -= dt) <= 0) p.res = Math.max(0, p.res - rs.decay * dt);
   p.x += p.kx * dt; p.z += p.kz * dt; const damp = Math.exp(-9 * dt); p.kx *= damp; p.kz *= damp;
@@ -2778,8 +3030,9 @@ function updatePlayer(dt) {
       else { p.cast.t += dt; castProg(p.cast.t / p.cast.dur, p.cast.dur - p.cast.t); if (p.cast.t >= p.cast.dur) castDone(p); }
     }
     if (!p.cast) {
+      const spd = p.speed * (p.spinUltT > 0 ? 0.82 : 1);
       if (p.air) { p.x += p.jx * dt; p.z += p.jz * dt; }
-      else { p.x += mx * p.speed * dt; p.z += mz * p.speed * dt; if (p.moving) p.walk += p.speed * dt * 2.3 * Math.min(1, ml + 0.2); }
+      else { p.x += mx * spd * dt; p.z += mz * spd * dt; if (p.moving) p.walk += spd * dt * 2.3 * Math.min(1, ml + 0.2); }
       if (held('jump') && !p.air) { p.air = true; p.vy = JUMP.v; p.jx = mx * p.speed; p.jz = mz * p.speed; p.moving = false; sfx.dash(); }
       const cineLock = game.phase === 'bossIntro';
       if (cineLock) {
@@ -2800,11 +3053,11 @@ function updatePlayer(dt) {
           autoHit = best;
         }
       }
-      if ((held('atk') || autoHit) && p.cds.atk <= 0) {
+      if (p.spinUltT <= 0 && (held('atk') || autoHit) && p.cds.atk <= 0) {
         const atkAng = !held('atk') && autoHit ? Math.atan2(autoHit.x - p.x, autoHit.z - p.z) : fa;
         heroAttack(p, atkAng);
       }
-      if (held('q')) useSkill(p, 0, fa);
+      if (p.spinUltT <= 0 && held('q')) useSkill(p, 0, fa);
       if (held('e')) useSkill(p, 1, fa);
       if (taps.u) ultPress();
       }
@@ -2842,7 +3095,7 @@ function updatePlayer(dt) {
 /* ================= enemies ================= */
 function spawnEnemy(type, x, z, o = {}) {
   const d = ENEMY[type], tier = o.tier || 0, rig = makeRig(type + tier, () => d.build(o)), sz = tier ? 0.6 : 1;
-  const hp = Math.round(d.hp * game.waveHp * (tier ? 0.4 : 1));
+  const hp = Math.round(d.hp * game.waveHp * (tier ? 0.4 : 1) * (d.boss ? (game.bossHp || 1) : 1));
   const e = {
     type, d, rig, root: rig.root, x, z, y: 0, face: Math.atan2(-x, -z), r: d.r * sz, h: d.h * sz, hp, maxHp: hp,
     speed: d.speed * rand(0.9, 1.1), dmg: d.dmg * game.waveDmg * (tier ? 0.6 : 1), mass: d.mass * (tier ? 0.6 : 1), kx: 0, kz: 0,
@@ -2949,8 +3202,9 @@ function killEnemy(e) {
   if (e.bar) scene.remove(e.bar.g);
   game.corpses.push({ e, t: 0 });
   game.kills++; game.excite = Math.min(1, game.excite + (e.boss ? 1 : 0.14));
+  tpKill(e);
   burst(e.x, e.h * 0.5, e.z, e.d.blood, e.boss ? 40 : 12, e.boss ? 10 : 6, e.boss ? 0.3 : 0.2, 0.7);
-  if (player.killHeal) heal(player.killHeal);
+  if (player.killHeal) healKill(player.killHeal);
   if (e.type === 'slime' && !e.tier) for (const s of [-1, 1]) { const c = spawnEnemy('slime', e.x + s * 0.6, e.z + rand(-0.4, 0.4), { tier: 1 }); c.kx = s * 5; c.t = rand(0.1, 0.4); }
   if (e.boss) {
     game.boss = null; $('bossBar').hidden = true; game.shake = 1; sfx.boom(); sfx.cheer(); shockFx(e.x, e.z, 9, 0xffc23d, 0.7);
@@ -3414,18 +3668,35 @@ function updateFx(dt) {
 
 /* ================= waves ================= */
 const BOSS_ROT = ['ogre', 'lich', 'blackKnight'];
+// 单人难度曲线：整个平衡的唯一改动点，与 scripts/balance_model.py 的 PROPOSED 逐项对应。
+// 改这里之前先跑一遍模型，别凭手感调。
+const BAL = {
+  hp:     n => 1.70 + 0.130 * (n - 1) + 0.0128 * (n - 1) * (n - 1),    // 单体血量倍率：第 30 波 16.2x
+  dmg:    n => 1.00 + 0.050 * (n - 1) + 0.0006 * (n - 1) * (n - 1),    // 单体伤害倍率：第 30 波 2.95x
+  budget: n => (n % 5 === 0) ? 4 + 1.8 * (n - 1) : 6 + 2.2 * (n - 1),  // 出怪预算（首领波少配小怪）
+  bossHp: n => 0.52 + 0.009 * (n - 1),                                  // 首领额外血量倍数（实测校准：使首领波≈邻波 1.5–1.8 倍）
+  spawn:  n => Math.max(0.18, 0.50 - 0.015 * n),                        // 出怪间隔（秒）
+  cap:    n => Math.min(26, 10 + n),                                    // 同屏上限
+};
 function buildWave(n) {
-  const q = []; let budget;
-  const bossWave = n % 5 === 0;
-  if (bossWave) { q.push(BOSS_ROT[(n / 5 - 1) % BOSS_ROT.length]); budget = 3 + n * 0.7; } else budget = 5 + n * 2.3;
+  const q = []; const bossWave = n % 5 === 0;
+  let budget = BAL.budget(n);
+  if (bossWave) q.push(BOSS_ROT[(n / 5 - 1) % BOSS_ROT.length]);
   const pool = Object.keys(ENEMY).filter(k => ENEMY[k].cost && ENEMY[k].from <= n);
-  let guard = 200;
-  while (budget >= 1 && guard--) { const t = pick(pool), c = ENEMY[t].cost; if (c > budget + 0.5) continue; q.push(t); budget -= c; }
+  // 按造价加权：预算涨上去后自然偏向兽人/术士，避免被 1 费小怪把血池稀释掉
+  const wsum = pool.reduce((s, k) => s + Math.pow(ENEMY[k].cost, 1.3), 0);
+  let guard = 260;
+  while (budget >= 1 && guard--) {
+    let r = Math.random() * wsum, t = pool[pool.length - 1];
+    for (const k of pool) { r -= Math.pow(ENEMY[k].cost, 1.3); if (r <= 0) { t = k; break; } }
+    const c = ENEMY[t].cost; if (c > budget + 0.5) continue;
+    q.push(t); budget -= c;
+  }
   return q;
 }
 function startWave(n) {
   if (devStartWave > 1 && n < devStartWave) n = devStartWave;   // 仅当服务器设置了 DEV_START_WAVE
-  game.wave = n; game.waveHp = 1 + 0.12 * (n - 1); game.waveDmg = 1 + 0.06 * (n - 1);
+  game.wave = n; game.waveHp = BAL.hp(n); game.waveDmg = BAL.dmg(n); game.bossHp = BAL.bossHp(n);
   game.spawnQ = buildWave(n); game.spawnT = 0; game.phase = 'intro'; game.phaseT = 1.5;
   $('skipWaitWrap').hidden = true;
   saveSoloState();
@@ -3434,13 +3705,14 @@ function startWave(n) {
   banner(t('第 ' + n + ' 波', 'Wave ' + n), lb ? t('首领登场：', 'Boss Appears: ') + lb.name : t('闸门升起，怪物涌入', 'The gates rise—monsters pour in!'));
   sfx.horn();
   if (!(boss && boss.cine)) { setGates(true); sfx.thud(); }
+  tpWaveStart(n);
 }
 function updateWave(dt) {
   if (game.phase === 'intro') { game.phaseT -= dt; if (game.phaseT <= 0) game.phase = 'fight'; }
   else if (game.phase === 'bossIntro') { if (!game.cine) game.phase = 'fight'; }
   else if (game.phase === 'fight') {
     game.spawnT -= dt;
-    const cap = Math.min(22, 9 + game.wave);
+    const cap = BAL.cap(game.wave);
     if (game.spawnQ.length && game.spawnT <= 0 && game.enemies.length < cap) {
       const type = game.spawnQ.shift(), boss = ENEMY[type].boss;
       let k = Math.random() * 4 | 0;
@@ -3449,19 +3721,30 @@ function updateWave(dt) {
       const a = k * Math.PI / 2 + rand(-0.07, 0.07), r = R_ARENA - (boss ? 3.2 : 1.6);
       spawnEnemy(type, Math.sin(a) * r, Math.cos(a) * r);
       if (boss) { game.shake = 0.5; sfx.thud(); }
-      game.spawnT = boss ? 1.2 : Math.max(0.22, 0.6 - game.wave * 0.02);
+      game.spawnT = boss ? 1.2 : BAL.spawn(game.wave);
       if (!game.spawnQ.length) setTimeout(() => { if (game.state === 'playing' && !game.spawnQ.length) setGates(false); }, 1500);
     }
     if (!game.spawnQ.length && !game.enemies.length) {
       game.phase = 'cleared'; game.phaseT = 5; game.excite = 1; sfx.cheer(); setGates(false);
-      $('skipWaitWrap').hidden = false;
-      banner(t('肃清！', 'Wave Cleared!'), t('第 ' + game.wave + ' 波结束 · 5 秒后选祝福，按空格可立刻跳过', 'Wave ' + game.wave + ' cleared · 5s to collect health packs (Space to skip)'));
+      tpWaveEnd();
+      $('skipWaitWrap').hidden = false; syncSkipWaitBtn();
+      banner(t('肃清！', 'Wave Cleared!'), padMode
+        ? t('第 ' + game.wave + ' 波结束 · 5 秒后选祝福，按 A 可立刻跳过', 'Wave ' + game.wave + ' cleared · 5s to collect health packs (A to skip)')
+        : touchMode
+        ? t('第 ' + game.wave + ' 波结束 · 5 秒后选祝福，点按钮可立刻跳过', 'Wave ' + game.wave + ' cleared · 5s to collect health packs (tap to skip)')
+        : t('第 ' + game.wave + ' 波结束 · 5 秒后选祝福，按空格可立刻跳过', 'Wave ' + game.wave + ' cleared · 5s to collect health packs (Space to skip)'));
       for (const p of game.projectiles) scene.remove(p.mesh); game.projectiles.length = 0;
     }
   } else if (game.phase === 'cleared') {
     game.phaseT -= dt;
     if (game.phaseT <= 0 && !player.dead) { $('skipWaitWrap').hidden = true; openUpgrade(); }
   }
+}
+function syncSkipWaitBtn() {
+  const b = $('btnSkipWait'); if (!b) return;
+  b.textContent = padMode ? t('立刻选祝福（手柄 A）', 'Skip Wait (Pad A)')
+    : touchMode ? t('立刻选祝福', 'Skip Wait')
+    : t('立刻选祝福（空格）', 'Skip Wait (Space)');
 }
 function skipWaveWait() {
   if (game.state !== 'playing' || game.phase !== 'cleared' || !player || player.dead) return;
@@ -3471,8 +3754,14 @@ function skipWaveWait() {
 /* ================= UI ================= */
 const hudC = {};
 function setTxt(id, v) { if (hudC[id] !== v) { hudC[id] = v; $(id).textContent = v; } }
-let autoAtk = false; try { autoAtk = localStorage.getItem('ec_autoatk') === '1'; } catch (e) {}
+let autoAtk = !touchMode; try { const v = localStorage.getItem('ec_autoatk'); if (v !== null) autoAtk = v === '1'; } catch (e) {}   // PC 默认自动普攻
 function syncAutoAtkUI() {
+  const b = $('btnAutoAtk');
+  if (b) {
+    const sp = b.querySelector('span');
+    if (sp) sp.textContent = autoAtk ? t('自动普攻：开', 'Auto Atk: On') : t('自动普攻：关', 'Auto Atk: Off');
+    b.classList.toggle('off', !autoAtk);
+  }
   const s = slots && slots[0] ? slots[0].el : null;
   if (!s) return;
   s.classList.toggle('auto-on', autoAtk);
@@ -3484,8 +3773,28 @@ function toggleAutoAtk() {
   autoAtk = !autoAtk;
   try { localStorage.setItem('ec_autoatk', autoAtk ? '1' : '0'); } catch (e) {}
   syncAutoAtkUI(); sfx.ui();
-  const hint = touchMode ? t('长按普攻按钮可随时切换', 'Hold Attack button to toggle') : padMode ? t('按十字键右键可随时切换', 'Press D-Pad → to toggle') : t('按 F 键可随时切换', 'Press F anytime to toggle');
+  const hint = touchMode ? t('长按普攻按钮可随时切换', 'Hold Attack button to toggle') : padMode ? t('按十字键右键可随时切换', 'Press D-Pad → to toggle') : t('可在暂停菜单中随时切换', 'Toggle anytime in Pause menu');
   banner(autoAtk ? t('自动普攻已开启', 'Auto Attack: ON') : t('自动普攻已关闭', 'Auto Attack: OFF'), hint);
+}
+if ($('btnAutoAtk')) $('btnAutoAtk').addEventListener('click', toggleAutoAtk);
+function keyLabel(code) {
+  if (!code) return '?';
+  if (/^Digit(\d)$/.test(code)) return code.slice(5);
+  if (/^Numpad(\d)$/.test(code)) return 'Num' + code.slice(6);
+  if (/^Key([A-Z])$/.test(code)) return code.slice(3);
+  if (code === 'ShiftLeft' || code === 'ShiftRight') return 'Shift';
+  if (code === 'ControlLeft' || code === 'ControlRight') return 'Ctrl';
+  if (code === 'AltLeft' || code === 'AltRight') return 'Alt';
+  if (code === 'Space') return 'Space';
+  return code;
+}
+function slotKeyText(k, fallback) {
+  if (padMode) return { atk: 'X', q: 'Y', e: 'B', u: 'RB', dodge: 'LB', jump: 'A' }[k] || fallback;
+  if (touchMode) return '';
+  return (typeof KEYMAP !== 'undefined' && KEYMAP[k] && KEYMAP[k][0]) ? keyLabel(KEYMAP[k][0]) : fallback;
+}
+function refreshSkillKeys() {
+  for (const s of slots) s.el.children[0].textContent = slotKeyText(s.k, '');
 }
 let slots = [];
 function buildSkillBar(d = player.def) {
@@ -3496,7 +3805,7 @@ function buildSkillBar(d = player.def) {
   slots = defs.map(([k, key, ico, name], i) => {
     const s = document.createElement('div'); s.className = 'slot' + (k === 'jump' ? ' touch-only' : ''); s.dataset.k = k;
     s.innerHTML = '<span class="key"></span><span class="ico"></span><span class="sname"></span><i class="cd"></i><span class="sec"></span>';
-    s.children[0].textContent = padMode ? ({ atk: 'X', q: 'Y', e: 'B', u: 'RB', dodge: 'LB', jump: 'A' }[k] || key) : key; s.children[1].innerHTML = icon(ico); s.children[2].textContent = name;
+    s.children[0].textContent = slotKeyText(k, key); s.children[1].innerHTML = icon(ico); s.children[2].textContent = name;
     const c = tint[k] || (d.id === 'knight' ? ['#b0483f', '#4a1f26'] : d.id === 'ranger' ? ['#4f9f5f', '#1f4a2c'] : ['#5b6fd6', '#262a6a']);
     s.style.setProperty('--c1', c[0]); s.style.setProperty('--c2', c[1]);
     const cost = i < 4 ? d.cost[i] : 0; s.title = name + (cost ? ' (' + cost + ' ' + resName(d.res) + ')' : '');
@@ -3677,8 +3986,8 @@ function renderMenu() {
   let best = 0; try { best = +localStorage.getItem('embercrown-best') || 0; } catch (e) {}
   $('best').textContent = best ? t('· 最佳 第 ' + best + ' 波', '· Best Wave ' + best) : '';
   $('hint').innerHTML = touchMode
-    ? t('<b>左下摇杆</b> 移动 · <b>右半屏滑动</b> 转镜头 / 点选目标 · <b>双指捏合</b> 缩放视角 · <b>右下轮盘</b> 普攻、技能、位移与跳跃', '<b>Left Stick</b> Move · <b>Right Drag</b> Camera / Tap Target · <b>Pinch</b> Zoom · <b>Wheel</b> Attack, Skills, Dodge & Jump')
-    : t('<b>WASD</b> 移动 · <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性', '<b>WASD</b> Move · <b>RMB Drag</b> Turn · <b>Space</b> Jump · <b>1–5</b> Skills · <b>Tab / Click</b> Target · <b>C</b> Stats');
+    ? ''
+    : t('<b>WASD</b> 移动（<b>A/D</b> 平移）· <b>右键拖动</b> 转向 · <b>空格</b> 跳跃 · <b>1–5</b> 技能 · <b>Tab / 点击</b> 选目标 · <b>C</b> 属性', '<b>WASD</b> Move (<b>A/D</b> Strafe) · <b>RMB Drag</b> Turn · <b>Space</b> Jump · <b>1–5</b> Skills · <b>Tab / Click</b> Target · <b>C</b> Stats');
 }
 $('kitPop').addEventListener('click', () => closeKitPop());
 document.addEventListener('pointerdown', e => { if (!$('kitPop').hidden && !$('kitPop').contains(e.target) && !$('kit').contains(e.target)) closeKitPop(); });
@@ -3805,10 +4114,12 @@ function startGame(resumeData = null) {
   show('menu', false); show('over', false); show('pause', false); show('upgrade', false); show('hud', true);
   camTarget.set(0, 1.5, 0); ctlReset(Math.PI);
   initCritters();
+  tpStartRun(selCls, useResume, useResume ? resumeData.wave : 1);
   game.state = 'playing'; syncStickVis(); startWave(useResume ? resumeData.wave : 1);
 }
 function toMenu() {
   if (game.state === 'playing' || game.state === 'paused') saveSoloState();
+  tpEndRun('quit');
   $('skipWaitWrap').hidden = true;
   mpLeave(); clearWorld(); game.state = 'menu'; syncStickVis(); renderBuffs();
   show('hud', false); show('over', false); show('pause', false); show('upgrade', false); show('menu', true); closeLobby();
@@ -3869,6 +4180,7 @@ function chooseBoon(b) {
 function showOver() {
   if (game.state !== 'playing' && game.state !== 'paused') return;
   clearSoloSave(); $('skipWaitWrap').hidden = true;
+  tpEndRun('dead');
   game.state = 'over'; show('pause', false);
   let best = 0; try { best = +localStorage.getItem('embercrown-best') || 0; if (game.wave > best) { best = game.wave; localStorage.setItem('embercrown-best', best); } } catch (e) { best = Math.max(best, game.wave); }
   $('oWave').textContent = game.wave; $('oKills').textContent = game.kills; $('oBest').textContent = best;
@@ -3884,9 +4196,9 @@ function togglePause() {
   const mp = game.state === 'mp';
   $('pauseH').textContent = mp ? t('对战菜单', 'Match Menu') : t('暂停', 'Paused'); $('pauseP').textContent = mp ? t('对战不会暂停，别离开太久。', 'Online matches do not pause—don’t stay away long.') : t('闸门后的怪物会等你。', 'The monsters behind the gate will wait.');
   renderControlGuide();
-  if (mp) { net.menu = !net.menu; if (net.menu) clearInputs(); show('pause', net.menu); }
+  if (mp) { net.menu = !net.menu; if (net.menu) clearInputs(); else { show('keybinds', false); bindWait = ''; } show('pause', net.menu); }
   else if (game.state === 'playing') { game.state = 'paused'; clearInputs(); show('pause', true); }
-  else if (game.state === 'paused') { game.state = 'playing'; show('pause', false); last = performance.now(); }
+  else if (game.state === 'paused') { game.state = 'playing'; show('keybinds', false); bindWait = ''; show('pause', false); last = performance.now(); }
 }
 
 /* ================= input & controls (WoW style) =================
@@ -4052,6 +4364,7 @@ function pollGamepad(dt) {
   pad.lx = lx; pad.ly = ly; pad.rx = rx; pad.ry = ry;
   if (edge(9) && (game.state === 'playing' || game.state === 'paused' || game.state === 'mp')) { togglePause(); syncPadPrev(gp); return; }
   if (edge(8) && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); syncPadPrev(gp); return; }
+  if (edge(8) && game.state === 'menu' && activeMenuScreen()?.id === 'menu') { returnToLogin(); syncPadPrev(gp); return; }
   if (inPlay() && edge(12)) { toggleChar(); syncPadPrev(gp); return; }
   if (!inPlay()) {
     if (padWasPlay) {
@@ -4096,8 +4409,29 @@ window.addEventListener('gamepaddisconnected', e => {
   if (![...list].some(g => g && g.connected)) setPad(false);
 });
 const ctl = { yaw: Math.PI, camYaw: Math.PI, pitch: 0.62, dist: 13, rmb: false, lmb: false, drag: 0, aiming: false, pt: null, target: null, ml: 0, mx: 0, mz: 0, turning: false, autoTurn: false };
-const KEYMAP = { atk: ['Digit1', 'Numpad1'], q: ['Digit2', 'Numpad2'], e: ['Digit3', 'Numpad3'], u: ['Digit4', 'Numpad4'], dodge: ['Digit5', 'Numpad5', 'ShiftLeft'], jump: ['Space'] };
-const KEY2ACT = {}; for (const k in KEYMAP) for (const c of KEYMAP[k]) KEY2ACT[c] = k;
+const DEFAULT_KEYMAP = { atk: ['Digit1', 'Numpad1'], q: ['Digit2', 'Numpad2'], e: ['Digit3', 'Numpad3'], u: ['Digit4', 'Numpad4'], dodge: ['Digit5', 'Numpad5', 'ShiftLeft'], jump: ['Space'] };
+const FIXED_KEYS = new Set(['Escape', 'KeyP', 'Tab', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyC', 'KeyO', 'KeyG']);
+function loadKeymap() {
+  const m = {};
+  for (const k in DEFAULT_KEYMAP) m[k] = DEFAULT_KEYMAP[k].slice();
+  try {
+    const raw = JSON.parse(localStorage.getItem('ec_binds') || 'null');
+    if (raw && typeof raw === 'object') {
+      for (const k in DEFAULT_KEYMAP) {
+        if (Array.isArray(raw[k]) && raw[k].length && raw[k].every(c => typeof c === 'string' && !FIXED_KEYS.has(c))) m[k] = raw[k].slice(0, 3);
+      }
+    }
+  } catch (e) {}
+  return m;
+}
+function saveKeymap() { try { localStorage.setItem('ec_binds', JSON.stringify(KEYMAP)); } catch (e) {} }
+const KEYMAP = loadKeymap(), KEY2ACT = {};
+function rebuildKey2Act() {
+  for (const c in KEY2ACT) delete KEY2ACT[c];
+  for (const k in KEYMAP) for (const c of KEYMAP[k]) KEY2ACT[c] = k;
+}
+rebuildKey2Act();
+let bindWait = '';
 const ndc = new T.Vector2(), ray = new T.Raycaster(), ground = new T.Plane(new T.Vector3(0, 1, 0), 0), hitV = new T.Vector3();
 function held(k) { if (act[k] || taps[k]) return true; for (const c of KEYMAP[k]) if (keys[c]) return true; return false; }
 function clearTaps() { for (const k in taps) taps[k] = false; }
@@ -4107,8 +4441,8 @@ function ctlInput(dt, frozen) {
   let fwd = 0, str = 0, turn = 0;
   if (!frozen) {
     if (keys.KeyW || keys.ArrowUp || (ctl.rmb && ctl.lmb)) fwd += 1; if (keys.KeyS || keys.ArrowDown) fwd -= 1;
-    if (keys.KeyE) str += 1; if (keys.KeyQ) str -= 1;
-    if (keys.KeyD || keys.ArrowRight) turn += 1; if (keys.KeyA || keys.ArrowLeft) turn -= 1;
+    if (keys.KeyA) str -= 1; if (keys.KeyD) str += 1;                       // A/D 左右平移（默认）
+    if (keys.ArrowLeft) turn -= 1; if (keys.ArrowRight) turn += 1;          // 方向键仍可转向
     if (ctl.rmb) { str += turn; turn = 0; }
     fwd -= stick.dz + pad.ly; str += stick.dx + pad.lx;
   }
@@ -4239,18 +4573,29 @@ window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (game.state !== 'menu' && (['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))) e.preventDefault();
   if (e.repeat) return;
+  if (bindWait) {
+    e.preventDefault();
+    if (e.code === 'Escape') { bindWait = ''; renderControlGuide(); return; }
+    if (FIXED_KEYS.has(e.code)) { showErr(t('该键为系统固定键，不可绑定', 'System key cannot be rebound')); return; }
+    for (const k in KEYMAP) KEYMAP[k] = KEYMAP[k].filter(c => c !== e.code);
+    KEYMAP[bindWait] = [e.code];
+    bindWait = '';
+    saveKeymap(); rebuildKey2Act(); refreshSkillKeys(); renderControlGuide(); sfx.ui();
+    return;
+  }
   if (e.code === 'Escape' || e.code === 'KeyP') {
+    if (e.code === 'Escape' && $('keybinds') && !$('keybinds').hidden) { show('keybinds', false); sfx.ui(); return; }
     if (e.code === 'Escape' && charOpen) toggleChar(false);
     else if (e.code === 'Escape' && !$('rosterPanel').hidden) toggleRoster(false);
     else if (e.code === 'Escape' && ctl.aiming) ctl.aiming = false;
     else if (e.code === 'Escape' && game.state === 'playing' && player && player.cast) castStop(player, '施法被打断');
     else if (e.code === 'Escape' && game.state === 'mp' && net.ct > 0) net.pendB |= 64;
+    else if (e.code === 'Escape' && game.state === 'menu' && activeMenuScreen()?.id === 'menu') returnToLogin();
     else togglePause();
     return;
   }
   if (e.code === 'KeyC') return toggleChar();
   if (e.code === 'KeyO' && game.state === 'mp' && net.phase === 0) { sfx.ui(); toggleRoster(); return; }
-  if (e.code === 'KeyF' && inPlay()) { toggleAutoAtk(); return; }
   if (e.code === 'KeyG' && game.state === 'mp' && inPlay() && net.item) { net.pendB |= 128; sfx.ui(); return; }
   if (e.code === 'Space' && game.state === 'playing' && game.phase === 'cleared') { skipWaveWait(); return; }
   if (game.state === 'upgrade' && /^(Digit|Numpad)[123]$/.test(e.code)) { const b = game.boonPicks[+e.code.slice(-1) - 1]; if (b) chooseBoon(b); return; }
@@ -4425,7 +4770,7 @@ function openDiffModal(from) {
   diffFrom = from;
   const isCreate = from === 'create';
   $('diffStepTag').textContent = isCreate ? t('创建房间（2 / 2）', 'Create Room (2 / 2)') : t('快速匹配', 'Quick Match');
-  $('diffStepDesc').textContent = isCreate ? t('已设 ' + (parseInt($('inBots').value, 10) || 0) + ' 个电脑，选模式与强度', (parseInt($('inBots').value, 10) || 0) + ' bots · pick mode & difficulty') : t('选择模式与电脑强度', 'Choose mode & bot difficulty');
+  $('diffStepDesc').textContent = isCreate ? t('已设 ' + (parseInt($('inBots').value, 10) || 0) + ' 个电脑，选模式与强度', (parseInt($('inBots').value, 10) || 0) + ' bots · pick mode & difficulty') : t('选择模式与电脑强度（优先加入同模式活跃房间）', 'Choose mode & difficulty (joins active rooms first)');
   $('btnDiffGo').textContent = isCreate ? t('创建并进入', 'Create & Enter') : t('开始匹配', 'Find Match');
   showLobbyStep('diff');
 }
@@ -4494,6 +4839,7 @@ $('btnQuit').addEventListener('click', toMenu);
 $('btnResume').addEventListener('click', () => { if (touchMode) enterMobileFs(false); togglePause(); });
 $('btnPause').addEventListener('click', togglePause);
 $('btnCrowd').addEventListener('click', () => { crowdOn = !crowdOn; try { localStorage.setItem('ec_crowd', crowdOn ? '1' : '0'); } catch (e) {} syncCrowd(); sfx.ui(); });
+$('btnCamFollow').addEventListener('click', () => { camFollow = !camFollow; try { localStorage.setItem('ec_camfollow', camFollow ? '1' : '0'); } catch (e) {} syncCamFollow(); sfx.ui(); });
 $('btnSound').addEventListener('click', () => { muted = !muted; $('btnSound').classList.toggle('off', muted); $('btnSound').querySelector('span').textContent = muted ? t('音效：关', 'Sound: Off') : t('音效：开', 'Sound: On'); audioInit(); sfx.ui(); });
 function applyI18n() {
   document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
@@ -4512,36 +4858,104 @@ function applyI18n() {
   setQ('#btnGate', '验证并进入', 'Verify & Enter');
   setQ('#loginTitle', '烬冠竞技场', 'Embercrown Arena');
   setQ('#btnEnterGame', '进入游戏', 'Enter Game');
-  setQ('#btnVer', '版本 v1.5.0patch1（最近更新）', 'Version v1.5.0patch1 (Changelog)');
+  setQ('#btnVer', '版本 ' + APP_VER + (verStale ? '（待更新）' : '（最近更新）'), 'Version ' + APP_VER + (verStale ? ' (Update ready)' : ' (Changelog)'));
   setQ('#btnAbout', '关于', 'About');
-  setQ('#verTitle', '版本 v1.5.0patch1 · 最近更新', 'Version v1.5.0patch1 · Recent Updates');
+  setQ('#verTitle', '版本 ' + APP_VER + (verStale ? ' · 有新版本' : ' · 最近更新'), 'Version ' + APP_VER + (verStale ? ' · New version available' : ' · Recent Updates'));
+  setQ('#verStaleText', '服务器已更新到 ' + (verNew || '新版本') + '，刷新页面即可用上。', 'A newer build ' + (verNew || '') + ' is live — reload to update.');
+  setQ('#btnVerReload', '刷新页面', 'Reload');
+  if ($('verStale')) $('verStale').hidden = !verStale;
+  if ($('btnVerReload')) $('btnVerReload').hidden = !verStale;
   setH('#verList',
-    '<li>联机模式新增中立小鸡：房间同步生成可交互小鸡，支持点击或手柄锁定，骑士冲锋与挥砍命中可攒怒气。</li>' +
-    '<li>优化移动端触控技能轮盘：右下角核心大按钮改为 2 号技能，普攻移至外圈并支持长按切换自动普攻（AUTO）。</li>' +
-    '<li>优化触屏大招与自动普攻：大招按下即进入瞄准并支持拖放施放、快点保留点选；自动普攻仅在射程内触发并自动朝向锁定目标。</li>' +
-    '<li>优化界面与弹窗适配：紧凑化移动端「模式与难度」弹窗，修复竖屏旋转提示层级并调整双深潜者构图。</li>',
-    '<li>Added synced neutral chickens to Multiplayer rooms, targetable by click or gamepad and granting Knight Rage on Charge or Slash hits.</li>' +
-    '<li>Refined mobile touch wheel: moved Skill 2 to the bottom-right core slot and Attack to the outer rim with long-press Auto Attack (AUTO) toggle.</li>' +
-    '<li>Improved touch Ult & Auto Attack: pressing Ult enters aiming (drag out to cast, quick tap keeps tap-to-cast); Auto Attack triggers only in range and auto-faces targets.</li>' +
-    '<li>Polished UI layout: compacted mobile Mode & Difficulty modal, fixed portrait rotate hint z-index, and framed both Deep One guards.</li>'
+    '<li>键位自定义：暂停菜单新增独立「键位设置」弹窗，支持战斗动作改键（本地持久保存）与恢复默认。</li>' +
+    '<li>按键解耦：1 键不再切换自动普攻（移至暂停菜单开关），释放 Q / E / F 供自由改键。</li>' +
+    '<li>界面优化：触屏端隐藏键盘提示与键位入口；本地/官服直连登录页服务器信息卡片样式与联机选服卡片统一。</li>' +
+    '<li>遥测完善：补充首领遇敌与战败剩余血量记录，更准确统计首领通关率。</li>' +
+    '<li>上一版 v1.5.0patch3：遥测迁移至 Cloudflare 边缘入库、IP 脱敏（加盐哈希与地级市）及联机输入方式上报修正。</li>',
+    '<li>Keybindings: added a dedicated Keybindings modal in the Pause menu with per-action rebinding (saved locally) and Reset to Defaults.</li>' +
+    '<li>Key decoupling: 1 no longer toggles Auto Attack (moved to the Pause menu), freeing Q / E / F for combat rebinding.</li>' +
+    '<li>UI polish: touch devices hide keyboard hints and Keybindings; the direct-server info card now matches the realm selector card style.</li>' +
+    '<li>Telemetry: added Boss encounter and remaining HP tracking on defeats for accurate Boss clear-rate stats.</li>' +
+    '<li>Previous v1.5.0patch3: moved telemetry to Cloudflare edge storage, added IP salting + city-level anonymization, and fixed multiplayer input-mode reporting.</li>'
   );
   setQ('#aboutTitle', '关于烬冠竞技场', 'About Embercrown Arena');
   setQ('#aboutDesc', '低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。', 'A low-poly dark fantasy arena featuring endless solo waves and 8-player online FFA.');
   setQ('#aboutServerNote', '联机服务器还有6天到期。', 'Notice: The multiplayer server expires in 6 days.');
   setH('#aboutDownload',
-    '单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 单机离线版 (ZIP)</a>',
-    'Solo Download: <a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.5.0patch1/embercrown-solo-v1.5.0patch1.zip" target="_blank" rel="noopener noreferrer">v1.5.0patch1 Offline Solo (ZIP)</a>'
+    '单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.6.0/embercrown-solo-v1.6.0.zip" target="_blank" rel="noopener noreferrer">v1.6.0 单机离线版 (ZIP)</a>',
+    'Solo Download: <a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.6.0/embercrown-solo-v1.6.0.zip" target="_blank" rel="noopener noreferrer">v1.6.0 Offline Solo (ZIP)</a>'
   );
   setQ('#btnVerClose', '确定', 'Close');
   setQ('#btnAboutClose', '确定', 'Close');
+  setH('#aboutThanks',
+    '致谢：<a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> 社区',
+    'Thanks to the <a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> community');
+  setQ('#aboutTabInfo', '关于', 'About');
+  setQ('#aboutTabPriv', '数据与隐私', 'Data & Privacy');
+  setQ('#privLead',
+    '单人每局结束、联机每局结束都会回传一份匿名摘要（不含账号、聊天与设备信息），统一上传到 Cloudflare，只用来调整难度与平衡。连接 IP 在写入数据库前就已脱敏：只保留加盐哈希与地级市，原始地址不保存。以下为全部内容。',
+    'Each solo run and each multiplayer round sends back an anonymous summary (no account, chat or device info). Everything is uploaded to Cloudflare and used only to tune difficulty and balance. Connection IPs are sanitized before they are stored: only a salted hash and the city-level region are kept, never the raw address. This is the complete list.');
+  setH('#privCollectL',
+    '<li>职业、是否续玩、起止波次、结束原因（阵亡或退出）</li>' +
+    '<li>每波时长、击杀数与怪物种类、该波受伤、波末剩余血量%</li>' +
+    '<li>首领遭遇：类型、击杀耗时、最大血量倍率</li>' +
+    '<li>当局拿到的祝福（符文与层数）</li>' +
+    '<li>客户端版本号、界面语言、输入方式（键鼠 / 触屏 / 手柄）</li>',
+    '<li>Class, resumed flag, start and end wave, why the run ended (death or quit)</li>' +
+    '<li>Per-wave duration, kills by enemy type, damage taken, remaining HP %</li>' +
+    '<li>Boss encounters: type, time-to-kill, max HP multiplier</li>' +
+    '<li>Blessings taken (rune and stack count)</li>' +
+    '<li>Client build, UI language, input mode (keyboard+mouse / touch / gamepad)</li>'
+  );
+  setH('#privMpL',
+    '<li>进房与离开：房间号、时间、连接 IP 的脱敏值（加盐哈希 + 地级市）、浏览器 UA、进房时填的昵称、职业、输入方式</li>' +
+    '<li>每局结束：难度、电脑人数量、各玩家的职业／击杀／死亡／伤害／输入方式</li>' +
+    '<li>每次击杀：击杀方与死亡方是真人还是电脑人、职业、是否技能击杀；真人会带同一个脱敏值，用于把同一个人在不同房间关联起来</li>' +
+    '<li>P2P 直连房间由房主额外上报一份摘要（发往 Cloudflare），不含昵称、不含玩家 IP</li>',
+    '<li>Joining and leaving: room code, time, a sanitized connection ID (salted hash plus city-level region), browser user agent, the nickname you entered, class, input mode</li>' +
+    '<li>Each round end: difficulty, bot count, and every player\u2019s class, kills, deaths, damage and input mode</li>' +
+    '<li>Each kill: whether killer and victim were human or bot, their class, whether it was a skill kill; humans carry the same sanitized ID so the same person can be linked across rooms</li>' +
+    '<li>P2P rooms additionally send one summary from the host to Cloudflare, with no nicknames and no player IPs</li>'
+  );
+  setH('#privNeverL',
+    '<li>没有账号、密码、邮箱、手机号或通讯录（不需要注册）</li>' +
+    '<li>没有可还原的 IP 地址、精确定位、设备唯一标识或浏览器指纹</li>' +
+    '<li>没有聊天内容，也没有按键与操作记录（只记「键鼠 / 触屏 / 手柄」这一档）</li>' +
+    '<li>没有广告标识符与支付信息</li>' +
+    '<li>单机离线版只写本机 localStorage，不发任何请求</li>',
+    '<li>No account, password, email, phone number or contacts (no sign-up at all)</li>' +
+    '<li>No recoverable IP address, no precise location, no unique device identifier, no browser fingerprint</li>' +
+    '<li>No chat content and no keystroke or input history - only the input mode (keyboard+mouse / touch / gamepad)</li>' +
+    '<li>No advertising identifiers or payment details</li>' +
+    '<li>The offline build writes only to local localStorage and sends nothing</li>'
+  );
+  setH('#privUsageL',
+    '<li>只用于调难度与平衡：不做用户画像、不投放广告，不出售也不共享</li>' +
+    '<li>连接 IP 只以加盐哈希形式保存（用于限流、防刷与排障），不可还原成地址，也不对外展示；地理信息只到地级市</li>' +
+    '<li>存放位置：所有上报数据统一存放在 Cloudflare 边缘数据库；官服本机只留一份副本，随 2026-11-23 下线删除</li>' +
+    '<li>所有日志保留 180 天，单人明细与访问日志另限最多 5 万行（谁先到删谁）</li>' +
+    '<li>关掉下面的开关，单人明细与 P2P 房主摘要立刻停止上传，本机仍留最近 10 局</li>' +
+    '<li>联机时服务器仍会记录进房／离开与对局结束：这两类日志用于维持房间运行与限流，开关关不掉</li>',
+    '<li>Used only to tune difficulty and balance - no profiling, no ads, never sold or shared</li>' +
+    '<li>Connection IPs are kept only as a salted hash (for rate limiting, abuse prevention and debugging), cannot be turned back into an address, and are never published; location is city-level only</li>' +
+    '<li>Where it lives: everything is stored in Cloudflare\u2019s edge database; the official server keeps only a copy, deleted with it on 2026-11-23</li>' +
+    '<li>All logs keep 180 days; solo details and access logs are additionally capped at 50,000 rows (whichever comes first)</li>' +
+    '<li>Switching it off stops solo details and P2P host summaries at once; the last 10 runs stay on your device</li>' +
+    '<li>In multiplayer the server still logs joins, leaves and round ends - these keep rooms running and rate limits enforced, and cannot be switched off</li>'
+  );
+  setQ('#privH1', '会上传 · 单人模式', 'What is sent - solo');
+  setQ('#privH1b', '会上传 · 联机模式', 'What is sent - multiplayer');
+  setQ('#privH2', '不会上传', 'What is never sent');
+  setQ('#privH3', '用途与保存', 'Use and retention');
+  setQ('#privOptLbl', '允许上传单人明细与房主摘要', 'Allow solo details and host summaries');
+  syncPrivOpt();
   setH('#menuEyebrow', '单人闯关 · 8 人联机混战 <span id="best"></span>', 'Solo Waves · 8-Player FFA <span id="best"></span>');
   setQ('#menuTitle', '烬冠竞技场', 'Embercrown Arena');
   setQ('#btnStart', '单人闯关', 'Solo Waves');
   setQ('#btnOnlineTxt', '联机对战', 'Online FFA');
-  setQ('#btnSkipWait', '立刻选祝福 (空格)', 'Skip Wait (Space)');
+  syncSkipWaitBtn();
   syncContinueBtn();
   setQ('#lobby h2', '对战大厅', 'Battle Lobby');
-  setQ('#lobby > .card > p', '8 人自由混战，先拿到 15 次击杀获胜', '8-player free-for-all, first to 15 kills wins');
+  setQ('#lobby > .card > p', '8 人自由混战，先拿到 10 次击杀获胜', '8-player free-for-all, first to 10 kills wins');
   setH('#btnQuick', '<b>快速匹配</b><span>选择难度后自动匹配或开启战局</span>', '<b>Quick Match</b><span>Auto-match or open a room by difficulty</span>');
   setH('#btnOpenRooms', '<b>房间列表 <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>浏览并加入正在激战的活跃房间</span>', '<b>Room List <i id="roomsBadge">' + ($('roomsBadge') ? $('roomsBadge').textContent : '0') + '</i></b><span>Browse and join active rooms</span>');
   setH('#btnOpenCreate', '<b>创建房间</b><span>自定义 Bot 数量与难度开新局</span>', '<b>Create Room</b><span>Customize bot count and difficulty</span>');
@@ -4581,6 +4995,10 @@ function applyI18n() {
   setQ('#btnFs span', '全屏横屏', 'Fullscreen');
   setQ('#btnSound span', muted ? '音效：关' : '音效：开', muted ? 'Sound: Off' : 'Sound: On');
   syncCrowd();
+  syncCamFollow();
+  syncAutoAtkUI();
+  setQ('#btnKeybinds span', '键位设置', 'Keybinds');
+  setQ('#btnCloseBinds', '完成', 'Done');
   renderControlGuide();
   setQ('#btnResume', '继续战斗', 'Resume');
   setQ('#btnQuit', '返回主菜单', 'Main Menu');
@@ -4609,24 +5027,52 @@ function applyI18n() {
   if (charOpen) { charKey = ''; updateChar(); }
 }
 function renderControlGuide() {
-  const h = document.querySelector('.pad-guide-h span'), s = document.querySelector('.pad-guide-h small'), g = document.querySelector('.pad-grid');
-  if (!h || !s || !g) return;
+  const g = $('kbGrid'), foot = $('kbFoot'), rst = $('btnResetBinds'), tit = $('kbTitle'), sub = $('kbSub');
+  if (!g) return;
+  if (touchMode && !padMode) { show('keybinds', false); bindWait = ''; return; }
   if (padMode) {
-    h.textContent = t('蓝牙手柄键位（标准 Xbox 手柄）', 'Bluetooth Gamepad (Standard Xbox)');
-    s.textContent = t('接入自动隐藏虚拟按键', 'Hides touch controls automatically');
+    bindWait = '';
+    if (rst) rst.hidden = true;
+    if (foot) foot.hidden = true;
+    g.className = 'pad-grid';
+    if (tit) tit.textContent = t('手柄键位', 'Gamepad Controls');
+    if (sub) sub.textContent = t('标准 Xbox 手柄布局 · 接入自动隐藏虚拟按键', 'Standard Xbox layout · hides touch controls');
     g.innerHTML = t(
       '<span><kbd>左摇杆</kbd>移动</span><span><kbd>右摇杆</kbd>视角转向</span><span><kbd>X / RT</kbd>普通攻击</span><span><kbd>Y</kbd>1 号技能</span><span><kbd>B</kbd>2 号技能</span><span><kbd>RB</kbd>终极大招</span><span><kbd>LB</kbd>位移/冲锋</span><span><kbd>A</kbd>跳跃</span><span><kbd>LT</kbd>切换目标</span><span><kbd>D-Pad ↓ / R3</kbd>锁定小鸡</span><span><kbd>D-Pad →</kbd>自动普攻</span><span><kbd>D-Pad ↑</kbd>个人属性</span><span><kbd>Menu</kbd>暂停/菜单</span>',
       '<span><kbd>L Stick</kbd>Move</span><span><kbd>R Stick</kbd>Camera</span><span><kbd>X / RT</kbd>Attack</span><span><kbd>Y</kbd>Skill 1</span><span><kbd>B</kbd>Skill 2</span><span><kbd>RB</kbd>Ultimate</span><span><kbd>LB</kbd>Mobility</span><span><kbd>A</kbd>Jump</span><span><kbd>LT</kbd>Target</span><span><kbd>D-Pad ↓ / R3</kbd>Target Chicken</span><span><kbd>D-Pad →</kbd>Auto Attack</span><span><kbd>D-Pad ↑</kbd>Stats</span><span><kbd>Menu</kbd>Pause</span>'
     );
   } else {
-    h.textContent = t('键鼠操作键位', 'Keyboard & Mouse Controls');
-    s.textContent = t('支持连接蓝牙手柄自动切换', 'Auto-switches on gamepad input');
-    g.innerHTML = t(
-      '<span><kbd>WASD</kbd>移动</span><span><kbd>右键拖动</kbd>转向</span><span><kbd>左键拖动</kbd>视角</span><span><kbd>1</kbd>普通攻击</span><span><kbd>2</kbd>1 号技能</span><span><kbd>3</kbd>2 号技能</span><span><kbd>4</kbd>终极大招</span><span><kbd>5 / Shift</kbd>位移/冲锋</span><span><kbd>Space</kbd>跳跃</span><span><kbd>Tab / 点击</kbd>切换目标</span><span><kbd>C</kbd>个人属性</span><span><kbd>O</kbd>排行榜</span>',
-      '<span><kbd>WASD</kbd>Move</span><span><kbd>RMB Drag</kbd>Turn</span><span><kbd>LMB Drag</kbd>Camera</span><span><kbd>1</kbd>Attack</span><span><kbd>2</kbd>Skill 1</span><span><kbd>3</kbd>Skill 2</span><span><kbd>4</kbd>Ultimate</span><span><kbd>5 / Shift</kbd>Mobility</span><span><kbd>Space</kbd>Jump</span><span><kbd>Tab / Click</kbd>Target</span><span><kbd>C</kbd>Stats</span><span><kbd>O</kbd>Scoreboard</span>'
-    );
+    if (rst) { rst.hidden = false; rst.textContent = t('恢复默认', 'Reset'); }
+    g.className = 'kb-grid';
+    if (tit) tit.textContent = t('键位设置', 'Keybindings');
+    if (sub) sub.textContent = bindWait ? t('请按下新键（Esc 取消）', 'Press a new key (Esc cancels)') : t('点击动作后按新键 · Esc 取消', 'Click an action, then press a key');
+    const acts = [
+      ['atk', t('普通攻击', 'Attack')], ['q', t('1 号技能', 'Skill 1')], ['e', t('2 号技能', 'Skill 2')],
+      ['u', t('终极大招', 'Ultimate')], ['dodge', t('位移/冲锋', 'Mobility')], ['jump', t('跳跃', 'Jump')],
+    ];
+    g.innerHTML = acts.map(([k, lbl]) => {
+      const listening = bindWait === k;
+      const kTxt = listening ? t('按键…', 'Key…') : KEYMAP[k].map(keyLabel).join(' / ');
+      return `<button type="button" class="bind-btn${listening ? ' listening' : ''}" data-bind="${k}"><span>${lbl}</span><kbd>${kTxt}</kbd></button>`;
+    }).join('');
+    if (foot) {
+      foot.hidden = false;
+      foot.textContent = t('固定键位：WASD 移动 · 右键视角 · Tab 选目标 · C 属性 · O 战榜', 'Fixed: WASD Move · RMB Camera · Tab Target · C Stats · O Board');
+    }
+    g.querySelectorAll('.bind-btn').forEach(b => b.addEventListener('click', () => {
+      sfx.ui();
+      bindWait = bindWait === b.dataset.bind ? '' : b.dataset.bind;
+      renderControlGuide();
+    }));
   }
 }
+if ($('btnKeybinds')) $('btnKeybinds').addEventListener('click', () => { sfx.ui(); renderControlGuide(); show('keybinds', true); });
+if ($('btnCloseBinds')) $('btnCloseBinds').addEventListener('click', () => { bindWait = ''; show('keybinds', false); sfx.ui(); });
+if ($('btnResetBinds')) $('btnResetBinds').addEventListener('click', () => {
+  bindWait = '';
+  for (const k in DEFAULT_KEYMAP) KEYMAP[k] = DEFAULT_KEYMAP[k].slice();
+  saveKeymap(); rebuildKey2Act(); refreshSkillKeys(); renderControlGuide(); sfx.ui();
+});
 document.querySelectorAll('[data-lang-btn]').forEach(b => b.addEventListener('click', () => {
   lang = lang === 'en' ? 'zh' : 'en';
   try { localStorage.setItem('ec_lang', lang); } catch (e) {}
@@ -4799,12 +5245,14 @@ function loadRooms() {
 function renderRooms(list) {
   const ul = $('roomList'); ul.innerHTML = '';
   const n = list ? list.length : 0;
-  $('roomsN').textContent = list ? '当前共 ' + n + ' 个活跃房间' : '';
+  $('roomsN').textContent = list ? t('当前共 ' + n + ' 个活跃房间', n + ' Active Rooms') : '';
   $('roomsBadge').textContent = n;
   if (list) setOnlineBadge(n);
   if (!list || !list.length) {
     const li = document.createElement('li'); li.className = 'empty';
-    li.textContent = list ? '暂无活跃房间，可点下方「创建新房间」开局。' : '读不到房间列表：请通过服务器打开本页（npm start）。';
+    li.textContent = list
+      ? t('暂无活跃房间，可点下方「创建新房间」开局。', 'No active rooms yet. Click Create Room below.')
+      : '读不到房间列表：请通过服务器打开本页（npm start）。';
     ul.appendChild(li); return;
   }
   for (const r of list) {
@@ -4865,6 +5313,21 @@ function submitGate(silentToken) {
     .catch(() => { if (!isSilent) showGateErr(t('无法连接服务器验证口令', 'Unable to reach server for verification')); });
 }
 let loginReady = false, loginOpening = false, loginOpenT = 0;
+function returnToLogin() {
+  if (game.state !== 'menu') return;
+  closeLobby();
+  show('menu', false);
+  show('login', true);
+  const lg = $('login'); if (lg) lg.style.opacity = '';
+  loginOpening = false; loginOpenT = 0;
+  setGates(false, 0);
+  syncLoginArena(true);
+  game.state = 'login';
+  const btn = $('btnEnterGame');
+  if (btn && loginReady) { btn.disabled = false; btn.textContent = t('进入游戏', 'Enter Game'); }
+  refreshLocalRealmInfo();
+  sfx.ui();
+}
 function enterMainMenu() {
   loginOpening = false; loginOpenT = 0;
   const lg = $('login'); if (lg) lg.style.opacity = '';
@@ -4917,8 +5380,32 @@ $('btnEnterGame').addEventListener('click', () => {
       openLoginDoorAndEnter();
     });
 });
-$('btnVer').addEventListener('click', () => { audioInit(); sfx.ui(); show('verModal', true); });
+$('btnVer').addEventListener('click', () => { audioInit(); sfx.ui(); probeVersion(true); show('verModal', true); });
 $('btnVerClose').addEventListener('click', () => { audioInit(); sfx.ui(); show('verModal', false); });
+if ($('btnVerReload')) $('btnVerReload').addEventListener('click', () => { try { location.reload(); } catch (e) {} });
+/* ---- 「关于」弹窗 tab：关于 / 数据与隐私 ---- */
+function aboutTab(which) {
+  const info = which !== 'priv';
+  const ti = $('aboutTabInfo'), tp2 = $('aboutTabPriv'), pi = $('aboutPaneInfo'), pp = $('aboutPanePriv'), row = $('privOptRow');
+  if (!ti || !tp2 || !pi || !pp) return;
+  ti.classList.toggle('on', info); tp2.classList.toggle('on', !info);
+  ti.setAttribute('aria-selected', info ? 'true' : 'false');
+  tp2.setAttribute('aria-selected', info ? 'false' : 'true');
+  pi.hidden = !info; pp.hidden = info;
+  if (row) row.hidden = info;
+  (info ? pi : pp).scrollTop = 0;
+}
+function syncPrivOpt() {
+  const el = $('privOpt'); if (!el) return;
+  el.checked = tpUploadAllowed();
+}
+$('aboutTabInfo').addEventListener('click', () => { audioInit(); sfx.ui(); aboutTab('info'); });
+$('aboutTabPriv').addEventListener('click', () => { audioInit(); sfx.ui(); aboutTab('priv'); });
+$('privOpt').addEventListener('change', e => {
+  try { localStorage.setItem(TP_OPT_KEY, e.target.checked ? '0' : '1'); } catch (err) {}
+  audioInit(); sfx.ui();
+});
+$('btnAbout').addEventListener('click', syncPrivOpt);
 $('btnAbout').addEventListener('click', () => { audioInit(); sfx.ui(); show('aboutModal', true); });
 $('btnAboutClose').addEventListener('click', () => { audioInit(); sfx.ui(); show('aboutModal', false); });
 
@@ -4947,7 +5434,7 @@ function mpConnect(roomArg, botsArg, diffArg, createArg, pwdArg, funArg) {
   try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); }
   catch (e) { mpStatus('连不上服务器，请确认服务器已经启动。', true); return; }
   net.ws = ws; net.joined = false; net.full = false;
-  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', cls: selCls, token: demoToken, room, bots, diff, create, roomPwd, fun }));
+  ws.onopen = () => ws.send(JSON.stringify({ t: 'join', cls: selCls, token: demoToken, room, bots, diff, create, roomPwd, fun, input: inpMode() }));
   ws.onmessage = ev => {
     if (net.ws !== ws) return;
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
@@ -5266,7 +5753,9 @@ function mpEvent(v) {
       if (v.k !== 'roll' && v.k !== 'charge' && v.k !== 'jump' && v.k !== 'blink') e.atkT = e.atkDur;
       switch (v.k) {
         case 'slash': slashFx(p.x, p.z, v.a, 2.9, 1.05, me ? 0xfff2b0 : 0xffb9a8); sfx.swing(); break;
-        case 'spin': slashFx(p.x, p.z, v.a, 4, Math.PI, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 4, me ? 0xfff2b0 : 0xffb9a8); e.spinT = 0.35; sfx.swing(); sfx.thud(); break;
+        case 'cleave': slashFx(p.x, p.z, v.a, 3.8, 1.28, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.2, me ? 0xbfd4ff : 0xffb9a8, 0.25); sfx.swing(); sfx.thud(); break;
+        case 'wall': shockFx(p.x, p.z, 3.6, 0xffd859, 0.45); burst(p.x, 1, p.z, 0xffd859, 16, 5, 0.2, 0.55); sfx.thud(); sfx.horn(); break;
+        case 'spin': slashFx(p.x, p.z, v.a, 3.4, Math.PI, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.4, me ? 0xfff2b0 : 0xffb9a8); e.spinT = 0.35; sfx.swing(); sfx.thud(); break;
         case 'shoot': sfx.shoot(); break;
         case 'cast': sfx.fire(); break;
         case 'call': sfx.cast(); break;
@@ -5380,7 +5869,7 @@ function mpUpdate(dt) {
   const mv = ctlInput(dt, frozen), mx = (f & 65536) ? -mv.mx : mv.mx, mz = (f & 65536) ? -mv.mz : mv.mz, ml = mv.ml, def = CLASSES[net.cls];
   ctlTarget(lp); updateReticle(lp, def.ult);
   const ta = aimAngle(lp);
-  if (!frozen && !dead) {
+  if (!frozen && !dead && !(lp.dashT > 0)) {
     if (!cc && !(net.ct > 0)) stepAutoTurn(lp, dt, ml, def.style === 'melee' ? 3.75 : 22, def.style === 'melee' ? 1.15 : 0.22);
     else ctl.autoTurn = false;
     let mpAuto = null;
@@ -5401,6 +5890,9 @@ function mpUpdate(dt) {
     }
     if (taps.q || taps.e) { const i = taps.q ? 0 : 1; if (net.cd[i] > 0.3) showErr(t('技能还没准备好', 'Skill not ready')); else if (net.res < def.cost[i + 1]) showErr(t(resName(def.res) + '不足', 'Not enough ' + resName(def.res))); }
     if (taps.u) ultPress();
+  } else if (lp.dashT > 0) {
+    ctl.autoTurn = false;
+    ctl.aiming = false;
   }
   clearTaps();
   if (lp.aimT > 0) lp.aimT -= dt; if (lp.landT > 0) lp.landT -= dt;
@@ -5466,7 +5958,7 @@ function mpUpdate(dt) {
     e.ice.visible = !!(e.flags & 16) && !e.dead; e.ring.visible = e.mine && !e.dead;
     e.booms.visible = !!(e.flags & 32768) && !e.dead;
     if (e.booms.visible) { e.booms.rotation.y += dt * 4.8; e.booms.children.forEach(b => { b.rotation.y += dt * 9; }); }
-    e.starRing.visible = !!(e.flags & 2048) && !e.dead;
+    e.starRing.visible = !!(e.flags & (2048 | 262144)) && !e.dead;
     if (e.starRing.visible) { e.starRing.rotation.z += dt * 6; e.starRing.material.color.setHSL((game.time * 1.8) % 1, 0.95, 0.62); }
     syncDebuffFx(e.debuff, !!(e.flags & 32) && !e.dead, !!(e.flags & 16) && !e.dead, !!(e.flags & 64) && !e.dead, game.time);
     if (e.dead) {
@@ -5571,7 +6063,7 @@ function updateCamera(dt) {
   // 第三人称跟随：镜头在角色身后，绕角色旋转 / 俯仰 / 缩放（结算时聚焦本局 MVP）
   const mvpEnt = game.state === 'mp' && net.phase === 1 && net.roster[0] ? net.ents.get(net.roster[0].id) : null;
   const p = mvpEnt || (game.state === 'mp' ? net.lp : player); if (!p) return;
-  if (touchMode && ctl.target && validTarget(ctl.target) && lookT.id === null && !ctl.aiming && performance.now() > lookPauseT) {
+  if (camFollow && !ctl.rmb && !ctl.lmb && ctl.target && validTarget(ctl.target) && lookT.id === null && !ctl.aiming && performance.now() > lookPauseT) {   // 视角跟随敌人（默认关）
     const dx = ctl.target.x - p.x, dz = ctl.target.z - p.z;
     if (dx * dx + dz * dz > 0.36) ctl.camYaw += angDiff(Math.atan2(dx, dz), ctl.camYaw) * (1 - Math.exp(-5 * dt));
   }
@@ -5659,6 +6151,37 @@ syncLoginArena(true);
 setPreview(selCls);
 if (window.matchMedia && matchMedia('(pointer: coarse)').matches) setTouch();
 applyI18n();
+probeVersion();
+function refreshLocalRealmInfo() {
+  const el = $('localRealmInfo');
+  if (!el || $('realmPick') || location.protocol === 'file:') return;
+  fetch('healthz', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => {
+    if (!d || !d.ok) return;
+    const nm = (d.load && d.load.realm) ? d.load.realm : t('本地服务器', 'Local Server');
+    const q = d.load && d.load.overloaded ? t(' · 排队中', ' · Queued') : '';
+    el.innerHTML = '<b><span></span><em></em></b><small></small>';
+    el.querySelector('b span').textContent = nm;
+    el.querySelector('b em').textContent = t('联机', 'Online');
+    el.querySelector('small').textContent = t(`${d.rooms | 0} 房间 · ${d.players | 0} 人在线${q}`, `${d.rooms | 0} rooms · ${d.players | 0} online${q}`);
+    el.hidden = false;
+  }).catch(() => {});
+}
+refreshLocalRealmInfo();
+/* 访问打卡（G1）：CF 的静态页不经过 Worker，页面主动打一次卡才能恢复「访问量」口径。
+   一个会话一次（sessionStorage 去重），失败静默；官服与离线版没有这个端点，404 不影响进游戏。 */
+(function () {
+  try {
+    if (location.protocol === 'file:') return;
+    const k = 'ec_visit_v1';
+    if (sessionStorage.getItem(k)) return;
+    sessionStorage.setItem(k, '1');
+    const u = '/telemetry/visit';
+    const ok = navigator.sendBeacon && navigator.sendBeacon(u, '');
+    if (!ok) fetch(u, { method: 'POST', body: '', keepalive: true, cache: 'no-store' }).catch(() => {});
+  } catch (e) {}
+})();
+/* 长期开着不刷新的页面，切回前台时再探一次（节流在 probeVersion 内，不会打爆） */
+document.addEventListener('visibilitychange', () => { if (!document.hidden) probeVersion(); });
 requestAnimationFrame(frame);
 preloadAssets((p, done) => {
   const pct = Math.max(0, Math.min(100, Math.round(p * 100)));

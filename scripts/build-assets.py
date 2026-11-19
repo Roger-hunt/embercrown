@@ -124,8 +124,8 @@ def build_models() -> None:
     print(f"Built {len(os.listdir(OUT_MODELS))} GLB models in {OUT_MODELS}")
 
 
-def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, fade_out: float = 0.12) -> None:
-    """Trim trailing silence (and optional max_dur with fade out), normalize peak, encode to M4A via afconvert."""
+def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, fade_out: float = 0.12, lowpass_alpha: float = None) -> None:
+    """Trim trailing silence (and optional max_dur with fade out), optional lowpass smoothing, normalize peak, encode to M4A via afconvert."""
     with wave.open(io.BytesIO(raw_bytes), "rb") as w:
         ch = w.getnchannels()
         sw = w.getsampwidth()
@@ -164,6 +164,12 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
     for i in range(0, len(sliced), ch):
         mono.append(sum(sliced[i : i + ch]) / ch)
 
+    if lowpass_alpha is not None and mono:
+        lp = mono[0]
+        for i in range(len(mono)):
+            lp = lp + lowpass_alpha * (mono[i] - lp)
+            mono[i] = lp
+
     fi = min(total_f, int(0.005 * rate))
     fo = min(total_f, int(fade_out * rate))
     for i in range(fi):
@@ -199,40 +205,44 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
 
 def build_sfx() -> None:
     os.makedirs(OUT_SFX, exist_ok=True)
+    for old_f in ["swing.ogg", "cleave.ogg"]:
+        p = os.path.join(OUT_SFX, old_f)
+        if os.path.exists(p):
+            os.remove(p)
     spells_zip = os.path.join(ASSETS_FREE, "spells.zip")
     spell_mapping = [
-        ("fire.m4a", "shot2.ogg", 0.78, 0.14),
-        ("inferno.m4a", "flamethrower.ogg", 1.80, 0.25),
-        ("meteor.m4a", "explode1.ogg", 1.45, 0.22),
-        ("boom.m4a", "explode2.ogg", 1.25, 0.22),
-        ("freeze.m4a", "freeze2.ogg", 1.15, 0.20),
-        ("cast.m4a", "spell.ogg", 0.90, 0.16),
-        ("blink.m4a", "teleport.ogg", 0.70, 0.14),
-        ("wall.m4a", "magicshield.ogg", 0.65, 0.14),
-        ("shoot.m4a", "shot.ogg", 0.38, 0.08),
-        ("volley.m4a", "forcepush-old1.ogg", 0.36, 0.08),
-        ("storm.m4a", "wind2.ogg", 1.50, 0.25),
-        ("dash.m4a", "forcepulse.ogg", 0.32, 0.08),
-        ("boon.m4a", "blessing3.ogg", 1.10, 0.20),
-        ("pickup.m4a", "heal.ogg", 0.85, 0.18),
-        ("box.m4a", "enchant.ogg", 0.72, 0.14),
-        ("curse.m4a", "curse4.ogg", 0.90, 0.16),
-        ("confusion.m4a", "confusion.ogg", 0.45, 0.10),
-        ("dead.m4a", "magicfail2.ogg", 1.10, 0.20),
-        ("horn.m4a", "entrance.ogg", 1.35, 0.22),
-        ("cheer.m4a", "cheer-crowd.ogg", 2.10, 0.35),
+        ("swing.m4a", "forcepush-old1.ogg", 0.22, 0.08, 0.18),
+        ("cleave.m4a", "forcepulse.ogg", 0.30, 0.10, 0.22),
+        ("fire.m4a", "shot2.ogg", 0.78, 0.14, None),
+        ("inferno.m4a", "flamethrower.ogg", 1.80, 0.25, None),
+        ("meteor.m4a", "explode1.ogg", 1.45, 0.22, None),
+        ("boom.m4a", "explode2.ogg", 1.25, 0.22, None),
+        ("freeze.m4a", "freeze2.ogg", 1.15, 0.20, None),
+        ("cast.m4a", "spell.ogg", 0.90, 0.16, None),
+        ("blink.m4a", "teleport.ogg", 0.70, 0.14, None),
+        ("wall.m4a", "magicshield.ogg", 0.65, 0.14, None),
+        ("shoot.m4a", "shot.ogg", 0.38, 0.08, None),
+        ("volley.m4a", "forcepush-old1.ogg", 0.36, 0.08, None),
+        ("storm.m4a", "wind2.ogg", 1.50, 0.25, 0.25),
+        ("dash.m4a", "forcepulse.ogg", 0.32, 0.08, 0.25),
+        ("boon.m4a", "blessing3.ogg", 1.10, 0.20, None),
+        ("pickup.m4a", "heal.ogg", 0.85, 0.18, None),
+        ("box.m4a", "enchant.ogg", 0.72, 0.14, None),
+        ("curse.m4a", "curse4.ogg", 0.90, 0.16, None),
+        ("confusion.m4a", "confusion.ogg", 0.45, 0.10, None),
+        ("dead.m4a", "magicfail2.ogg", 1.10, 0.20, None),
+        ("horn.m4a", "entrance.ogg", 1.35, 0.22, None),
+        ("cheer.m4a", "cheer-crowd.ogg", 2.10, 0.35, None),
     ]
     with zipfile.ZipFile(spells_zip) as z:
-        for out_name, src_name, max_dur, fade_out in spell_mapping:
+        for out_name, src_name, max_dur, fade_out, lp in spell_mapping:
             raw = z.read(src_name)
             if raw[:4] != b"RIFF":
                 raise ValueError(f"{src_name} is not RIFF WAV")
-            trim_and_encode_wav(raw, os.path.join(OUT_SFX, out_name), max_dur=max_dur, fade_out=fade_out)
+            trim_and_encode_wav(raw, os.path.join(OUT_SFX, out_name), max_dur=max_dur, fade_out=fade_out, lowpass_alpha=lp)
 
     # Extract native OGG SFX from Kenney packs
     kenney_mapping = [
-        ("swing.ogg", "kenney_rpg-audio.zip", "Audio/knifeSlice.ogg"),
-        ("cleave.ogg", "kenney_rpg-audio.zip", "Audio/knifeSlice2.ogg"),
         ("door.ogg", "kenney_rpg-audio.zip", "Audio/doorOpen_1.ogg"),
         ("hit.ogg", "kenney_impact-sounds.zip", "Audio/impactPlate_medium_000.ogg"),
         ("thud.ogg", "kenney_impact-sounds.zip", "Audio/impactSoft_heavy_000.ogg"),

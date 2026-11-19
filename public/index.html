@@ -2432,8 +2432,8 @@ const SFX_FILES = {
   confusion: 'assets/sfx/confusion.m4a',
   dead: 'assets/sfx/dead.m4a',
   horn: 'assets/sfx/horn.m4a',
-  swing: 'assets/sfx/swing.ogg',
-  cleave: 'assets/sfx/cleave.ogg',
+  swing: 'assets/sfx/swing.m4a',
+  cleave: 'assets/sfx/cleave.m4a',
   hit: 'assets/sfx/hit.ogg',
   thud: 'assets/sfx/thud.ogg',
   hurt: 'assets/sfx/hurt.ogg',
@@ -2549,8 +2549,8 @@ function noise(d, v = 0.15, freq = 1200, q = 1, type = 'bandpass', f2 = 0) {
   s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.02);
 }
 const sfx = {
-  swing: () => { if (!playSfxBuf('swing', 0.45, 0.08)) noise(0.14, 0.12, 900, 1, 'bandpass', 2600); },
-  cleave: () => { if (!playSfxBuf('cleave', 0.56, 0.06)) { sfx.swing(); sfx.thud(); } },
+  swing: () => { if (!playSfxBuf('swing', 0.36, 0.06)) noise(0.14, 0.12, 900, 1, 'bandpass', 2600); },
+  cleave: () => { if (!playSfxBuf('cleave', 0.48, 0.05)) { sfx.swing(); sfx.thud(); } },
   hit: () => { const n = performance.now(); if (n - lastHitS < 45) return; lastHitS = n; if (!playSfxBuf('hit', 0.48, 0.08)) { noise(0.08, 0.2, 500, 1, 'lowpass'); tone(170, 0.08, 'square', 0.07, 70); } },
   shoot: () => { if (!playSfxBuf('shoot', 0.50, 0.07)) { tone(520, 0.09, 'triangle', 0.12, 900); noise(0.06, 0.05, 3000, 1, 'highpass'); } },
   volley: () => { if (!playSfxBuf('volley', 0.58, 0.05)) { sfx.shoot(); tone(700, 0.12, 'triangle', 0.1, 1200); } },

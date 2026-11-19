@@ -1907,11 +1907,17 @@ function humanoid(o) {
   root.scale.setScalar(o.s || 1);
   return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR };
 }
-function addBow(hand, wood) {
-  const b = Gp(hand, 0, 0.3, 0.05); b.scale.y = 0.6;                 // grip sits in the hand, the string a forearm's length behind it
+function addBow(g, wood, isFoe = false) {
+  const b = Gp(g.handL, 0, 0.3, 0.05); b.scale.y = 0.6;               // grip sits in the hand, the string a forearm's length behind it
   P(b, 'torus', [0.52, 0.035, 5, 12, Math.PI], wood, 0, 0, 0, Math.PI, -Math.PI / 2, 0);
   P(b, 'box', [0.014, 0.02, 1.04], 0xfff1d2, 0, 0, 0).castShadow = false;
   P(b, 'box', [0.07, 0.1, 0.16], 0x4a3426, 0, -0.52, 0);
+  const arr = Gp(g.handL, 0, 0.05, 0.05);
+  P(arr, 'box', [0.045, 0.78, 0.045], isFoe ? 0x574f68 : 0xf5e6c0, 0, -0.18, 0);
+  P(arr, 'cone', [0.08, 0.2, 4], isFoe ? 0xdfe6ee : 0x9fe870, 0, -0.64, 0, Math.PI);
+  P(arr, 'box', [0.16, 0.14, 0.025], isFoe ? 0xe8434f : 0x4f9f5f, 0, 0.18, 0);
+  arr.visible = false;
+  g.bow = b; g.arrow = arr;
 }
 function buildKnight() {
   const ST = 0x9fadc4;
@@ -1966,7 +1972,7 @@ function buildRanger() {
     P(q, 'box', [0.02, 0.2, 0.02], 0xe8d9b8, (i - 1) * 0.05, 0.33, (i % 2) * 0.04 - 0.02).castShadow = false;
     P(q, 'box', [0.07, 0.08, 0.02], [0xfff1d2, 0xe8434f, 0xfff1d2][i], (i - 1) * 0.05, 0.42, (i % 2) * 0.04 - 0.02).castShadow = false;
   }
-  addBow(g.handL, 0x8a5a2b);
+  addBow(g, 0x8a5a2b, false);
   return g;
 }
 function buildMage() {
@@ -2039,7 +2045,7 @@ function buildSkeleton() {
   P(g.head, 'box', [0.3, 0.1, 0.3], 0xd8cfb6, 0, 0, 0.06);
   P(g.head, 'dome', [0.3, 8, 2], 0x574f68, 0, 0.36, 0);
   P(g.head, 'cyl', [0.31, 0.31, 0.05, 8], 0x453d57, 0, 0.36, 0);
-  addBow(g.handL, 0x574f68);
+  addBow(g, 0x574f68, true);
   return g;
 }
 function buildOrc() {
@@ -2187,10 +2193,11 @@ function loadHQAssets() {
 }
 
 function attachHQProp(slot, cfg) {
-  if (!slot || !cfg || !hqCache.has(cfg.m)) return;
+  if (!slot || !cfg || !hqCache.has(cfg.m)) return null;
   const p = hqCache.get(cfg.m).clone(true);
   p.rotation.set(cfg.rx || 0, cfg.ry || 0, cfg.rz || 0);
   slot.add(p);
+  return p;
 }
 
 function makeKayKitRig(key) {
@@ -2235,13 +2242,23 @@ function makeKayKitRig(key) {
   armR.userData.baseQ.premultiply(new T.Quaternion().setFromAxisAngle(zAxis, 1.18));
 
   attachHQProp(handR, cfg.handR);
-  attachHQProp(handL, cfg.handL);
+  const propL = attachHQProp(handL, cfg.handL);
+  let bow = null, arrow = null;
+  if (cfg.handL && cfg.handL.m === 'bow_withString' && propL) {
+    bow = propL;
+    const isFoe = key === 'skeleton';
+    arrow = Gp(handL, 0, 0, 0);
+    P(arrow, 'box', [0.88, 0.05, 0.05], isFoe ? 0x574f68 : 0xf5e6c0, -0.15, 0, 0);
+    P(arrow, 'cone', [0.09, 0.24, 4], isFoe ? 0xdfe6ee : 0x9fe870, -0.68, 0, 0, 0, 0, Math.PI / 2);
+    P(arrow, 'box', [0.18, 0.16, 0.03], isFoe ? 0xe8434f : 0x4f9f5f, 0.24, 0, 0);
+    arrow.visible = false;
+  }
   if (cfg.staffGlow && handR) {
     const orb = new T.Mesh(geo('oct', 0.14), M.fire);
     orb.position.set(0, 1.15, 0);
     handR.add(orb);
   }
-  return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR, guard: !!cfg.guard, isKayKit: true };
+  return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR, bow, arrow, guard: !!cfg.guard, isKayKit: true };
 }
 
 const rigCache = new Map();
@@ -2297,12 +2314,41 @@ function poseHumanoid(g, e) {
       if (wk > 0) { aL = aR = -2.9 * wk; eL = eR = -0.35; zL = zR = 0; }
       else if (swing >= 0) { aL = aR = lerp(-2.9, 0.2, swing); eL = eR = -0.2; zL = zR = 0; }
       break;
-    case 'bow':
-      aL = -1.5; eL = 0; zL = zR = 0;
-      if (wk > 0) { aR = -1.5 + wk * 0.25; eR = -0.4 - wk * 1.5; }
-      else if (swing >= 0) { aR = -1.3; eR = lerp(-1.9, -0.5, swing); }
-      else { aR = -0.45; eR = -0.9; }
+    case 'bow': {
+      zL = zR = 0;
+      let drawK = 0;
+      if (wk > 0) {
+        drawK = wk;
+        aL = -1.52; eL = -0.06;
+        aR = lerp(-1.48, -1.35, wk); eR = lerp(-0.55, -1.95, wk); zR = 0.28 * wk; tw = -0.36 * wk;
+      } else if (e.atkT > 0) {
+        const p = clamp(1 - e.atkT / (e.atkDur || 0.3), 0, 1);
+        aL = -1.52; eL = -0.06;
+        if (p < 0.52) {
+          const k = Math.sin(p / 0.52 * (Math.PI / 2));
+          drawK = k;
+          aR = lerp(-1.48, -1.34, k); eR = lerp(-0.45, -1.98, k); zR = 0.32 * k; tw = -0.38 * k;
+        } else {
+          const rel = (p - 0.52) / 0.48;
+          drawK = Math.max(0, 1 - rel * 4);
+          aR = lerp(-1.34, -1.58, rel); eR = lerp(-1.98, -0.7, rel); zR = lerp(0.32, 0.12, rel); tw = lerp(-0.38, 0, rel);
+        }
+      } else {
+        aL = -1.45 - sw * 0.12; eL = -0.08;
+        aR = -0.55 + sw * 0.25; eR = -0.9;
+      }
+      if (e.casting) drawK = 0.75 + Math.sin(game.time * 14) * 0.2;
+      if (g.bow) {
+        if (g.isKayKit) g.bow.scale.set(1 + 0.42 * drawK, 1, 1 - 0.08 * drawK);
+        else g.bow.scale.set(1 - 0.08 * drawK, 0.6 * (1 + 0.36 * drawK), 1);
+      }
+      if (g.arrow) {
+        g.arrow.visible = drawK > 0.04;
+        if (g.isKayKit) g.arrow.position.x = 0.42 * drawK;
+        else g.arrow.position.y = 0.05 + 0.32 * drawK;
+      }
       break;
+    }
     case 'cast':
       zR = 0; aR = -0.6 - wk * 1.9; eR = -0.35;
       if (swing >= 0) { aR = lerp(-2.4, -1.2, swing); eR = -0.2; }
@@ -2855,7 +2901,7 @@ const CLASSES = {
   },
   ranger: {
     id: 'ranger', name: '翠林游侠', tag: '游侠', rune: '弓', role: '远程 · 迅捷', blurb: '箭总比敌人的脚步快。', pips: [3, 5, 5],
-    hp: 140, armor: 0.90, speed: 7.1, atkCd: 0.36, atkDur: 0.14, style: 'bow', build: buildRanger, atkName: '射击', atkIco: 'shoot', atkDesc: '射出可穿透一个敌人的利箭',
+    hp: 140, armor: 0.90, speed: 7.1, atkCd: 0.36, atkDur: 0.30, style: 'bow', build: buildRanger, atkName: '射击', atkIco: 'shoot', atkDesc: '射出可穿透一个敌人的利箭',
     mastery: '每次射击多射 1 支箭', move: { name: '翻滚', ico: 'roll', desc: '朝移动方向翻滚闪避，期间短暂无敌并解除减速', cd: 2.8, kind: 'roll' }, res: 'energy', cost: [0, 25, 30, 45],
     skills: [{ name: '扇形齐射', ico: 'fan', desc: '一次射出一排穿透箭，命中敌人造成减速', cd: 6.5 }, { name: '箭雨', ico: 'rain', desc: '在目标处降下箭雨，持续伤害并减速', cd: 8.5 }],
     ult: { name: '万箭风暴', ico: 'storm', desc: '选定范围后读条 1.05 秒，大范围箭矢风暴持续倾泻', cd: 21, cast: 1.05, range: 19, kind: 'storm', zone: { r: 6, delay: 0.4, dmg: 20, ticks: 8, interval: 0.3, slow: 1.3 } },

@@ -1359,10 +1359,6 @@ scene.add(hemi);
 const sun = new T.DirectionalLight(0xfff0d0, 0.56);
 sun.position.set(18, 34, 14);
 sun.castShadow = quality !== 'low';
-const rimLight = new T.DirectionalLight(0xffe0a8, 0.24);
-rimLight.position.set(-18, 16, -20);
-rimLight.visible = quality === 'high';
-scene.add(rimLight);
 function syncShadowQuality() {
   const isCoarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
   const sm = quality === 'high' ? (isCoarse ? 2048 : 4096) : (isCoarse ? 1024 : 2048);
@@ -1373,23 +1369,10 @@ function syncShadowQuality() {
     if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
   }
   renderer.shadowMap.needsUpdate = true;
-  renderer.toneMapping = T.NoToneMapping;
-  renderer.toneMappingExposure = 1.0;
-  scene.environment = null;
-  if (quality === 'high') {
-    hemi.color.setHex(0xfff4e0); hemi.groundColor.setHex(0x9a84c0); hemi.intensity = 0.56;
-    sun.color.setHex(0xfff0d0); sun.intensity = 0.66;
-    sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
-    rimLight.visible = true;
-  } else {
-    hemi.color.setHex(0xfff4e0); hemi.groundColor.setHex(0x9a84c0); hemi.intensity = 0.48;
-    sun.color.setHex(0xfff0d0); sun.intensity = 0.56;
-    sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
-    rimLight.visible = false;
-  }
 }
 syncShadowQuality();
 Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 90 });
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 scene.add(sun);
 
 /* ================= materials & geometry (cached, flat-shaded) ================= */

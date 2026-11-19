@@ -106,13 +106,16 @@
       textures.push(tex);
     }
 
-    // Build materials
+    // Build materials (use MeshToonMaterial with smooth 4-step gradientMap so characters match the arena's lighting equation 1:1)
+    const hqGrad = new T.DataTexture(new Uint8Array([140, 192, 232, 255]), 4, 1, T.LuminanceFormat);
+    hqGrad.minFilter = hqGrad.magFilter = T.NearestFilter;
+    hqGrad.generateMipmaps = false;
+    hqGrad.needsUpdate = true;
     const materials = (gltf.materials || []).map((md) => {
       const pbr = md.pbrMetallicRoughness || {};
       const params = {
         name: md.name || '',
-        roughness: 0.88,
-        metalness: 0.0,
+        gradientMap: hqGrad,
         side: md.doubleSided ? T.DoubleSide : T.FrontSide,
       };
       if (pbr.baseColorFactor) {
@@ -127,9 +130,9 @@
           params.emissive = new T.Color(ef[0], ef[1], ef[2]);
         }
       }
-      return new T.MeshStandardMaterial(params);
+      return new T.MeshToonMaterial(params);
     });
-    const defaultMat = new T.MeshStandardMaterial({ color: 0xffffff, roughness: 0.65 });
+    const defaultMat = new T.MeshToonMaterial({ color: 0xffffff, gradientMap: hqGrad });
 
     // Build geometries per mesh primitive
     function buildGeo(prim) {

@@ -111,8 +111,8 @@
       const pbr = md.pbrMetallicRoughness || {};
       const params = {
         name: md.name || '',
-        roughness: pbr.roughnessFactor !== undefined ? pbr.roughnessFactor : 0.65,
-        metalness: pbr.metallicFactor !== undefined ? pbr.metallicFactor : 0.0,
+        roughness: 0.88,
+        metalness: 0.0,
         side: md.doubleSided ? T.DoubleSide : T.FrontSide,
       };
       if (pbr.baseColorFactor) {

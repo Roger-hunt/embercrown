@@ -20,20 +20,28 @@ jobs:
       - name: Build solo offline zip
         run: bash scripts/build-solo.sh "${GITHUB_REF_NAME}"
 
-      - name: Resolve release notes
+      - name: Resolve release notes with live zip sha256
         id: notes
         run: |
-          FILE="dist/RELEASE-${GITHUB_REF_NAME}.md"
+          TAG="${GITHUB_REF_NAME}"
+          ZIP="dist/embercrown-solo-${TAG}.zip"
+          SIZE=$(stat -c%s "$ZIP")
+          SHA=$(sha256sum "$ZIP" | awk '{print $1}')
+          OUT="/tmp/release-notes.md"
+          FILE="dist/RELEASE-${TAG}.md"
           if [ -f "$FILE" ]; then
-            echo "body_path=$FILE" >> "$GITHUB_OUTPUT"
+            sed -E "s|^> 产物：.*|> 产物：\`embercrown-solo-${TAG}.zip\`（\`${SIZE}\` bytes，sha256 \`${SHA}\`）|" "$FILE" > "$OUT"
+            if ! grep -q "$SHA" "$OUT"; then
+              printf '\n> 产物：`embercrown-solo-%s.zip`（`%s` bytes，sha256 `%s`）\n' "$TAG" "$SIZE" "$SHA" >> "$OUT"
+            fi
           else
-            echo "body_path=" >> "$GITHUB_OUTPUT"
+            printf '### %s 单机离线版\n\n> 产物：`embercrown-solo-%s.zip`（`%s` bytes，sha256 `%s`）\n' "$TAG" "$TAG" "$SIZE" "$SHA" > "$OUT"
           fi
+          echo "body_path=$OUT" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "${{ github.ref_name }}"
           body_path: ${{ steps.notes.outputs.body_path }}
-          generate_release_notes: ${{ steps.notes.outputs.body_path == '' }}
           files: dist/embercrown-solo-${{ github.ref_name }}.zip

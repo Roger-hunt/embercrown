@@ -1427,26 +1427,35 @@ function syncDebuffFx(fx, stunned, frozen, slowed, t) {
   }
 }
 const geoCache = new Map();
+let hqGeo = false;
 function geo(kind, ...a) {
-  const k = kind + a.join(',');
+  const sm = hqGeo && kind !== 'box' && kind !== 'plane' && kind !== 'circle' && kind !== 'ring';
+  const k = (sm ? 's:' : '') + kind + a.join(',');
   let g = geoCache.get(k);
   if (!g) {
+    const seg = (n, min) => sm ? Math.max(min, n) : n;
     switch (kind) {
       case 'box': g = new T.BoxGeometry(a[0], a[1], a[2]); break;
-      case 'cyl': g = new T.CylinderGeometry(a[0], a[1], a[2], a[3] || 6); break;
-      case 'cone': g = new T.ConeGeometry(a[0], a[1], a[2] || 6); break;
-      case 'ico': g = new T.IcosahedronGeometry(a[0], a[1] || 0); break;
-      case 'dod': g = new T.DodecahedronGeometry(a[0], 0); break;
-      case 'oct': g = new T.OctahedronGeometry(a[0], 0); break;
-      case 'torus': g = new T.TorusGeometry(a[0], a[1], a[2], a[3], a[4]); break;
+      case 'cyl': g = new T.CylinderGeometry(a[0], a[1], a[2], seg(a[3] || 6, 14)); break;
+      case 'cone': g = new T.ConeGeometry(a[0], a[1], seg(a[2] || 6, 14)); break;
+      case 'ico': g = new T.IcosahedronGeometry(a[0], sm ? Math.min(3, (a[1] || 0) + 1) : (a[1] || 0)); break;
+      case 'sph': g = new T.SphereGeometry(a[0], seg(a[1] || 10, 16), seg(a[2] || 8, 12)); break;
+      case 'dod': g = new T.DodecahedronGeometry(a[0], sm ? 1 : 0); break;
+      case 'oct': g = new T.OctahedronGeometry(a[0], sm ? 1 : 0); break;
+      case 'torus': g = new T.TorusGeometry(a[0], a[1], seg(a[2] || 5, 10), seg(a[3] || 12, 22), a[4]); break;
       case 'circle': g = new T.CircleGeometry(a[0], a[1]); break;
       case 'ring': g = new T.RingGeometry(a[0], a[1], a[2], 1, a[3] || 0, a[4] === undefined ? TAU : a[4]); break;
       case 'plane': g = new T.PlaneGeometry(a[0], a[1]); break;
-      case 'prism': g = new T.CylinderGeometry(a[0], a[1], a[2], a[3], 1, false, Math.PI / a[3]); g.scale(1, 1, a[4]); break;   // flat face forward, squashed front-to-back
-      case 'dome': g = new T.SphereGeometry(a[0], a[1], a[2], 0, TAU, 0, Math.PI / 2); break;
+      case 'prism': { const s = seg(a[3] || 8, 16); g = new T.CylinderGeometry(a[0], a[1], a[2], s, 1, false, Math.PI / s); g.scale(1, 1, a[4]); break; }
+      case 'dome': g = new T.SphereGeometry(a[0], seg(a[1] || 8, 16), seg(a[2] || 4, 8), 0, TAU, 0, Math.PI / 2); break;
     }
-    if (g.index) g = g.toNonIndexed();
-    g.computeVertexNormals();
+    if (sm) {
+      if (!g.attributes.normal) g.computeVertexNormals();
+      if (g.index) g = g.toNonIndexed();
+    } else {
+      if (g.index) g = g.toNonIndexed();
+      g.computeVertexNormals();
+    }
     geoCache.set(k, g);
   }
   return g;
@@ -1874,9 +1883,12 @@ function humanoid(o) {
   P(hips, 'prism', [0.31 * w, 0.26 * w, 0.17, 8, 0.64 * dz], o.bottom, 0, -0.035, 0);
   const leg = sx => {
     const up = Gp(hips, sx * 0.16 * w, 0, 0);
+    if (hqGeo) P(up, 'sph', [0.125 * w], o.bottom, 0, 0, 0);
     P(up, 'cyl', [0.125 * w, 0.1 * w, 0.31, 6], o.bottom, 0, -0.14, 0);
     const lo = Gp(up, 0, -0.28, 0);
+    if (hqGeo) P(lo, 'sph', [0.105 * w], o.shin || o.bottom, 0, 0, 0.01);
     P(lo, 'cyl', [0.1 * w, 0.085 * w, 0.2, 6], o.shin || o.bottom, 0, -0.08, 0);
+    if (hqGeo) P(lo, 'cyl', [0.108 * w, 0.102 * w, 0.06, 12], boot, 0, -0.135, 0);
     P(lo, 'box', [0.2 * w, 0.13, 0.26], boot, 0, -0.205, 0.02);
     P(lo, 'box', [0.18 * w, 0.085, 0.13], boot, 0, -0.2275, 0.2);
     return [up, lo];
@@ -1885,22 +1897,28 @@ function humanoid(o) {
   P(torso, 'prism', [0.36 * w, 0.3 * w, 0.56, 8, 0.62 * dz], o.top, 0, 0.33, 0);
   P(torso, 'prism', [0.17 * w, 0.36 * w, 0.09, 8, 0.62 * dz], o.top, 0, 0.655, 0);
   P(torso, 'prism', [0.32 * w, 0.32 * w, 0.1, 8, 0.66 * dz], o.belt || 0x5b3a1e, 0, 0.06, 0);
+  if (hqGeo) {
+    P(torso, 'box', [0.13 * w, 0.11, 0.05], 0xffc23d, 0, 0.06, 0.21 * w * dz);
+    P(torso, 'torus', [0.16 * w, 0.032, 8, 16], o.cuff || o.top, 0, 0.68, 0, Math.PI / 2);
+  }
   P(torso, 'cyl', [0.085, 0.1, 0.1, 6], o.skin, 0, 0.72, 0);
   const head = Gp(torso, 0, 0.72, 0);
-  P(head, 'ico', [0.27 * hs, 1], o.skin, 0, 0.27 * hs, 0).scale.set(1, 0.96, 0.94);
+  P(head, hqGeo ? 'sph' : 'ico', hqGeo ? [0.27 * hs, 16, 12] : [0.27 * hs, 1], o.skin, 0, 0.27 * hs, 0).scale.set(1, 0.96, 0.94);
   const eye = o.eye === undefined ? 0x231a33 : o.eye;
   for (const sx of [-1, 1]) {
-    P(head, 'box', [0.075 * hs, 0.11 * hs, 0.05], eye, sx * 0.105 * hs, 0.29 * hs, 0.232 * hs).castShadow = false;
+    P(head, hqGeo ? 'sph' : 'box', hqGeo ? [0.048 * hs, 10, 8] : [0.075 * hs, 0.11 * hs, 0.05], eye, sx * 0.105 * hs, 0.29 * hs, 0.232 * hs).castShadow = false;
     P(head, 'box', [0.05 * hs, 0.11 * hs, 0.09 * hs], o.skin, sx * 0.262 * hs, 0.27 * hs, 0);
   }
   const ax = 0.36 * w + 0.085;
   const arm = sx => {
     const up = Gp(torso, sx * ax, 0.56, 0);
-    P(up, 'ico', [0.115, 0], sleeve, 0, 0, 0);
+    P(up, hqGeo ? 'sph' : 'ico', hqGeo ? [0.12] : [0.115, 0], sleeve, 0, 0, 0);
     P(up, 'cyl', [0.095, 0.08, 0.26, 6], sleeve, 0, -0.13, 0);
     const lo = Gp(up, 0, -0.25, 0);
+    if (hqGeo) P(lo, 'sph', [0.086], o.cuff || sleeve, 0, 0, 0);
     P(lo, 'cyl', [0.08, 0.066, 0.24, 6], o.cuff || sleeve, 0, -0.11, 0);
-    P(lo, 'ico', [0.085, 0], o.skin, 0, -0.26, 0);
+    if (hqGeo) P(lo, 'torus', [0.074, 0.02, 8, 14], o.belt || 0x5b3a1e, 0, -0.2, 0, Math.PI / 2);
+    P(lo, hqGeo ? 'sph' : 'ico', hqGeo ? [0.088] : [0.085, 0], o.skin, 0, -0.26, 0);
     return [up, lo, Gp(lo, 0, -0.26, 0)];
   };
   const [armL, foreL, handL] = arm(-1), [armR, foreR, handR] = arm(1);
@@ -2015,12 +2033,21 @@ function buildDeepOne() {
   for (const sx of [-1, 1]) {
     for (let j = 0; j < 3; j++) P(g.head, 'box', [0.025, 0.08, 0.04], 0x16211e, sx * 0.27, 0.14 + j * 0.06, 0.04 - j * 0.03, 0, 0, sx * 0.25).castShadow = false;   // 鱼鳃裂纹
     P(g.head, 'cone', [0.04, 0.18, 4], F, sx * 0.25, 0.28, -0.06, 0, 0, -sx * 1.15).scale.z = 0.3;
+    if (hqGeo) P(sx < 0 ? g.armL : g.armR, 'dome', [0.15, 10, 6], 0x2e4540, sx * 0.03, 0.02, 0, 0, 0, -sx * 0.3);
   }
   P(g.torso, 'cone', [0.06, 0.34, 4], F, 0, 0.38, -0.25, -1.25).scale.x = 0.24;
+  if (hqGeo) {
+    P(g.torso, 'cone', [0.05, 0.24, 6], 0x2d443f, 0, 0.2, -0.24, -1.35).scale.x = 0.24;
+    P(g.torso, 'box', [0.08, 0.54, 0.04], 0x4b3528, 0, 0.34, 0.21, 0, 0, 0.55);
+  }
   const wp = Gp(g.handR, 0, 0, 0.06);                                // 生锈铁鱼叉
   P(wp, 'cyl', [0.026, 0.024, 1.25, 5], 0x3f2c22, 0, 0, 0.48, Math.PI / 2);
   P(wp, 'box', [0.22, 0.03, 0.04], R, 0, 0, 1.1);
   for (const tx of [-0.09, 0, 0.09]) P(wp, 'cone', [0.022, 0.24, 4], 0x7c5646, tx, 0, 1.22, Math.PI / 2);
+  if (hqGeo) {
+    P(wp, 'torus', [0.042, 0.014, 8, 12], R, 0, 0, 1.04);
+    P(wp, 'cyl', [0.036, 0.036, 0.16, 10], 0x5c3e2d, 0, 0, 0.05, Math.PI / 2);
+  }
   return g;
 }
 function buildGoblin() {
@@ -2029,12 +2056,24 @@ function buildGoblin() {
   for (const sx of [-1, 1]) {
     P(g.head, 'cone', [0.1, 0.46, 5], S, sx * 0.47, 0.36, -0.02, 0, 0, -sx * 1.3).scale.z = 0.45;
     P(g.head, 'cone', [0.03, 0.09, 4], 0xfff1d2, sx * 0.09, 0.1, 0.21, Math.PI).castShadow = false;
+    if (hqGeo) {
+      P(g.head, 'cone', [0.055, 0.3, 6], 0x679e39, sx * 0.43, 0.34, 0.01, 0, 0, -sx * 1.3).scale.z = 0.3;
+      P(g.head, 'box', [0.12, 0.035, 0.05], 0x5c8f32, sx * 0.11, 0.38, 0.25, 0, 0, sx * -0.25).castShadow = false;
+    }
   }
   P(g.head, 'cone', [0.07, 0.24, 5], 0x6fa83e, 0, 0.22, 0.38, Math.PI / 2);
+  if (hqGeo) {
+    P(g.torso, 'box', [0.09, 0.62, 0.04], 0x4a3426, 0, 0.35, 0.2, 0, 0, 0.58);
+    P(g.hips, 'box', [0.24, 0.22, 0.05], 0x7a4e2c, 0, -0.1, 0.2, -0.15);
+  }
   const wp = Gp(g.handR, 0, 0, 0.06);
   P(wp, 'box', [0.08, 0.03, 0.46], 0xdfe6ee, 0, 0, 0.36);
   P(wp, 'cone', [0.042, 0.14, 4], 0xdfe6ee, 0, 0, 0.66, Math.PI / 2).scale.z = 0.36;
   P(wp, 'box', [0.2, 0.06, 0.07], 0x5b3a1e, 0, 0, 0.1);
+  if (hqGeo) {
+    P(wp, 'cyl', [0.026, 0.026, 0.18, 10], 0x4a3426, 0, 0, -0.02, Math.PI / 2);
+    P(wp, 'sph', [0.045], 0xffc23d, 0, 0, -0.12);
+  }
   return g;
 }
 function buildSkeleton() {
@@ -2045,6 +2084,13 @@ function buildSkeleton() {
   P(g.head, 'box', [0.3, 0.1, 0.3], 0xd8cfb6, 0, 0, 0.06);
   P(g.head, 'dome', [0.3, 8, 2], 0x574f68, 0, 0.36, 0);
   P(g.head, 'cyl', [0.31, 0.31, 0.05, 8], 0x453d57, 0, 0.36, 0);
+  if (hqGeo) {
+    for (let i = 0; i < 3; i++) P(g.torso, 'torus', [0.22, 0.024, 8, 16, Math.PI * 1.15], 0xfff8e6, 0, 0.22 + i * 0.13, 0.02, Math.PI / 2, 0, -0.2);
+    P(g.head, 'box', [0.06, 0.18, 0.05], 0x6e6682, 0, 0.32, 0.27);
+    const q = Gp(g.torso, 0.16, 0.4, -0.22); q.rotation.set(0.18, 0, -0.32);
+    P(q, 'cyl', [0.085, 0.07, 0.42, 10], 0x453d57, 0, 0, 0);
+    for (let i = -1; i <= 1; i++) P(q, 'box', [0.02, 0.16, 0.02], 0xdfe6ee, i * 0.04, 0.26, 0).castShadow = false;
+  }
   addBow(g, 0x574f68, true);
   return g;
 }
@@ -2058,14 +2104,23 @@ function buildOrc() {
     const a = sx < 0 ? g.armL : g.armR;
     P(a, 'dome', [0.23, 6, 2], 0x3b3350, 0, -0.02, 0);
     P(a, 'cone', [0.08, 0.26, 5], 0xdfe6ee, sx * 0.07, 0.24, 0);
+    if (hqGeo) {
+      P(a, 'torus', [0.22, 0.028, 8, 16], 0x574f68, 0, -0.02, 0, Math.PI / 2);
+      P(a, 'cone', [0.055, 0.18, 8], 0xdfe6ee, sx * 0.17, 0.12, 0.08, 0.35, 0, -sx * 0.85);
+    }
   }
   P(g.head, 'box', [0.12, 0.2, 0.46], 0x2a2233, 0, 0.58, -0.03);
   P(g.torso, 'box', [0.14, 0.86, 0.06], 0x2f2620, 0, 0.34, 0.325, 0, 0, 0.7);
+  if (hqGeo) P(g.torso, 'torus', [0.11, 0.024, 8, 14], 0xdfe6ee, 0, 0.38, 0.35);
   const wp = Gp(g.handR, 0, 0, 0.06);
   P(wp, 'cyl', [0.06, 0.05, 1.2, 6], 0x6b4a2b, 0, 0, 0.5, Math.PI / 2);
   P(wp, 'box', [0.4, 0.4, 0.5], 0x77808f, 0, 0, 1.05);
   P(wp, 'box', [0.46, 0.46, 0.12], 0x5d6675, 0, 0, 1.05);
   P(wp, 'cone', [0.1, 0.24, 5], 0xdfe6ee, 0, 0.3, 1.05); P(wp, 'cone', [0.1, 0.24, 5], 0xdfe6ee, 0, -0.3, 1.05, Math.PI);
+  if (hqGeo) {
+    P(wp, 'cone', [0.06, 0.18, 8], 0xdfe6ee, 0, 0, 1.38, Math.PI / 2);
+    P(wp, 'sph', [0.075], 0x5d6675, 0, 0, -0.14);
+  }
   return g;
 }
 function buildCultist() {
@@ -2077,6 +2132,11 @@ function buildCultist() {
   P(g.head, 'cone', [0.2, 0.44, 6], C, 0, 0.62, -0.2, -0.75);
   P(g.hips, 'prism', [0.3, 0.46, 0.5, 8, 0.8], 0x4a2668, 0, -0.22, 0);
   P(g.hips, 'prism', [0.465, 0.47, 0.05, 8, 0.8], 0x6b3a94, 0, -0.46, 0);
+  if (hqGeo) {
+    P(g.torso, 'prism', [0.22, 0.46, 0.16, 14, 0.72], 0x7240a0, 0, 0.62, 0);
+    P(g.hips, 'prism', [0.475, 0.48, 0.035, 14, 0.8], 0xffc23d, 0, -0.44, 0);
+    P(g.handR, 'torus', [0.21, 0.022, 8, 16], 0xffc23d, 0, -0.2, 0.1, 0.6, 0.4).castShadow = false;
+  }
   P(g.handR, 'ico', [0.15, 1], M.pink, 0, -0.2, 0.1).castShadow = false;
   return g;
 }
@@ -2084,9 +2144,17 @@ function buildSlime(o) {
   const root = new T.Group(); root.rotation.order = 'YXZ';
   const blob = Gp(root), tier = o && o.tier;
   P(blob, 'ico', [0.75, 2], tier ? 0x7fe6d4 : 0x4fd6c0, 0, 0.55, 0).scale.y = 0.8;
-  for (const sx of [-1, 1]) P(blob, 'box', [0.13, 0.22, 0.06], 0x231a33, sx * 0.22, 0.7, 0.68).castShadow = false;
+  for (const sx of [-1, 1]) {
+    P(blob, hqGeo ? 'sph' : 'box', hqGeo ? [0.095, 12, 8] : [0.13, 0.22, 0.06], 0x231a33, sx * 0.22, 0.7, 0.68).castShadow = false;
+    if (hqGeo) P(blob, 'sph', [0.032, 8, 6], 0xffffff, sx * 0.245, 0.74, 0.76).castShadow = false;
+  }
   P(blob, 'box', [0.2, 0.1, 0.06], 0xe8fff8, 0.26, 0.98, 0.46, -0.5, 0.4).castShadow = false;
   P(blob, 'ico', [0.16, 1], 0x8ff0e0, -0.34, 1.0, 0.1); P(blob, 'ico', [0.1, 0], 0x8ff0e0, 0.1, 1.12, -0.25);
+  if (hqGeo) {
+    P(blob, 'sph', [0.34, 14, 10], 0x22a699, 0, 0.48, 0).castShadow = false;
+    P(blob, 'sph', [0.12, 10, 8], 0xb6fff3, 0.36, 0.92, -0.18).castShadow = false;
+    P(blob, 'sph', [0.08, 8, 6], 0xb6fff3, -0.42, 0.76, 0.24).castShadow = false;
+  }
   root.scale.setScalar(tier ? 0.6 : 1);
   return { root, blob };
 }
@@ -2099,12 +2167,21 @@ function buildOgre() {
     P(g.head, 'cone', [0.055, 0.22, 5], 0xfff1d2, sx * 0.16, 0.2, 0.27);
     P(g.head, 'cone', [0.085, 0.34, 6], 0xfff1d2, sx * 0.21, 0.56, 0, 0, 0, -sx * 0.4);
     P(sx < 0 ? g.foreL : g.foreR, 'cyl', [0.11, 0.1, 0.12, 6], 0xffc23d, 0, -0.13, 0);
+    if (hqGeo) {
+      P(g.head, 'cone', [0.055, 0.22, 8], 0xfff1d2, sx * 0.33, 0.73, 0.02, 0.1, 0, -sx * 0.15);
+      P(sx < 0 ? g.foreL : g.foreR, 'cone', [0.035, 0.12, 6], 0xdfe6ee, sx * 0.13, -0.13, 0.04, 0, 0, -sx * Math.PI / 2);
+    }
   }
   P(g.hips, 'box', [0.7, 0.36, 0.1], 0x8a2f3a, 0, -0.14, 0.33); P(g.hips, 'box', [0.7, 0.36, 0.1], 0x8a2f3a, 0, -0.14, -0.33);
   P(g.torso, 'box', [0.16, 1.1, 0.96], 0x4a3426, 0, 0.32, 0, 0, 0, 0.75);
+  if (hqGeo) P(g.torso, 'sph', [0.13], 0xfff1d2, 0, 0.08, 0.52);
   const wp = Gp(g.handR, 0, 0, 0.08);
   P(wp, 'cyl', [0.2, 0.07, 1.5, 8], 0x6b4a2b, 0, 0, 0.7, Math.PI / 2);
   for (let i = 0; i < 8; i++) { const a = i / 4 * Math.PI + (i > 3 ? Math.PI / 4 : 0); P(wp, 'cone', [0.06, 0.2, 4], 0xdfe6ee, Math.cos(a) * 0.25, Math.sin(a) * 0.25, i > 3 ? 1.32 : 1.1, 0, 0, a - Math.PI / 2); }
+  if (hqGeo) {
+    P(wp, 'torus', [0.165, 0.028, 8, 16], 0x574f68, 0, 0, 1.05);
+    P(wp, 'torus', [0.195, 0.028, 8, 16], 0x574f68, 0, 0, 1.32);
+  }
   return g;
 }
 function buildLich() {
@@ -2115,10 +2192,17 @@ function buildLich() {
   P(g.head, 'box', [0.3, 0.1, 0.3], 0xc9d4c2, 0, 0, 0.05);
   P(g.head, 'cyl', [0.29, 0.29, 0.1, 8], 0xffc23d, 0, 0.5, 0);
   for (let i = 0; i < 8; i++) { const a = i / 8 * TAU; P(g.head, 'cone', [0.055, i % 2 ? 0.2 : 0.3, 4], 0xffc23d, Math.sin(a) * 0.26, i % 2 ? 0.64 : 0.69, Math.cos(a) * 0.26); }
+  if (hqGeo) {
+    P(g.head, 'oct', [0.065], M.green, 0, 0.53, 0.3).castShadow = false;
+    for (let i = 0; i < 3; i++) P(g.torso, 'torus', [0.26, 0.022, 8, 16, Math.PI], 0xdce6d5, 0, 0.24 + i * 0.13, 0.08, Math.PI / 2);
+    for (const sx of [-1, 1]) P(sx < 0 ? g.armL : g.armR, 'dome', [0.19, 12, 6], 0x3a3f70, 0, 0.02, 0);
+    P(g.hips, 'prism', [0.675, 0.68, 0.035, 16, 0.85], 0xffc23d, 0, -0.6, 0);
+  }
   const st = Gp(g.handR, 0, 0, 0.06);
   P(st, 'cyl', [0.04, 0.05, 1.9, 6], 0x3b3350, 0, 0, 0.3, Math.PI / 2);
   P(st, 'ico', [0.2, 1], M.green, 0, 0, 1.36).castShadow = false;
   for (const s of [-1, 1]) { P(st, 'cone', [0.05, 0.34, 4], 0xe6efe0, s * 0.19, 0, 1.3, Math.PI / 2); P(st, 'cone', [0.05, 0.34, 4], 0xe6efe0, 0, s * 0.19, 1.3, Math.PI / 2); }
+  if (hqGeo) P(st, 'torus', [0.24, 0.024, 8, 16], 0xffc23d, 0, 0, 1.34);
   return g;
 }
 function buildBlackKnight() {
@@ -2127,13 +2211,19 @@ function buildBlackKnight() {
   for (const sx of [-1, 1]) {
     P(sx < 0 ? g.armL : g.armR, 'box', [0.46, 0.34, 0.48], 0x2d2940, sx * 0.08, 0.06, 0, 0, 0, sx * 0.25);
     P(sx < 0 ? g.armL : g.armR, 'cone', [0.065, 0.28, 4], 0x8a1c2e, sx * 0.12, 0.28, 0, 0, 0, -sx * 0.3);
+    if (hqGeo) P(sx < 0 ? g.armL : g.armR, 'dome', [0.24, 12, 6], 0x3b3552, sx * 0.06, 0.06, 0);
   }
   P(g.torso, 'box', [0.76, 0.28, 0.48], 0x35304a, 0, 0.62, 0.04);
   P(g.torso, 'box', [0.94, 1.15, 0.08], 0x7a1628, 0, 0.18, -0.34, -0.14);
+  if (hqGeo) P(g.torso, 'oct', [0.14], 0xff3b4e, 0, 0.46, 0.3).scale.z = 0.35;
   // 双角铁冠头盔
   P(g.head, 'box', [0.48, 0.5, 0.48], 0x252236, 0, 0.22, 0);
   P(g.head, 'box', [0.1, 0.36, 0.06], 0x565070, 0, 0.2, 0.24);
-  for (const sx of [-1, 1]) P(g.head, 'cone', [0.08, 0.44, 5], 0xc9d4e2, sx * 0.24, 0.56, 0.02, 0, 0, -sx * 0.42);
+  for (const sx of [-1, 1]) {
+    P(g.head, 'cone', [0.08, 0.44, 5], 0xc9d4e2, sx * 0.24, 0.56, 0.02, 0, 0, -sx * 0.42);
+    if (hqGeo) P(g.head, 'cone', [0.048, 0.24, 8], 0xe6eef8, sx * 0.36, 0.77, 0.04, 0.1, 0, -sx * 0.12);
+  }
+  if (hqGeo) P(g.head, 'dome', [0.3, 14, 8], 0x332e48, 0, 0.34, 0);
   // 右手巨型暗影重剑
   const sw = Gp(g.handR, 0, 0, 0.08);
   P(sw, 'cyl', [0.04, 0.045, 0.46, 6], 0x2a1e24, 0, 0, -0.12, Math.PI / 2);
@@ -2141,28 +2231,25 @@ function buildBlackKnight() {
   P(sw, 'box', [0.16, 0.06, 1.55], 0x363248, 0, 0, 0.96);
   P(sw, 'cone', [0.095, 0.36, 4], 0x4b4664, 0, 0, 1.88, Math.PI / 2, Math.PI / 4);
   P(sw, 'box', [0.05, 0.07, 1.25], 0xff3b4e, 0, 0, 0.92).castShadow = false;
+  if (hqGeo) P(sw, 'sph', [0.08], 0xffc23d, 0, 0, -0.36);
   // 左手尖刺塔盾（挂载于左前臂外侧，配合 guard 姿态举盾）
   const sh = Gp(g.foreL, -0.16, -0.08, 0.06);
   P(sh, 'box', [0.1, 0.88, 0.62], 0x1e1b2a, 0, 0.06, 0);
   P(sh, 'box', [0.12, 0.68, 0.12], 0x8a1c2e, -0.02, 0.06, 0);
   P(sh, 'cone', [0.08, 0.24, 4], 0xc9d4e2, -0.09, 0.06, 0, 0, 0, Math.PI / 2);
+  if (hqGeo) {
+    P(sh, 'box', [0.12, 0.07, 0.66], 0x4b4664, 0, 0.5, 0);
+    P(sh, 'box', [0.12, 0.07, 0.66], 0x4b4664, 0, -0.38, 0);
+  }
   g.guard = true;
   return g;
 }
 
-// All toon parts are baked via shared bake() above into vertex-coloured meshes per bone.
+// High-quality KayKit GLB models for the 3 player classes; monsters use smooth high-detail original models in High quality.
 const HQ_CFG = {
-  knight:      { model: 'Knight', norm: 0.66, scale: 1.0, guard: true, handR: { m: 'sword_1handed' }, handL: { m: 'shield_badge_color', ry: -Math.PI / 3 } },
-  ranger:      { model: 'Ranger', norm: 0.68, scale: 1.0, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
-  mage:        { model: 'Mage', norm: 0.66, scale: 1.0, handR: { m: 'staff' }, staffGlow: true },
-  goblin:      { model: 'Rogue', norm: 0.68, scale: 0.74, tint: 0x86c24e, handR: { m: 'dagger' } },
-  deepOne:     { model: 'Skeleton_Minion', norm: 0.68, scale: 0.88, tint: 0x4e8a7d, handR: { m: 'spear_A' } },
-  skeleton:    { model: 'Skeleton_Rogue', norm: 0.68, scale: 0.96, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
-  orc:         { model: 'Barbarian', norm: 0.68, scale: 1.32, tint: 0x6ea854, handR: { m: 'axe_2handed' } },
-  cultist:     { model: 'Rogue_Hooded', norm: 0.68, scale: 1.0, tint: 0x7b52ab, hasBook: true, handOrb: 'pink', handL: { m: 'spellbook_open', rx: -Math.PI / 5, ry: Math.PI / 6 } },
-  ogre:        { model: 'Barbarian', norm: 0.68, scale: 2.15, scaleXZ: 1.22, tint: 0xd99b72, handR: { m: 'hammer_C' } },
-  lich:        { model: 'Skeleton_Mage', norm: 0.68, scale: 1.72, tint: 0x7dffb0, handR: { m: 'Skeleton_Staff' } },
-  blackKnight: { model: 'Skeleton_Warrior', norm: 0.68, scale: 1.80, tint: 0xc94a5a, guard: true, handR: { m: 'sword_2handed_color' }, handL: { m: 'shield_spikes_color', ry: -Math.PI / 3 } },
+  knight: { model: 'Knight', norm: 0.66, scale: 1.0, guard: true, handR: { m: 'sword_1handed' }, handL: { m: 'shield_badge_color', ry: -Math.PI / 3 } },
+  ranger: { model: 'Ranger', norm: 0.68, scale: 1.0, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
+  mage:   { model: 'Mage', norm: 0.66, scale: 1.0, handR: { m: 'staff' }, staffGlow: true },
 };
 const hqCache = new Map();
 let hqState = 'idle'; // 'idle' | 'loading' | 'ready' | 'error'
@@ -2275,12 +2362,15 @@ function makeRig(key, build) {
     const hq = makeKayKitRig(hqKey);
     if (hq) return hq;
   }
-  let t = rigCache.get(key);
+  const cKey = (quality === 'high' ? 'hq:' : '') + key;
+  let t = rigCache.get(cKey);
   if (!t) {
-    t = build();
+    const prevHq = hqGeo;
+    hqGeo = quality === 'high';
+    try { t = build(); } finally { hqGeo = prevHq; }
     for (const k in t) if (t[k] && t[k].isObject3D) t[k].name = k;
     const groups = []; t.root.traverse(o => { if (o.isGroup) groups.push(o); }); groups.forEach(bake);
-    rigCache.set(key, t);
+    rigCache.set(cKey, t);
   }
   const root = t.root.clone(true), rig = { root };
   for (const k in t) if (k !== 'root') rig[k] = t[k] && t[k].isObject3D ? root.getObjectByName(k) : t[k];
@@ -5299,7 +5389,7 @@ function rebuildAllRigs() {
   }
   if (game.enemies) {
     for (const e of game.enemies) {
-      if (e.dead || !HQ_CFG[e.type]) continue;
+      if (e.dead) continue;
       const tier = e.tier || 0;
       const rig = swapEntRig(e, e.type + tier, () => e.d.build({ tier }));
       e.baseS = rig.root.scale.x;

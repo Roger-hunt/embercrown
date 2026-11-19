@@ -1,0 +1,39 @@
+name: Release Solo Offline Package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check server & combat syntax
+        run: npm run check
+
+      - name: Build solo offline zip
+        run: bash scripts/build-solo.sh "${GITHUB_REF_NAME}"
+
+      - name: Resolve release notes
+        id: notes
+        run: |
+          FILE="dist/RELEASE-${GITHUB_REF_NAME}.md"
+          if [ -f "$FILE" ]; then
+            echo "body_path=$FILE" >> "$GITHUB_OUTPUT"
+          else
+            echo "body_path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ github.ref_name }}"
+          body_path: ${{ steps.notes.outputs.body_path }}
+          generate_release_notes: ${{ steps.notes.outputs.body_path == '' }}
+          files: dist/embercrown-solo-${{ github.ref_name }}.zip

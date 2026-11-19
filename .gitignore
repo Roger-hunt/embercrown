@@ -1,0 +1,14 @@
+node_modules/
+Assets/
+private/
+data/
+.wrangler/
+.DS_Store
+*.db
+*.db-wal
+*.db-shm
+*.pem
+*.log
+dist/*.zip
+dist/vps-index.html
+/tmp/

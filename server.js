@@ -345,7 +345,7 @@ const SEC_HEADERS = {
 };
 
 /* ---------------- static files ---------------- */
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.glb': 'model/gltf-binary' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.ogg': 'audio/ogg', '.glb': 'model/gltf-binary' };
 // 文本类静态文件 gzip 后缓存在内存里（按大小 + 修改时间失效），客户端页面和 Three.js 体积降到约四分之一
 const GZ_TYPES = new Set(['.html', '.js', '.css', '.json', '.svg']);
 const gzCache = new Map();

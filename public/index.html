@@ -2414,16 +2414,34 @@ let AC = null, master = null, muted = false, noiseBuf = null, lastHitS = 0, sfxK
 const VOICES = ['greta_yell.mp3', 'godlike.mp3'], voiceBuf = {}, voiceEl = {}, voiceRaw = {};
 const SFX_FILES = {
   fire: 'assets/sfx/fire.m4a',
+  inferno: 'assets/sfx/inferno.m4a',
+  meteor: 'assets/sfx/meteor.m4a',
   boom: 'assets/sfx/boom.m4a',
   freeze: 'assets/sfx/freeze.m4a',
   cast: 'assets/sfx/cast.m4a',
   blink: 'assets/sfx/blink.m4a',
   wall: 'assets/sfx/wall.m4a',
+  shoot: 'assets/sfx/shoot.m4a',
+  volley: 'assets/sfx/volley.m4a',
+  storm: 'assets/sfx/storm.m4a',
+  dash: 'assets/sfx/dash.m4a',
   boon: 'assets/sfx/boon.m4a',
   pickup: 'assets/sfx/pickup.m4a',
+  box: 'assets/sfx/box.m4a',
   curse: 'assets/sfx/curse.m4a',
   confusion: 'assets/sfx/confusion.m4a',
-  cheer: 'assets/sfx/cheer.m4a',
+  dead: 'assets/sfx/dead.m4a',
+  horn: 'assets/sfx/horn.m4a',
+  swing: 'assets/sfx/swing.ogg',
+  cleave: 'assets/sfx/cleave.ogg',
+  hit: 'assets/sfx/hit.ogg',
+  thud: 'assets/sfx/thud.ogg',
+  hurt: 'assets/sfx/hurt.ogg',
+  ui: 'assets/sfx/ui.ogg',
+  door: 'assets/sfx/door.ogg',
+  fb: 'assets/sfx/fb.ogg',
+  streak: 'assets/sfx/streak.ogg',
+  shutdown: 'assets/sfx/shutdown.ogg',
 };
 const sfxBuf = {}, sfxRaw = {};
 function decodeSfxSamples() {
@@ -2531,32 +2549,39 @@ function noise(d, v = 0.15, freq = 1200, q = 1, type = 'bandpass', f2 = 0) {
   s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.02);
 }
 const sfx = {
-  swing: () => noise(0.14, 0.12, 900, 1, 'bandpass', 2600),
-  hit: () => { const n = performance.now(); if (n - lastHitS < 45) return; lastHitS = n; noise(0.08, 0.2, 500, 1, 'lowpass'); tone(170, 0.08, 'square', 0.07, 70); },
-  shoot: () => { tone(520, 0.09, 'triangle', 0.12, 900); noise(0.06, 0.05, 3000, 1, 'highpass'); },
-  fire: () => { if (!playSfxBuf('fire', 0.58, 0.08)) noise(0.25, 0.13, 500, 2, 'bandpass', 1800); },
+  swing: () => { if (!playSfxBuf('swing', 0.45, 0.08)) noise(0.14, 0.12, 900, 1, 'bandpass', 2600); },
+  cleave: () => { if (!playSfxBuf('cleave', 0.56, 0.06)) { sfx.swing(); sfx.thud(); } },
+  hit: () => { const n = performance.now(); if (n - lastHitS < 45) return; lastHitS = n; if (!playSfxBuf('hit', 0.48, 0.08)) { noise(0.08, 0.2, 500, 1, 'lowpass'); tone(170, 0.08, 'square', 0.07, 70); } },
+  shoot: () => { if (!playSfxBuf('shoot', 0.50, 0.07)) { tone(520, 0.09, 'triangle', 0.12, 900); noise(0.06, 0.05, 3000, 1, 'highpass'); } },
+  volley: () => { if (!playSfxBuf('volley', 0.58, 0.05)) { sfx.shoot(); tone(700, 0.12, 'triangle', 0.1, 1200); } },
+  storm: () => { if (!playSfxBuf('storm', 0.54, 0.04)) sfx.shoot(); },
+  fire: () => { if (!playSfxBuf('fire', 0.56, 0.08)) noise(0.25, 0.13, 500, 2, 'bandpass', 1800); },
+  inferno: () => { if (!playSfxBuf('inferno', 0.62, 0.04)) sfx.fire(); },
+  meteor: () => { if (!playSfxBuf('meteor', 0.60, 0.05)) sfx.cast(); },
   boom: () => { if (!playSfxBuf('boom', 0.65, 0.06)) { noise(0.5, 0.3, 700, 1, 'lowpass', 80); tone(90, 0.4, 'sine', 0.3, 35); } },
-  thud: () => { noise(0.22, 0.22, 240, 1, 'lowpass'); tone(70, 0.2, 'sine', 0.2, 40); },
-  hurt: () => tone(300, 0.22, 'sawtooth', 0.13, 90),
+  thud: () => { if (!playSfxBuf('thud', 0.54, 0.06)) { noise(0.22, 0.22, 240, 1, 'lowpass'); tone(70, 0.2, 'sine', 0.2, 40); } },
+  hurt: () => { if (!playSfxBuf('hurt', 0.52, 0.06)) tone(300, 0.22, 'sawtooth', 0.13, 90); },
   pickup: () => { if (!playSfxBuf('pickup', 0.52, 0.04)) { tone(660, 0.08, 'triangle', 0.12); tone(990, 0.12, 'triangle', 0.12, 0, 0.07); } },
-  horn: () => { tone(147, 0.5, 'sawtooth', 0.09); tone(196, 0.75, 'sawtooth', 0.09, 0, 0.36); },
-  ui: () => tone(700, 0.05, 'square', 0.05),
-  boon: () => { if (!playSfxBuf('boon', 0.55, 0.03)) [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.11, 0, i * 0.07)); },
+  horn: () => { if (!playSfxBuf('horn', 0.52, 0.03)) { tone(147, 0.5, 'sawtooth', 0.09); tone(196, 0.75, 'sawtooth', 0.09, 0, 0.36); } },
+  ui: () => { if (!playSfxBuf('ui', 0.35, 0.03)) tone(700, 0.05, 'square', 0.05); },
+  boon: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.11, 0, i * 0.07)),
+  bless: () => { if (!playSfxBuf('boon', 0.55, 0.03)) sfx.boon(); },
   freeze: () => { if (!playSfxBuf('freeze', 0.62, 0.05)) { tone(1800, 0.4, 'sine', 0.09, 500); noise(0.3, 0.07, 5000, 1, 'highpass'); } },
-  dash: () => noise(0.18, 0.1, 400, 1, 'bandpass', 1500),
+  dash: () => { if (!playSfxBuf('dash', 0.46, 0.07)) noise(0.18, 0.1, 400, 1, 'bandpass', 1500); },
   blink: () => { if (!playSfxBuf('blink', 0.56, 0.06)) tone(900, 0.16, 'sine', 0.1, 1900); },
   wall: () => { if (!playSfxBuf('wall', 0.58, 0.04)) sfx.thud(); },
   cheer: () => noise(1.3, 0.07, 1000, 0.6, 'bandpass', 1600),
-  dead: () => tone(220, 0.7, 'sawtooth', 0.13, 55),
+  dead: () => { if (!playSfxBuf('dead', 0.58, 0.03)) tone(220, 0.7, 'sawtooth', 0.13, 55); },
   cast: () => { if (!playSfxBuf('cast', 0.55, 0.05)) tone(300, 0.3, 'sine', 0.1, 700); },
-  fb: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.08, 0, i * 0.06)); tone(1047, 0.38, 'triangle', 0.13, 0, 0.22); },
-  streak: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.12, 0, i * 0.065)),
+  fb: () => { if (!playSfxBuf('fb', 0.55, 0)) { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.08, 0, i * 0.06)); tone(1047, 0.38, 'triangle', 0.13, 0, 0.22); } },
+  streak: () => { if (!playSfxBuf('streak', 0.55, 0)) [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.12, 0, i * 0.065)); },
   godlike: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.16, 0, i * 0.065)); tone(1568, 0.5, 'triangle', 0.2, 0, 0.33); sfx.cheer(); playVoice('godlike.mp3', 1.8); },
-  shutdown: () => [440, 349, 294, 220].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.08, 0, i * 0.07)),
-  box: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.08, 'triangle', 0.13, 0, i * 0.045)); },
+  shutdown: () => { if (!playSfxBuf('shutdown', 0.55, 0)) [440, 349, 294, 220].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.08, 0, i * 0.07)); },
+  box: () => { if (!playSfxBuf('box', 0.54, 0.04)) [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.08, 'triangle', 0.13, 0, i * 0.045)); },
   grip: () => { if (!playSfxBuf('curse', 0.6, 0.05)) { noise(0.18, 0.2, 1600, 2.2, 'bandpass', 480); tone(380, 0.22, 'sawtooth', 0.15, 110); tone(760, 0.09, 'square', 0.09, 240, 0.05); } },
   slip: () => { if (!playSfxBuf('confusion', 0.58, 0.06)) { tone(920, 0.24, 'sine', 0.16, 280); noise(0.14, 0.16, 400, 1, 'lowpass', 90); } },
   doorCreak: () => {
+    if (playSfxBuf('door', 0.65, 0.02)) return;
     if (!AC || muted) return;
     const t = AC.currentTime, dur = 0.82;
     noise(0.045, 0.22, 1900, 3.2, 'bandpass', 700);
@@ -3058,7 +3083,7 @@ function useSkill(p, slot, fa) {
   const id = p.def.id; p.atkT = p.atkDur; p.aimA = fa; p.aimT = 0.45;
   if (id === 'knight' && slot === 0) {
     const range = 3.6 * (1 + 0.15 * p.mastery), half = 1.25;
-    slashFx(p.x, p.z, fa, range, half, 0xffd27a, 0.9 + p.y); sfx.swing(); sfx.thud();
+    slashFx(p.x, p.z, fa, range, half, 0xffd27a, 0.9 + p.y); sfx.cleave();
     for (const e of game.enemies.slice()) {
       const dx = e.x - p.x, dz = e.z - p.z, dd = Math.hypot(dx, dz);
       if (dd < range + e.r && (dd < e.r + 0.9 || Math.abs(angDiff(Math.atan2(dx, dz), fa)) < half)) hurtEnemy(e, 52, { kb: 3.5, fx: p.x, fz: p.z, sk: 1 });
@@ -3070,10 +3095,10 @@ function useSkill(p, slot, fa) {
     floatText(p.x, 2.3 + p.y, p.z, t('破釜沉舟', 'Last Stand'), 'note');
   } else if (id === 'ranger' && slot === 0) {
     for (let i = -3; i <= 3; i++) spawnProj({ team: 0, kind: 'arrow', x: p.x, z: p.z, a: fa + i * 0.13, speed: 30, dmg: 16, pierce: 2, life: 1.1, r: 0.4, slow: 1.8, sk: 1 });
-    sfx.shoot(); tone(700, 0.12, 'triangle', 0.1, 1200);
+    sfx.volley();
   } else if (id === 'ranger') {
     const t = aimPoint(p, 15);
-    addZone({ x: t.x, z: t.z, r: 4.5, delay: 0.35, dmg: 16, team: 0, ticks: 6, interval: 0.28, slow: 1.2, color: ZCOL.rain, kind: 'rain' }); sfx.shoot();
+    addZone({ x: t.x, z: t.z, r: 4.5, delay: 0.35, dmg: 16, team: 0, ticks: 6, interval: 0.28, slow: 1.2, color: ZCOL.rain, kind: 'rain' }); sfx.storm();
   } else if (id === 'mage' && slot === 0) {
     shockFx(p.x, p.z, 5.8, 0xaee8ff, 0.5); sfx.freeze();
     for (let i = 0; i < 26; i++) { const a = i / 26 * TAU; spark(p.x, 0.6, p.z, Math.sin(a) * 13, rand(1, 3), Math.cos(a) * 13, 0xcff3ff, 0.2, 0.45, 4); }
@@ -3082,7 +3107,7 @@ function useSkill(p, slot, fa) {
     hitCrittersInRadius(p.x, p.z, 5.8);
   } else {
     const t = aimPoint(p, 17);
-    addZone({ x: t.x, z: t.z, r: 4.6, delay: 0.62, dmg: Math.round(105 * (1 + 0.15 * p.mastery)), team: 0, color: ZCOL.meteor, kind: 'meteor', kb: 9 }); sfx.cast();
+    addZone({ x: t.x, z: t.z, r: 4.6, delay: 0.62, dmg: Math.round(105 * (1 + 0.15 * p.mastery)), team: 0, color: ZCOL.meteor, kind: 'meteor', kb: 9 }); sfx.meteor();
   }
 }
 /* ---- 5 号位移技能：骑士冲锋 / 游侠翻滚 / 法师闪现 ---- */
@@ -3172,7 +3197,7 @@ function ultCast(x, z) {
     if (Math.hypot(x - p.x, z - p.z) > 0.2) p.aimA = Math.atan2(x - p.x, z - p.z);
     const zDmg = p.def.id === 'mage' ? Math.round(u.zone.dmg * (1 + 0.15 * p.mastery)) : u.zone.dmg;
     addZone(Object.assign({ x, z, team: 0, color: ZCOL[u.kind], kind: u.kind, chan: true }, u.zone, { dmg: zDmg }));
-    castShow(clsText(p.def).ult.name, true); sfx.cast();
+    castShow(clsText(p.def).ult.name, true); sfx.inferno();
     return;
   }
   p.cast = { t: 0, dur: u.cast, x, z, mark: makeMark(x, z, u.zone.r, ZCOL[u.kind]) };
@@ -4435,7 +4460,7 @@ function openUpgrade() {
 }
 function chooseBoon(b) {
   if (game.state !== 'upgrade') return;
-  b.apply(player); heal(player.maxHp * 0.12); sfx.boon();
+  b.apply(player); heal(player.maxHp * 0.12); sfx.bless();
   if (!b.instant) {
     const hit = player.boons.find(x => x.boon === b);
     if (hit) hit.count++; else player.boons.push({ boon: b, count: 1 });
@@ -6115,7 +6140,7 @@ function mpEvent(v) {
     case 'useit': {
       const it = FUN_ITEMS[v.it];
       burst(p.x, 1, p.z, v.it === 'star' ? 0xffd23f : v.it === 'boom' ? 0x5be7ff : 0xb86bff, 14, 5, 0.18, 0.5);
-      if (v.it === 'star') sfx.boon();
+      if (v.it === 'star') sfx.bless();
       else if (v.it === 'boom' || v.it === 'haste') sfx.dash();
       else if (v.it === 'giant') sfx.horn();
       if (me && it && v.it !== 'grip') floatText(p.x, 2.6, p.z, lang === 'en' ? it.en + '!' : it.zh + '！', 'note');
@@ -6181,9 +6206,9 @@ function mpEvent(v) {
       if (v.k !== 'roll' && v.k !== 'charge' && v.k !== 'jump' && v.k !== 'blink') e.atkT = e.atkDur;
       switch (v.k) {
         case 'slash': slashFx(p.x, p.z, v.a, 2.9, 1.05, me ? 0xfff2b0 : 0xffb9a8); sfx.swing(); break;
-        case 'cleave': slashFx(p.x, p.z, v.a, 3.8, 1.28, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.2, me ? 0xbfd4ff : 0xffb9a8, 0.25); sfx.swing(); sfx.thud(); break;
+        case 'cleave': slashFx(p.x, p.z, v.a, 3.8, 1.28, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.2, me ? 0xbfd4ff : 0xffb9a8, 0.25); sfx.cleave(); break;
         case 'wall': shockFx(p.x, p.z, 3.6, 0xffd859, 0.45); burst(p.x, 1, p.z, 0xffd859, 16, 5, 0.2, 0.55); sfx.wall(); sfx.horn(); break;
-        case 'spin': slashFx(p.x, p.z, v.a, 3.4, Math.PI, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.4, me ? 0xfff2b0 : 0xffb9a8); e.spinT = 0.35; sfx.swing(); sfx.thud(); break;
+        case 'spin': slashFx(p.x, p.z, v.a, 3.4, Math.PI, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.4, me ? 0xfff2b0 : 0xffb9a8); e.spinT = 0.35; sfx.cleave(); break;
         case 'shoot': sfx.shoot(); break;
         case 'cast': sfx.fire(); break;
         case 'call': sfx.cast(); break;

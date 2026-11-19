@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Build optimized GLB models and M4A spell SFX from AssetsFree/ into public/assets/."""
+"""Build optimized GLB models and complete M4A/OGG SFX from AssetsFree/ into public/assets/."""
 
 import io
 import json
-import math
 import os
 import struct
 import subprocess
@@ -22,7 +21,6 @@ def pack_gltf_to_glb(zf: zipfile.ZipFile, gltf_path: str, out_glb_path: str) -> 
     base_dir = os.path.dirname(gltf_path)
     gltf = json.loads(zf.read(gltf_path).decode("utf-8"))
 
-    # Collect buffers
     bin_chunks = []
     buf_offsets = []
     total_len = 0
@@ -36,13 +34,11 @@ def pack_gltf_to_glb(zf: zipfile.ZipFile, gltf_path: str, out_glb_path: str) -> 
         buf.pop("uri", None)
         buf["byteLength"] = len(raw)
 
-    # Adjust existing bufferViews if multiple buffers (usually 1)
     for bv in gltf.get("bufferViews", []):
         bi = bv.get("buffer", 0)
         bv["byteOffset"] = bv.get("byteOffset", 0) + buf_offsets[bi]
         bv["buffer"] = 0
 
-    # Embed external images into bufferViews
     bvs = gltf.setdefault("bufferViews", [])
     for img in gltf.get("images", []):
         uri = img.get("uri", "")
@@ -75,9 +71,9 @@ def pack_gltf_to_glb(zf: zipfile.ZipFile, gltf_path: str, out_glb_path: str) -> 
 
     with open(out_glb_path, "wb") as f:
         f.write(struct.pack("<4sII", b"glTF", 2, total_file_len))
-        f.write(struct.pack("<II", len(json_chunk), 0x4E4F534A))  # JSON
+        f.write(struct.pack("<II", len(json_chunk), 0x4E4F534A))
         f.write(json_chunk)
-        f.write(struct.pack("<II", len(bin_chunk), 0x004E4942))   # BIN
+        f.write(struct.pack("<II", len(bin_chunk), 0x004E4942))
         f.write(bin_chunk)
 
 
@@ -88,7 +84,6 @@ def build_models() -> None:
     wpn_zip = os.path.join(ASSETS_FREE, "KayKit_FantasyWeaponsBits_1.0_FREE.zip")
 
     with zipfile.ZipFile(adv_zip) as za, zipfile.ZipFile(skel_zip) as zs, zipfile.ZipFile(wpn_zip) as zw:
-        # Copy character GLBs directly
         adv_chars = ["Knight", "Ranger", "Mage", "Rogue", "Rogue_Hooded", "Barbarian"]
         for c in adv_chars:
             data = za.read(f"KayKit_Adventurers_2.0_FREE/Characters/gltf/{c}.glb")
@@ -101,7 +96,6 @@ def build_models() -> None:
             with open(os.path.join(OUT_MODELS, f"{c}.glb"), "wb") as f:
                 f.write(data)
 
-        # Pack GLTF weapons/props into self-contained GLBs
         adv_props = [
             "sword_1handed", "sword_2handed_color", "shield_badge_color",
             "shield_spikes_color", "bow_withString", "staff", "dagger",
@@ -144,7 +138,6 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
 
     samples = list(struct.unpack(f"<{nframes * ch}h", pcm))
 
-    # Find leading & trailing non-silent frame
     thresh = 160
     start_f = 0
     for i in range(0, len(samples), ch):
@@ -167,12 +160,10 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
     sliced = samples[start_f * ch : end_f * ch]
     total_f = len(sliced) // ch
 
-    # Downmix to mono for compact SFX & consistent 3D-like pan-free playback
     mono = []
     for i in range(0, len(sliced), ch):
         mono.append(sum(sliced[i : i + ch]) / ch)
 
-    # Apply short fade-in (5ms) and fade-out
     fi = min(total_f, int(0.005 * rate))
     fo = min(total_f, int(fade_out * rate))
     for i in range(fi):
@@ -180,7 +171,6 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
     for i in range(fo):
         mono[total_f - 1 - i] *= i / max(1, fo)
 
-    # Normalize peak to ~0.88
     peak = max((abs(x) for x in mono), default=1.0)
     scale = (0.88 * 32767.0) / peak if peak > 100 else 1.0
     out_pcm = struct.pack(
@@ -210,26 +200,54 @@ def trim_and_encode_wav(raw_bytes: bytes, out_m4a: str, max_dur: float = None, f
 def build_sfx() -> None:
     os.makedirs(OUT_SFX, exist_ok=True)
     spells_zip = os.path.join(ASSETS_FREE, "spells.zip")
-    mapping = [
-        ("fire.m4a", "flamethrower.ogg", 0.52, 0.14),
+    spell_mapping = [
+        ("fire.m4a", "shot2.ogg", 0.78, 0.14),
+        ("inferno.m4a", "flamethrower.ogg", 1.80, 0.25),
+        ("meteor.m4a", "explode1.ogg", 1.45, 0.22),
         ("boom.m4a", "explode2.ogg", 1.25, 0.22),
         ("freeze.m4a", "freeze2.ogg", 1.15, 0.20),
         ("cast.m4a", "spell.ogg", 0.90, 0.16),
         ("blink.m4a", "teleport.ogg", 0.70, 0.14),
-        ("wall.m4a", "magicshield.ogg", 0.70, 0.14),
-        ("boon.m4a", "blessing3.ogg", 1.35, 0.20),
+        ("wall.m4a", "magicshield.ogg", 0.65, 0.14),
+        ("shoot.m4a", "shot.ogg", 0.38, 0.08),
+        ("volley.m4a", "forcepush-old1.ogg", 0.36, 0.08),
+        ("storm.m4a", "wind2.ogg", 1.50, 0.25),
+        ("dash.m4a", "forcepulse.ogg", 0.32, 0.08),
+        ("boon.m4a", "blessing3.ogg", 1.10, 0.20),
         ("pickup.m4a", "heal.ogg", 0.85, 0.18),
+        ("box.m4a", "enchant.ogg", 0.72, 0.14),
         ("curse.m4a", "curse4.ogg", 0.90, 0.16),
-        ("confusion.m4a", "confusion.ogg", 0.90, 0.18),
+        ("confusion.m4a", "confusion.ogg", 0.45, 0.10),
+        ("dead.m4a", "magicfail2.ogg", 1.10, 0.20),
+        ("horn.m4a", "entrance.ogg", 1.35, 0.22),
         ("cheer.m4a", "cheer-crowd.ogg", 2.10, 0.35),
     ]
     with zipfile.ZipFile(spells_zip) as z:
-        for out_name, src_name, max_dur, fade_out in mapping:
+        for out_name, src_name, max_dur, fade_out in spell_mapping:
             raw = z.read(src_name)
             if raw[:4] != b"RIFF":
                 raise ValueError(f"{src_name} is not RIFF WAV")
             trim_and_encode_wav(raw, os.path.join(OUT_SFX, out_name), max_dur=max_dur, fade_out=fade_out)
-    print(f"Built {len(mapping)} M4A spell SFX in {OUT_SFX}")
+
+    # Extract native OGG SFX from Kenney packs
+    kenney_mapping = [
+        ("swing.ogg", "kenney_rpg-audio.zip", "Audio/knifeSlice.ogg"),
+        ("cleave.ogg", "kenney_rpg-audio.zip", "Audio/knifeSlice2.ogg"),
+        ("door.ogg", "kenney_rpg-audio.zip", "Audio/doorOpen_1.ogg"),
+        ("hit.ogg", "kenney_impact-sounds.zip", "Audio/impactPlate_medium_000.ogg"),
+        ("thud.ogg", "kenney_impact-sounds.zip", "Audio/impactSoft_heavy_000.ogg"),
+        ("hurt.ogg", "kenney_impact-sounds.zip", "Audio/impactPunch_heavy_001.ogg"),
+        ("ui.ogg", "kenney_interface-sounds.zip", "Audio/click_002.ogg"),
+        ("fb.ogg", "kenney_music-jingles.zip", "Audio/Steel jingles/jingles_STEEL00.ogg"),
+        ("streak.ogg", "kenney_music-jingles.zip", "Audio/Steel jingles/jingles_STEEL02.ogg"),
+        ("shutdown.ogg", "kenney_music-jingles.zip", "Audio/Hit jingles/jingles_HIT04.ogg"),
+    ]
+    for out_name, zip_name, inner_path in kenney_mapping:
+        with zipfile.ZipFile(os.path.join(ASSETS_FREE, zip_name)) as zk:
+            with open(os.path.join(OUT_SFX, out_name), "wb") as f:
+                f.write(zk.read(inner_path))
+
+    print(f"Built {len(spell_mapping)} M4A + {len(kenney_mapping)} OGG SFX in {OUT_SFX}")
 
 
 if __name__ == "__main__":

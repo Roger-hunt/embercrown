@@ -170,10 +170,18 @@
       return g;
     }
 
-    // Build nodes
+    // Build nodes (keep skinned vs static materials separate so hats/hoods attached to bones never inherit skinning=true)
     const nodes = gltf.nodes || [];
     const nodeObjs = [];
     const pendingSkins = [];
+    const skinnedMats = new Map();
+    function getMat(idx, hasSkin) {
+      const base = idx !== undefined ? materials[idx] : defaultMat;
+      if (!hasSkin) return base;
+      let sm = skinnedMats.get(base);
+      if (!sm) { sm = base.clone(); sm.skinning = true; skinnedMats.set(base, sm); }
+      return sm;
+    }
 
     for (let i = 0; i < nodes.length; i++) {
       const nd = nodes[i];
@@ -184,8 +192,7 @@
         const hasSkin = nd.skin !== undefined;
         if (prims.length === 1) {
           const g = buildGeo(prims[0]);
-          const mat = prims[0].material !== undefined ? materials[prims[0].material] : defaultMat;
-          if (hasSkin) mat.skinning = true;
+          const mat = getMat(prims[0].material, hasSkin);
           obj = hasSkin ? new T.SkinnedMesh(g, mat) : new T.Mesh(g, mat);
           obj.castShadow = true;
           if (hasSkin) pendingSkins.push({ mesh: obj, skinIdx: nd.skin });
@@ -193,8 +200,7 @@
           obj = new T.Group();
           for (const pr of prims) {
             const g = buildGeo(pr);
-            const mat = pr.material !== undefined ? materials[pr.material] : defaultMat;
-            if (hasSkin) mat.skinning = true;
+            const mat = getMat(pr.material, hasSkin);
             const sub = hasSkin ? new T.SkinnedMesh(g, mat) : new T.Mesh(g, mat);
             sub.castShadow = true;
             if (hasSkin) pendingSkins.push({ mesh: sub, skinIdx: nd.skin });

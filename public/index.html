@@ -2159,7 +2159,7 @@ const HQ_CFG = {
   deepOne:     { model: 'Skeleton_Minion', norm: 0.68, scale: 0.88, tint: 0x4e8a7d, handR: { m: 'spear_A' } },
   skeleton:    { model: 'Skeleton_Rogue', norm: 0.68, scale: 0.96, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
   orc:         { model: 'Barbarian', norm: 0.68, scale: 1.32, tint: 0x6ea854, handR: { m: 'axe_2handed' } },
-  cultist:     { model: 'Rogue_Hooded', norm: 0.68, scale: 1.0, tint: 0x7b52ab, handL: { m: 'spellbook_open', rx: -Math.PI / 4 } },
+  cultist:     { model: 'Rogue_Hooded', norm: 0.68, scale: 1.0, tint: 0x7b52ab, hasBook: true, handOrb: 'pink', handL: { m: 'spellbook_open', rx: -Math.PI / 5, ry: Math.PI / 6 } },
   ogre:        { model: 'Barbarian', norm: 0.68, scale: 2.15, scaleXZ: 1.22, tint: 0xd99b72, handR: { m: 'hammer_C' } },
   lich:        { model: 'Skeleton_Mage', norm: 0.68, scale: 1.72, tint: 0x7dffb0, handR: { m: 'Skeleton_Staff' } },
   blackKnight: { model: 'Skeleton_Warrior', norm: 0.68, scale: 1.80, tint: 0xc94a5a, guard: true, handR: { m: 'sword_2handed_color' }, handL: { m: 'shield_spikes_color', ry: -Math.PI / 3 } },
@@ -2259,7 +2259,13 @@ function makeKayKitRig(key) {
     orb.position.set(0, 1.15, 0);
     handR.add(orb);
   }
-  return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR, bow, arrow, guard: !!cfg.guard, isKayKit: true };
+  if (cfg.handOrb && handR) {
+    const orb = new T.Mesh(geo('ico', 0.16, 1), M[cfg.handOrb] || M.pink);
+    orb.position.set(0, 0.12, 0.14);
+    orb.castShadow = false;
+    handR.add(orb);
+  }
+  return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR, bow, arrow, guard: !!cfg.guard, hasBook: !!cfg.hasBook, isKayKit: true };
 }
 
 const rigCache = new Map();
@@ -2352,19 +2358,45 @@ function poseHumanoid(g, e) {
       break;
     }
     case 'cast':
-      zR = 0; aR = -0.6 - wk * 1.9; eR = -0.35;
-      if (swing >= 0) { aR = lerp(-2.4, -1.2, swing); eR = -0.2; }
-      if (e.floaty) { aL = -0.4 - wk * 1.6; zL = 0; }
+      if (e.floaty) {
+        lean = 0.12 - wk * 0.16;
+        zR = wk * 0.18; zL = -0.12 - wk * 0.22;
+        if (swing >= 0) {
+          aR = lerp(-1.82, -1.02, swing); eR = lerp(-0.65, -0.15, swing);
+          aL = lerp(-1.7, -0.78, swing); eL = lerp(-0.7, -0.25, swing);
+          tw = lerp(-0.25, 0.3, swing);
+        } else {
+          aR = -0.55 - wk * 1.25; eR = -0.45 - wk * 0.2;
+          aL = -0.45 - wk * 1.25; eL = -0.55 - wk * 0.15;
+        }
+      } else if (g.hasBook) {
+        aL = -0.82 - wk * 0.2; eL = -0.95; zL = 0.22;
+        zR = wk * 0.12;
+        if (swing >= 0) {
+          aR = lerp(-1.72, -1.1, swing); eR = lerp(-0.85, -0.12, swing);
+          tw = lerp(-0.32, 0.38, swing);
+        } else {
+          aR = -0.55 - wk * 1.15; eR = -0.6 - wk * 0.25;
+          tw = -0.28 * wk;
+        }
+      } else {
+        zR = 0; aR = -0.55 - wk * 1.25; eR = -0.35 - wk * 0.15;
+        if (swing >= 0) { aR = lerp(-1.85, -1.05, swing); eR = lerp(-0.5, -0.15, swing); tw = lerp(-0.28, 0.32, swing); }
+      }
       break;
   }
   if (e.casting) {                                     // channelling the big spell: weapon to the sky, off hand out, leaning back
     const pulse = Math.sin(game.time * 11) * 0.07;
     if (e.style === 'bow') { aL = -2.2; eL = 0; zL = 0; aR = -2 + pulse; eR = -1.3; zR = 0; lean = -0.3; }
-    else { aR = -2.85 + pulse; eR = -0.15; zR = 0; aL = -1.25 - pulse; eL = -0.7; zL = -0.5; lean = -0.1; }
+    else { aR = -2.15 + pulse; eR = -0.2; zR = 0.12; aL = -1.25 - pulse; eL = -0.7; zL = -0.45; lean = -0.1; }
     tw = 0;
   }
-  if (!e.floaty) {
-    const ls = g.isKayKit ? -1 : 1;
+  const ls = g.isKayKit ? -1 : 1;
+  if (e.floaty) {
+    const fl = Math.sin(game.time * 2.6 + (e.seed || 0)) * 0.08;
+    setJ(g.legL, (0.22 + fl) * ls, 0, 0); setJ(g.legR, (0.34 - fl) * ls, 0, 0);
+    setJ(g.kneeL, 0.36 + fl * 0.5, 0, 0); setJ(g.kneeR, 0.48 - fl * 0.5, 0, 0);
+  } else {
     setJ(g.legL, hL * ls, 0, 0); setJ(g.legR, hR * ls, 0, 0);
     setJ(g.kneeL, kL, 0, 0); setJ(g.kneeR, kR, 0, 0);
   }

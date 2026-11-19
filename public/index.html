@@ -2362,9 +2362,17 @@ function makeKayKitRig(key, tier = 0) {
       const hood = srcHood.clone(true);
       const hoodMat = new T.MeshToonMaterial({ color: 0x357a46, gradientMap: gradMap });
       hood.traverse(o => { if (o.isMesh) { o.material = hoodMat; o.castShadow = true; } });
-      hood.position.set(0, -0.02, 0.01);
-      hood.scale.setScalar(1.07);
+      hood.position.set(0, -0.02, 0.04);
+      hood.scale.set(1.18, 1.22, 1.24);
       head.add(hood);
+    }
+    const cape = raw.getObjectByName('Ranger_Cape');
+    if (cape && cape.isMesh && cape.material) {
+      const cm = cape.material.clone();
+      cm.map = null;
+      cm.color.setHex(0x2f6f3e);
+      cm.needsUpdate = true;
+      cape.material = cm;
     }
   }
 

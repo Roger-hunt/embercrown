@@ -72,6 +72,8 @@ if n == 1:
         f.write(out)
 PY
 cp "$SRC/vendor/three.min.js" "$DEST/vendor/three.min.js"
+[ -f "$SRC/vendor/gltf-lite.js" ] && cp "$SRC/vendor/gltf-lite.js" "$DEST/vendor/gltf-lite.js"
+[ -d "$SRC/assets" ] && cp -R "$SRC/assets" "$DEST/assets"
 cp "$SRC/greta_yell.mp3" "$DEST/greta_yell.mp3"
 cp "$SRC/godlike.mp3" "$DEST/godlike.mp3"
 

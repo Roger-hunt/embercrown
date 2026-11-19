@@ -345,7 +345,7 @@ const SEC_HEADERS = {
 };
 
 /* ---------------- static files ---------------- */
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.glb': 'model/gltf-binary' };
 // 文本类静态文件 gzip 后缓存在内存里（按大小 + 修改时间失效），客户端页面和 Three.js 体积降到约四分之一
 const GZ_TYPES = new Set(['.html', '.js', '.css', '.json', '.svg']);
 const gzCache = new Map();
@@ -541,7 +541,7 @@ const onRequest = (req, res) => {
       logAccess({ ip, ua, event: 'http_visit', method: 'GET', path: '/', status: cached ? 304 : 200 });
       logDebug('DEBUG', 'http', '访问首页', { ip, ua });
     }
-    const isImm = p.startsWith('/vendor/') || ext === '.mp3';
+    const isImm = p.startsWith('/vendor/') || p.startsWith('/assets/') || ext === '.mp3';
     const head = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'ETag': etag, 'Cache-Control': isImm ? 'public, max-age=31536000, immutable' : 'no-cache', 'Accept-Ranges': 'bytes' };
     if (canGz) head['Vary'] = 'Accept-Encoding';
     if (cached) { res.writeHead(304, head); return res.end(); }

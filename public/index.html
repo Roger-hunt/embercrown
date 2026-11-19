@@ -868,6 +868,7 @@ body.touch:not(.pad) #btnKeybinds{display:none}
     <div class="login-foot">
       <button type="button" class="login-ver-btn" id="btnVer">版本 v1.7.0patch1（最近更新）</button>
       <div class="login-links">
+        <button type="button" class="mini-btn" id="btnLoginQuality">画质：标准</button>
         <button type="button" class="mini-btn" id="btnAbout">关于</button>
         <button type="button" class="mini-btn lang-btn" data-lang-btn>EN</button>
       </div>
@@ -1098,6 +1099,7 @@ body.touch:not(.pad) #btnKeybinds{display:none}
         <button type="button" class="ptool" id="btnFs" aria-label="全屏横屏"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5v2H6v3H4zm11-5h5v5h-2V6h-3V4zM6 15v3h3v2H4v-5h2zm12 3v-3h2v5h-5v-2h3z"/></svg><span>全屏横屏</span></button>
         <button type="button" class="ptool" id="btnSound" aria-label="开关声音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h4.5L14 4.5v15l-5.5-5H4v-5zm12.8-2.3a6.8 6.8 0 0 1 0 9.6l-1.5-1.5a4.7 4.7 0 0 0 0-6.6l1.5-1.5z"/></svg><span>音效：开</span></button>
         <button type="button" class="ptool" id="btnCrowd" aria-label="开关观众"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM2 19c0-3 2.7-5 6-5s6 2 6 5v1H2v-1zm13.5 1v-1c0-1.6-.6-3-1.6-4.1.7-.2 1.4-.3 2.1-.3 3.3 0 6 2 6 5v.4h-6.5z"/></svg><span>观众：开</span></button>
+        <button type="button" class="ptool" id="btnQuality" aria-label="画质设置"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3zm0 2.3L6 8.7v6.6l6 3.4 6-3.4V8.7l-6-3.4z"/></svg><span>画质：标准</span></button>
         <button type="button" class="ptool" id="btnCamFollow" aria-label="视角自动跟随敌人"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5c-5 0-9 4.4-10 7 1 2.6 5 7 10 7s9-4.4 10-7c-1-2.6-5-7-10-7zm0 11.4a4.4 4.4 0 1 1 0-8.8 4.4 4.4 0 0 1 0 8.8zm0-1.9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg><span>视角跟随：关</span></button>
         <button type="button" class="ptool" id="btnAutoAtk" aria-label="开关自动普攻"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg><span>自动普攻：开</span></button>
         <button type="button" class="ptool" id="btnHideJump" aria-label="隐藏跳跃按键"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4l-5 5h3.5v6h3V9H17l-5-5zm-7 14h14v2H5v-2z"/></svg><span>跳跃键：显示</span></button>
@@ -1180,6 +1182,7 @@ body.touch:not(.pad) #btnKeybinds{display:none}
 </div>
 
 <script src="vendor/three.min.js"></script>
+<script src="vendor/gltf-lite.js"></script>
 <script>
 (() => {
 'use strict';
@@ -1290,12 +1293,15 @@ const lerp = (a, b, t) => a + (b - a) * t;
 const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
 
 /* ================= renderer / scene ================= */
+const QUALITY_KEY = 'ec_quality', QUALITY_ORDER = ['low', 'med', 'high'];
+let quality = 'med';
+try { const q0 = localStorage.getItem(QUALITY_KEY); if (QUALITY_ORDER.includes(q0)) quality = q0; } catch (e) {}
 const canvas = $('c');
 let renderer;
 try { renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); }
 catch (e) { $('menu').hidden = true; $('fail').hidden = false; return; }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-renderer.shadowMap.enabled = true;
+renderer.shadowMap.enabled = quality !== 'low';
 renderer.shadowMap.type = T.PCFSoftShadowMap;
 const scene = new T.Scene();
 const HORIZON = 0xffd2a6;
@@ -1335,7 +1341,7 @@ function resize() {
   const dpr = window.devicePixelRatio || 1;
   const isCar3K = rvw >= 1200 && Math.abs(rvw / rvh - 2880 / 1260) < 0.18;
   const minPhysW = isCar3K ? Math.max(2880, rvw * dpr) : rvw * dpr;
-  const effDpr = clamp(minPhysW / rvw, 1, Math.min(2, 2880 / rvw + 0.5));
+  const effDpr = quality === 'low' ? 1 : clamp(minPhysW / rvw, 1, Math.min(quality === 'high' ? 2.5 : 2, 2880 / rvw + 0.5));
   renderer.setPixelRatio(effDpr);
   renderer.setSize(rvw, rvh, false);
   aspect = rvw / rvh; camera.aspect = aspect; camera.updateProjectionMatrix();
@@ -1348,16 +1354,65 @@ if (window.visualViewport) {
 }
 resize();
 
-scene.add(new T.HemisphereLight(0xfff4e0, 0x9a84c0, 0.48));
+const hemi = new T.HemisphereLight(0xfff4e0, 0x9a84c0, 0.48);
+scene.add(hemi);
 const sun = new T.DirectionalLight(0xfff0d0, 0.56);
 sun.position.set(18, 34, 14);
-sun.castShadow = true;
-{
-  const sm = window.matchMedia && matchMedia('(pointer: coarse)').matches ? 1024 : 2048;   // 触屏设备用小一号的阴影贴图
-  sun.shadow.mapSize.set(sm, sm);
+sun.castShadow = quality !== 'low';
+const rimLight = new T.DirectionalLight(0xffb86c, 0.72);
+rimLight.position.set(-18, 16, -20);
+rimLight.visible = quality === 'high';
+scene.add(rimLight);
+let hqEnvTex = null;
+function getHQEnv() {
+  if (hqEnvTex) return hqEnvTex;
+  try {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, 64);
+    g.addColorStop(0.0, '#72b8ee');
+    g.addColorStop(0.45, '#ffe6be');
+    g.addColorStop(0.55, '#e8c488');
+    g.addColorStop(1.0, '#6e5a48');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 128, 64);
+    const tex = new T.CanvasTexture(c);
+    tex.mapping = T.EquirectangularReflectionMapping;
+    const pmrem = new T.PMREMGenerator(renderer);
+    hqEnvTex = pmrem.fromEquirectangular(tex).texture;
+    tex.dispose(); pmrem.dispose();
+  } catch (e) { hqEnvTex = null; }
+  return hqEnvTex;
 }
+function syncShadowQuality() {
+  const isCoarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  const sm = quality === 'high' ? (isCoarse ? 2048 : 4096) : (isCoarse ? 1024 : 2048);
+  renderer.shadowMap.enabled = quality !== 'low';
+  sun.castShadow = quality !== 'low';
+  if (sun.shadow.mapSize.x !== sm) {
+    sun.shadow.mapSize.set(sm, sm);
+    if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; }
+  }
+  renderer.shadowMap.needsUpdate = true;
+  if (quality === 'high') {
+    renderer.toneMapping = T.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.12;
+    hemi.color.setHex(0xdff2ff); hemi.groundColor.setHex(0x8e725c); hemi.intensity = 0.72;
+    sun.color.setHex(0xffebc2); sun.intensity = 1.05;
+    sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.025;
+    rimLight.visible = true;
+    scene.environment = getHQEnv();
+  } else {
+    renderer.toneMapping = T.NoToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    hemi.color.setHex(0xfff4e0); hemi.groundColor.setHex(0x9a84c0); hemi.intensity = 0.48;
+    sun.color.setHex(0xfff0d0); sun.intensity = 0.56;
+    sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
+    rimLight.visible = false;
+    scene.environment = null;
+  }
+}
+syncShadowQuality();
 Object.assign(sun.shadow.camera, { left: -32, right: 32, top: 32, bottom: -32, near: 1, far: 90 });
-sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.03;
 scene.add(sun);
 
 /* ================= materials & geometry (cached, flat-shaded) ================= */
@@ -1367,7 +1422,9 @@ const matCache = new Map();
 function toon(c) { let m = matCache.get(c); if (!m) { m = new T.MeshToonMaterial({ color: c, gradientMap: gradMap }); matCache.set(c, m); } return m; }
 const glow = c => new T.MeshBasicMaterial({ color: c });
 const M = {
-  flash: glow(0xffffff), fire: glow(0xff8a2f), fireCore: glow(0xffe07a), pink: glow(0xff5ad0), green: glow(0x7dffb0),
+  flash: glow(0xffffff),
+  flashSkin: new T.MeshBasicMaterial({ color: 0xffffff, skinning: true }),
+  fire: glow(0xff8a2f), fireCore: glow(0xffe07a), pink: glow(0xff5ad0), green: glow(0x7dffb0),
   ice: new T.MeshBasicMaterial({ color: 0xaee8ff, transparent: true, opacity: 0.6 }),
   barBg: new T.MeshBasicMaterial({ color: 0x231a33, depthTest: false, transparent: true }),
   barFg: new T.MeshBasicMaterial({ color: 0xe8434f, depthTest: false, transparent: true }),
@@ -2128,8 +2185,111 @@ function buildBlackKnight() {
 }
 
 // All toon parts are baked via shared bake() above into vertex-coloured meshes per bone.
+const HQ_CFG = {
+  knight:      { model: 'Knight', scale: 1.0, guard: true, handR: { m: 'sword_1handed' }, handL: { m: 'shield_badge_color' } },
+  ranger:      { model: 'Ranger', scale: 1.0, handL: { m: 'bow_withString', rx: Math.PI / 2, rz: -Math.PI / 2 } },
+  mage:        { model: 'Mage', scale: 1.0, handR: { m: 'staff' }, staffGlow: true },
+  goblin:      { model: 'Rogue', scale: 0.78, tint: 0x86c24e, handR: { m: 'dagger' } },
+  deepOne:     { model: 'Skeleton_Minion', scale: 0.90, tint: 0x4e8a7d, handR: { m: 'spear_A' } },
+  skeleton:    { model: 'Skeleton_Rogue', scale: 0.96, handL: { m: 'bow_withString', rx: Math.PI / 2, rz: -Math.PI / 2 } },
+  orc:         { model: 'Barbarian', scale: 1.32, tint: 0x6ea854, handR: { m: 'axe_2handed' } },
+  cultist:     { model: 'Rogue_Hooded', scale: 1.0, tint: 0x7b52ab, handL: { m: 'spellbook_open', rx: -Math.PI / 4 } },
+  ogre:        { model: 'Barbarian', scale: 2.15, scaleXZ: 1.22, tint: 0xd99b72, handR: { m: 'hammer_C' } },
+  lich:        { model: 'Skeleton_Mage', scale: 1.72, tint: 0x7dffb0, handR: { m: 'Skeleton_Staff' } },
+  blackKnight: { model: 'Skeleton_Warrior', scale: 1.72, tint: 0xc94a5a, guard: true, handR: { m: 'sword_2handed_color' }, handL: { m: 'shield_spikes_color' } },
+};
+const hqCache = new Map();
+let hqState = 'idle'; // 'idle' | 'loading' | 'ready' | 'error'
+let hqPromise = null;
+function loadHQAssets() {
+  if (hqState === 'ready') return Promise.resolve(true);
+  if (hqPromise) return hqPromise;
+  if (!window.GLTFLite || location.protocol === 'file:') { hqState = 'error'; return Promise.resolve(false); }
+  hqState = 'loading';
+  const names = new Set();
+  for (const k in HQ_CFG) {
+    const c = HQ_CFG[k];
+    names.add(c.model);
+    if (c.handR) names.add(c.handR.m);
+    if (c.handL) names.add(c.handL.m);
+  }
+  const tasks = [...names].map(n =>
+    window.GLTFLite.load('assets/models/' + n + '.glb')
+      .then(g => { hqCache.set(n, g); })
+      .catch(() => {})
+  );
+  hqPromise = Promise.all(tasks).then(() => {
+    hqState = hqCache.size > 0 ? 'ready' : 'error';
+    if (hqState === 'ready' && quality === 'high') rebuildAllRigs();
+    return hqState === 'ready';
+  });
+  return hqPromise;
+}
+
+function attachHQProp(slot, cfg) {
+  if (!slot || !cfg || !hqCache.has(cfg.m)) return;
+  const p = hqCache.get(cfg.m).clone(true);
+  p.rotation.set(cfg.rx || 0, cfg.ry || 0, cfg.rz || 0);
+  slot.add(p);
+}
+
+function makeKayKitRig(key) {
+  const cfg = HQ_CFG[key];
+  if (!cfg || !hqCache.has(cfg.model)) return null;
+  const raw = window.GLTFLite.cloneSkinned(hqCache.get(cfg.model));
+  const root = new T.Group(); root.rotation.order = 'YXZ';
+  const body = new T.Group(); body.position.set(0, 0.8, 0); root.add(body);
+  const inner = new T.Group(); inner.position.set(0, -0.8, 0); body.add(inner);
+  inner.add(raw);
+  if (cfg.tint) {
+    const tintC = new T.Color(cfg.tint);
+    const clonedMats = new Map();
+    raw.traverse(o => {
+      if (!o.isMesh || !o.material) return;
+      let m = clonedMats.get(o.material);
+      if (!m) {
+        m = o.material.clone();
+        m.color.lerp(tintC, 0.45);
+        clonedMats.set(o.material, m);
+      }
+      o.material = m;
+    });
+  }
+  if (cfg.scaleXZ) raw.scale.set(cfg.scaleXZ, 1, cfg.scaleXZ);
+  root.scale.setScalar(cfg.scale || 1);
+
+  const getN = n => raw.getObjectByName(n) || new T.Group();
+  const hips = getN('hips'), torso = getN('chest'), head = getN('head');
+  const armL = getN('upperarm.l'), armR = getN('upperarm.r');
+  const foreL = getN('lowerarm.l'), foreR = getN('lowerarm.r');
+  const handL = getN('handslot.l'), handR = getN('handslot.r');
+  const legL = getN('upperleg.l'), legR = getN('upperleg.r');
+  const kneeL = getN('lowerleg.l'), kneeR = getN('lowerleg.r');
+
+  for (const j of [hips, torso, head, armL, armR, foreL, foreR, legL, legR, kneeL, kneeR]) {
+    j.userData.baseQ = j.quaternion.clone();
+  }
+  // Relax T-pose arms down to natural idle angle
+  const zAxis = new T.Vector3(0, 0, 1);
+  armL.userData.baseQ.premultiply(new T.Quaternion().setFromAxisAngle(zAxis, -1.18));
+  armR.userData.baseQ.premultiply(new T.Quaternion().setFromAxisAngle(zAxis, 1.18));
+
+  attachHQProp(handR, cfg.handR);
+  attachHQProp(handL, cfg.handL);
+  if (cfg.staffGlow && handR) {
+    const orb = new T.Mesh(geo('oct', 0.14), M.fire);
+    orb.position.set(0, 1.15, 0);
+    handR.add(orb);
+  }
+  return { root, body, inner, hips, torso, head, armL, armR, foreL, foreR, handL, handR, legL, legR, kneeL, kneeR, guard: !!cfg.guard, isKayKit: true };
+}
+
 const rigCache = new Map();
 function makeRig(key, build) {
+  if (quality === 'high' && hqState === 'ready' && HQ_CFG[key]) {
+    const hq = makeKayKitRig(key);
+    if (hq) return hq;
+  }
   let t = rigCache.get(key);
   if (!t) {
     t = build();
@@ -2140,6 +2300,18 @@ function makeRig(key, build) {
   const root = t.root.clone(true), rig = { root };
   for (const k in t) if (k !== 'root') rig[k] = t[k] && t[k].isObject3D ? root.getObjectByName(k) : t[k];
   return rig;
+}
+
+const _poseE = new T.Euler(0, 0, 0, 'YXZ'), _poseQ = new T.Quaternion();
+function setJ(node, rx, ry, rz) {
+  if (!node) return;
+  if (node.userData && node.userData.baseQ) {
+    _poseE.set(rx, ry, rz, 'YXZ');
+    _poseQ.setFromEuler(_poseE);
+    node.quaternion.copy(_poseQ).multiply(node.userData.baseQ);
+  } else {
+    node.rotation.set(rx, ry, rz);
+  }
 }
 
 // e: anything with { moving, walk, atkT, atkDur, windK, style } and optionally { air, vy, casting, legYaw, landT, floaty, seed }
@@ -2183,12 +2355,21 @@ function poseHumanoid(g, e) {
     else { aR = -2.85 + pulse; eR = -0.15; zR = 0; aL = -1.25 - pulse; eL = -0.7; zL = -0.5; lean = -0.1; }
     tw = 0;
   }
-  if (!e.floaty) { g.legL.rotation.x = hL; g.legR.rotation.x = hR; g.kneeL.rotation.x = kL; g.kneeR.rotation.x = kR; }
-  g.hips.rotation.y = e.legYaw || 0;
+  if (!e.floaty) {
+    const ls = g.isKayKit ? -1 : 1;
+    setJ(g.legL, hL * ls, 0, 0); setJ(g.legR, hR * ls, 0, 0);
+    setJ(g.kneeL, kL, 0, 0); setJ(g.kneeR, kR, 0, 0);
+  }
+  setJ(g.hips, 0, e.legYaw || 0, 0);
   const sq = e.landT > 0 ? Math.min(1, e.landT / 0.16) : 0, sy = 1 - 0.16 * sq;      // squash on landing
   g.body.scale.set(1 + 0.07 * sq, sy, 1 + 0.07 * sq); g.body.position.y = by * sy;
-  g.armL.rotation.set(aL, 0, zL); g.armR.rotation.set(aR, 0, zR); g.foreL.rotation.x = eL; g.foreR.rotation.x = eR;
-  g.torso.rotation.set(lean, tw, 0);
+  setJ(g.armL, aL, 0, zL); setJ(g.armR, aR, 0, zR);
+  if (g.isKayKit) {
+    setJ(g.foreL, 0, 0, -eL); setJ(g.foreR, 0, 0, eR);
+  } else {
+    setJ(g.foreL, eL, 0, 0); setJ(g.foreR, eR, 0, 0);
+  }
+  setJ(g.torso, lean, tw, 0);
 }
 
 /* ================= particles & fx ================= */
@@ -2267,10 +2448,45 @@ function floatText(x, y, z, txt, cls = '') {
   slot.tid = setTimeout(() => { el.hidden = true; slot.tid = 0; }, 1500);
 }
 
-/* ================= audio (all synthesized) ================= */
+/* ================= audio (voices + spell samples + synthesized fallback) ================= */
 let AC = null, master = null, muted = false, noiseBuf = null, lastHitS = 0, sfxK = 1;
 // 语音走 Web Audio（解码成缓冲区后播放）：iOS 不允许在点击事件之外调用 <audio>.play()，但已解锁的 AudioContext 可以随时出声
 const VOICES = ['greta_yell.mp3', 'godlike.mp3'], voiceBuf = {}, voiceEl = {}, voiceRaw = {};
+const SFX_FILES = {
+  fire: 'assets/sfx/fire.m4a',
+  boom: 'assets/sfx/boom.m4a',
+  freeze: 'assets/sfx/freeze.m4a',
+  cast: 'assets/sfx/cast.m4a',
+  blink: 'assets/sfx/blink.m4a',
+  wall: 'assets/sfx/wall.m4a',
+  boon: 'assets/sfx/boon.m4a',
+  pickup: 'assets/sfx/pickup.m4a',
+  curse: 'assets/sfx/curse.m4a',
+  confusion: 'assets/sfx/confusion.m4a',
+  cheer: 'assets/sfx/cheer.m4a',
+};
+const sfxBuf = {}, sfxRaw = {};
+function decodeSfxSamples() {
+  if (!AC || location.protocol === 'file:') return;
+  for (const k in SFX_FILES) {
+    if (sfxBuf[k]) continue;
+    const src = SFX_FILES[k];
+    const p = sfxRaw[k] ? Promise.resolve(sfxRaw[k].slice(0)) : fetch(src).then(r => { if (!r.ok) throw new Error('sfx'); return r.arrayBuffer(); });
+    p.then(ab => new Promise((res, rej) => AC.decodeAudioData(ab, res, rej)))
+      .then(b => { sfxBuf[k] = b; }).catch(() => {});
+  }
+}
+function playSfxBuf(key, vol = 0.52, jitter = 0.06) {
+  if (!AC || muted || !sfxBuf[key]) return false;
+  try {
+    const s = AC.createBufferSource(), g = AC.createGain();
+    s.buffer = sfxBuf[key];
+    if (jitter > 0) s.playbackRate.value = 1 + (Math.random() * 2 - 1) * jitter;
+    g.gain.value = vol * sfxK;
+    s.connect(g); g.connect(master); s.start();
+    return true;
+  } catch (e) { return false; }
+}
 function audioInit() {
   if (AC) { if (AC.state !== 'running') { try { const r = AC.resume(); if (r && r.catch) r.catch(() => {}); } catch (e) {} } return; }
   try { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = 0.5; master.connect(AC.destination); } catch (e) { AC = null; return; }
@@ -2280,10 +2496,12 @@ function audioInit() {
     p.then(ab => new Promise((res, rej) => AC.decodeAudioData(ab, res, rej)))
       .then(b => { voiceBuf[src] = b; }).catch(() => {});
   }
+  decodeSfxSamples();
 }
 function preloadAssets(onProg) {
   let done = 0;
-  const total = VOICES.length + 3;
+  const sfxKeys = Object.keys(SFX_FILES);
+  const total = VOICES.length + (location.protocol === 'file:' ? 0 : sfxKeys.length) + (quality === 'high' && location.protocol !== 'file:' ? 1 : 0) + 3;
   let finished = false;
   const step = () => {
     done = Math.min(total, done + 1);
@@ -2299,6 +2517,12 @@ function preloadAssets(onProg) {
   const voicePromises = location.protocol === 'file:'
     ? VOICES.map(() => Promise.resolve().then(step))
     : VOICES.map(src => fetch(src).then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) voiceRaw[src] = ab; }).catch(() => {}).finally(step));
+  const sfxPromises = location.protocol === 'file:'
+    ? []
+    : sfxKeys.map(k => fetch(SFX_FILES[k]).then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) sfxRaw[k] = ab; }).catch(() => {}).finally(step));
+  const hqWarmup = (quality === 'high' && location.protocol !== 'file:')
+    ? [loadHQAssets().finally(step)]
+    : [];
   const warmup = new Promise(res => {
     requestAnimationFrame(() => {
       try { buildLoginStage(); } catch (e) {}
@@ -2313,8 +2537,8 @@ function preloadAssets(onProg) {
       });
     });
   });
-  const timer = setTimeout(finish, 4000);
-  Promise.all([...voicePromises, warmup]).then(() => { clearTimeout(timer); finish(); });
+  const timer = setTimeout(finish, 4500);
+  Promise.all([...voicePromises, ...sfxPromises, ...hqWarmup, warmup]).then(() => { clearTimeout(timer); finish(); });
 }
 for (const evName of ['pointerup', 'touchend', 'click', 'keydown']) window.addEventListener(evName, audioInit, { capture: true, passive: true });   // 任何一次点按都解锁音频
 function playVoice(src, vol = 1.9) {
@@ -2350,26 +2574,28 @@ const sfx = {
   swing: () => noise(0.14, 0.12, 900, 1, 'bandpass', 2600),
   hit: () => { const n = performance.now(); if (n - lastHitS < 45) return; lastHitS = n; noise(0.08, 0.2, 500, 1, 'lowpass'); tone(170, 0.08, 'square', 0.07, 70); },
   shoot: () => { tone(520, 0.09, 'triangle', 0.12, 900); noise(0.06, 0.05, 3000, 1, 'highpass'); },
-  fire: () => noise(0.25, 0.13, 500, 2, 'bandpass', 1800),
-  boom: () => { noise(0.5, 0.3, 700, 1, 'lowpass', 80); tone(90, 0.4, 'sine', 0.3, 35); },
+  fire: () => { if (!playSfxBuf('fire', 0.58, 0.08)) noise(0.25, 0.13, 500, 2, 'bandpass', 1800); },
+  boom: () => { if (!playSfxBuf('boom', 0.65, 0.06)) { noise(0.5, 0.3, 700, 1, 'lowpass', 80); tone(90, 0.4, 'sine', 0.3, 35); } },
   thud: () => { noise(0.22, 0.22, 240, 1, 'lowpass'); tone(70, 0.2, 'sine', 0.2, 40); },
   hurt: () => tone(300, 0.22, 'sawtooth', 0.13, 90),
-  pickup: () => { tone(660, 0.08, 'triangle', 0.12); tone(990, 0.12, 'triangle', 0.12, 0, 0.07); },
+  pickup: () => { if (!playSfxBuf('pickup', 0.52, 0.04)) { tone(660, 0.08, 'triangle', 0.12); tone(990, 0.12, 'triangle', 0.12, 0, 0.07); } },
   horn: () => { tone(147, 0.5, 'sawtooth', 0.09); tone(196, 0.75, 'sawtooth', 0.09, 0, 0.36); },
   ui: () => tone(700, 0.05, 'square', 0.05),
-  boon: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.11, 0, i * 0.07)),
-  freeze: () => { tone(1800, 0.4, 'sine', 0.09, 500); noise(0.3, 0.07, 5000, 1, 'highpass'); },
+  boon: () => { if (!playSfxBuf('boon', 0.55, 0.03)) [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, 'triangle', 0.11, 0, i * 0.07)); },
+  freeze: () => { if (!playSfxBuf('freeze', 0.62, 0.05)) { tone(1800, 0.4, 'sine', 0.09, 500); noise(0.3, 0.07, 5000, 1, 'highpass'); } },
   dash: () => noise(0.18, 0.1, 400, 1, 'bandpass', 1500),
-  cheer: () => noise(1.3, 0.07, 1000, 0.6, 'bandpass', 1600),
+  blink: () => { if (!playSfxBuf('blink', 0.56, 0.06)) tone(900, 0.16, 'sine', 0.1, 1900); },
+  wall: () => { if (!playSfxBuf('wall', 0.58, 0.04)) sfx.thud(); },
+  cheer: () => { if (!playSfxBuf('cheer', 0.48, 0.04)) noise(1.3, 0.07, 1000, 0.6, 'bandpass', 1600); },
   dead: () => tone(220, 0.7, 'sawtooth', 0.13, 55),
-  cast: () => tone(300, 0.3, 'sine', 0.1, 700),
+  cast: () => { if (!playSfxBuf('cast', 0.55, 0.05)) tone(300, 0.3, 'sine', 0.1, 700); },
   fb: () => { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.08, 0, i * 0.06)); tone(1047, 0.38, 'triangle', 0.13, 0, 0.22); },
   streak: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.2, 'triangle', 0.12, 0, i * 0.065)),
   godlike: () => { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, 'sawtooth', 0.16, 0, i * 0.065)); tone(1568, 0.5, 'triangle', 0.2, 0, 0.33); sfx.cheer(); playVoice('godlike.mp3', 1.8); },
   shutdown: () => [440, 349, 294, 220].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.08, 0, i * 0.07)),
   box: () => { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.08, 'triangle', 0.13, 0, i * 0.045)); },
-  grip: () => { noise(0.18, 0.2, 1600, 2.2, 'bandpass', 480); tone(380, 0.22, 'sawtooth', 0.15, 110); tone(760, 0.09, 'square', 0.09, 240, 0.05); },
-  slip: () => { tone(920, 0.24, 'sine', 0.16, 280); noise(0.14, 0.16, 400, 1, 'lowpass', 90); },
+  grip: () => { if (!playSfxBuf('curse', 0.6, 0.05)) { noise(0.18, 0.2, 1600, 2.2, 'bandpass', 480); tone(380, 0.22, 'sawtooth', 0.15, 110); tone(760, 0.09, 'square', 0.09, 240, 0.05); } },
+  slip: () => { if (!playSfxBuf('confusion', 0.58, 0.06)) { tone(920, 0.24, 'sine', 0.16, 280); noise(0.14, 0.16, 400, 1, 'lowpass', 90); } },
   doorCreak: () => {
     if (!AC || muted) return;
     const t = AC.currentTime, dur = 0.82;
@@ -2575,10 +2801,10 @@ function buildLoginStage() {
   }
 
   // Two Deep One guards flanking the outside of the south iron portcullis
-  const gL = buildDeepOne();
+  const gL = makeRig('deepOne', buildDeepOne);
   gL.root.position.set(-1.38, 0.02, R_ARENA + 1.95);
   gL.root.rotation.y = 0.24;
-  const gR = buildDeepOne();
+  const gR = makeRig('deepOne', buildDeepOne);
   gR.root.position.set(1.38, 0.02, R_ARENA + 1.95);
   gR.root.rotation.y = -0.24;
   root.add(gL.root, gR.root);
@@ -2691,8 +2917,8 @@ const BOONS = [
 ];
 
 /* ================= helpers ================= */
-function collectMeshes(root) { const a = []; root.traverse(o => { if (o.isMesh) { o.userData.m = o.material; a.push(o); } }); return a; }
-function setFlash(ent, on) { for (const m of ent.meshes) m.material = on ? M.flash : m.userData.m; }
+function collectMeshes(root) { const a = []; root.traverse(o => { if (o.isMesh && !o.userData.noFlash) { o.userData.m = o.material; a.push(o); } }); return a; }
+function setFlash(ent, on) { for (const m of ent.meshes) m.material = on ? (m.isSkinnedMesh ? M.flashSkin : M.flash) : m.userData.m; }
 function confine(e) {
   for (const p of pillars) {
     const dx = e.x - p.x, dz = e.z - p.z, d = Math.hypot(dx, dz), min = p.r + e.r;
@@ -2880,7 +3106,7 @@ function useSkill(p, slot, fa) {
     hitCrittersInArc(p.x, p.z, fa, range, half);
   } else if (id === 'knight') {
     p.wallT = 3.0;
-    shockFx(p.x, p.z, 2.6, 0xffd859, 0.4); burst(p.x, 1, p.z, 0xffd859, 12, 4, 0.2, 0.5); sfx.thud();
+    shockFx(p.x, p.z, 2.6, 0xffd859, 0.4); burst(p.x, 1, p.z, 0xffd859, 12, 4, 0.2, 0.5); sfx.wall();
     floatText(p.x, 2.3 + p.y, p.z, t('破釜沉舟', 'Last Stand'), 'note');
   } else if (id === 'ranger' && slot === 0) {
     for (let i = -3; i <= 3; i++) spawnProj({ team: 0, kind: 'arrow', x: p.x, z: p.z, a: fa + i * 0.13, speed: 30, dmg: 16, pierce: 2, life: 1.1, r: 0.4, slow: 1.8, sk: 1 });
@@ -2909,7 +3135,7 @@ function heroCharge(p, fa, tg) {
 function blinkFx(x0, z0, x1, z1) {
   for (const [x, z] of [[x0, z0], [x1, z1]]) { burst(x, 1, z, 0xb9a8ff, 14, 5, 0.2, 0.5); shockFx(x, z, 1.6, 0xb9a8ff, 0.3); }
   for (let i = 1; i < 6; i++) spark(lerp(x0, x1, i / 6), 1.1, lerp(z0, z1, i / 6), 0, 1, 0, 0xd9ceff, 0.2, 0.35, 0);
-  tone(900, 0.16, 'sine', 0.1, 1900);
+  sfx.blink();
 }
 /* ---- 4 号大招：选范围 → 站定读条 → 生效 ---- */
 function makeMark(x, z, r, color) {
@@ -3156,9 +3382,12 @@ function spawnEnemy(type, x, z, o = {}) {
   };
   e.meshes = collectMeshes(rig.root);
   e.ice = new T.Mesh(geo('ico', 1, 0), M.ice);
+  e.ice.userData.noFlash = true;
   e.ice.scale.set(e.r * 1.6 / e.baseS, e.h * 0.62 / e.baseS, e.r * 1.6 / e.baseS); e.ice.position.y = e.h * 0.52 / e.baseS; e.ice.visible = false;
   rig.root.add(e.ice);
   e.debuff = makeDebuffFx(rig.root, (e.h + 0.35) / e.baseS, Math.max(0.85, e.r * 1.4 / e.baseS), Math.max(0.65, e.r * 1.25 / e.baseS));
+  e.debuff.dizzy.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
+  e.debuff.slow.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
   if (!e.boss) {
     const w = Math.max(0.9, e.r * 2.2), g = new T.Group();
     const bg = new T.Mesh(geo('plane', 1, 1), M.barBg), fg = new T.Mesh(geo('plane', 1, 1), M.barFg);
@@ -4973,6 +5202,98 @@ $('btnMenu').addEventListener('click', toMenu);
 $('btnQuit').addEventListener('click', toMenu);
 $('btnResume').addEventListener('click', () => { if (touchMode) enterMobileFs(false); togglePause(); });
 $('btnPause').addEventListener('click', togglePause);
+function swapEntRig(ent, key, buildFn) {
+  const oldRoot = ent.root;
+  const rig = makeRig(key, buildFn);
+  rig.root.position.copy(oldRoot.position);
+  rig.root.rotation.copy(oldRoot.rotation);
+  rig.root.scale.copy(oldRoot.scale);
+  rig.root.visible = oldRoot.visible;
+  scene.remove(oldRoot);
+  scene.add(rig.root);
+  ent.rig = rig;
+  ent.root = rig.root;
+  ent.meshes = collectMeshes(rig.root);
+  return rig;
+}
+function rebuildAllRigs() {
+  if (preview) setPreview(selCls);
+  if (loginStage && loginStage.guards) {
+    loginStage.guards = loginStage.guards.map(oldG => {
+      const ng = makeRig('deepOne', buildDeepOne);
+      ng.root.position.copy(oldG.root.position);
+      ng.root.rotation.copy(oldG.root.rotation);
+      loginStage.root.remove(oldG.root);
+      loginStage.root.add(ng.root);
+      return ng;
+    });
+  }
+  if (player) {
+    swapEntRig(player, player.def.id, player.def.build);
+    setFlash(player, player.flash > 0);
+  }
+  if (game.enemies) {
+    for (const e of game.enemies) {
+      if (e.dead || !HQ_CFG[e.type]) continue;
+      const tier = e.tier || 0;
+      const rig = swapEntRig(e, e.type + tier, () => e.d.build({ tier }));
+      e.baseS = rig.root.scale.x;
+      if (e.ice) rig.root.add(e.ice);
+      if (e.debuff) { rig.root.add(e.debuff.dizzy); rig.root.add(e.debuff.slow); }
+      setFlash(e, e.flash > 0);
+    }
+  }
+  if (typeof net !== 'undefined' && net.ents) {
+    for (const e of net.ents.values()) {
+      const rig = swapEntRig(e, e.def.id, e.def.build);
+      if (e.ice) rig.root.add(e.ice);
+      if (e.debuff) { rig.root.add(e.debuff.dizzy); rig.root.add(e.debuff.slow); }
+      if (e.ring) rig.root.add(e.ring);
+      if (e.starRing) rig.root.add(e.starRing);
+      if (e.booms) rig.root.add(e.booms);
+      setFlash(e, e.flash > 0);
+    }
+  }
+}
+function syncQualityUI() {
+  const lbl = quality === 'low' ? t('画质：低', 'Quality: Low')
+    : quality === 'high' ? (hqState === 'loading' ? t('画质：高(加载)', 'Quality: High…') : t('画质：高', 'Quality: High'))
+    : t('画质：标准', 'Quality: Standard');
+  const b1 = $('btnQuality');
+  if (b1) {
+    b1.classList.toggle('off', quality === 'low');
+    const sp = b1.querySelector('span');
+    if (sp) sp.textContent = lbl;
+  }
+  const b2 = $('btnLoginQuality');
+  if (b2) b2.textContent = lbl;
+}
+function applyQuality(q) {
+  if (!QUALITY_ORDER.includes(q)) q = 'med';
+  quality = q;
+  try { localStorage.setItem(QUALITY_KEY, quality); } catch (e) {}
+  if (quality === 'low' && crowdOn) { crowdOn = false; syncCrowd(); }
+  else if (quality !== 'low' && !crowdOn) {
+    let savedCrowd = true; try { savedCrowd = localStorage.getItem('ec_crowd') !== '0'; } catch (e) {}
+    if (savedCrowd) { crowdOn = true; syncCrowd(); }
+  }
+  syncShadowQuality();
+  resize();
+  syncQualityUI();
+  if (quality === 'high' && hqState !== 'ready') {
+    loadHQAssets().then(() => { syncQualityUI(); });
+    syncQualityUI();
+  } else {
+    rebuildAllRigs();
+  }
+}
+function cycleQuality() {
+  const idx = QUALITY_ORDER.indexOf(quality);
+  applyQuality(QUALITY_ORDER[(idx + 1) % QUALITY_ORDER.length]);
+  sfx.ui();
+}
+if ($('btnQuality')) $('btnQuality').addEventListener('click', cycleQuality);
+if ($('btnLoginQuality')) $('btnLoginQuality').addEventListener('click', () => { audioInit(); cycleQuality(); });
 $('btnCrowd').addEventListener('click', () => { crowdOn = !crowdOn; try { localStorage.setItem('ec_crowd', crowdOn ? '1' : '0'); } catch (e) {} syncCrowd(); sfx.ui(); });
 $('btnCamFollow').addEventListener('click', () => { camFollow = !camFollow; try { localStorage.setItem('ec_camfollow', camFollow ? '1' : '0'); } catch (e) {} syncCamFollow(); sfx.ui(); });
 $('btnSound').addEventListener('click', () => { muted = !muted; $('btnSound').classList.toggle('off', muted); $('btnSound').querySelector('span').textContent = muted ? t('音效：关', 'Sound: Off') : t('音效：开', 'Sound: On'); audioInit(); sfx.ui(); });
@@ -5128,6 +5449,7 @@ function applyI18n() {
   setQ('#btnFs span', '全屏横屏', 'Fullscreen');
   setQ('#btnSound span', muted ? '音效：关' : '音效：开', muted ? 'Sound: Off' : 'Sound: On');
   syncCrowd();
+  syncQualityUI();
   syncCamFollow();
   syncAutoAtkUI();
   syncHideJumpUI();
@@ -5663,16 +5985,19 @@ function mpEnt(id, ci) {
     flags: 0, dead: false, deadT: 9, walk: 0, moving: false, windK: 0, atkT: 0, atkDur: def.atkDur, style: def.style, seed: id,
     y: 0, vy: 0, air: false, casting: false, landT: 0, r: 0.5, h: 1.9, spinT: 0, rollT: 0, flash: 0, mine, fresh: true, spawnFx: false, tagHp: -1, tagVis: true, tagDebuff: '',
   };
-  e.ice = new T.Mesh(geo('ico', 1, 0), M.ice); e.ice.scale.set(0.85, 1.15, 0.85); e.ice.position.y = 0.95; e.ice.visible = false; rig.root.add(e.ice);
+  e.ice = new T.Mesh(geo('ico', 1, 0), M.ice); e.ice.userData.noFlash = true; e.ice.scale.set(0.85, 1.15, 0.85); e.ice.position.y = 0.95; e.ice.visible = false; rig.root.add(e.ice);
   e.debuff = makeDebuffFx(rig.root, 2.25, 1, 0.84);
-  e.ring = new T.Mesh(geo('ring', 0.62, 0.82, 24), mine ? M.ringMe : M.ringFoe); e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = 0.04; rig.root.add(e.ring);
-  e.starRing = new T.Mesh(geo('ring', 0.78, 1.05, 24), fxMat(0xffd23f, 0.85)); e.starRing.rotation.x = -Math.PI / 2; e.starRing.position.y = 0.08; e.starRing.visible = false; rig.root.add(e.starRing);
+  e.debuff.dizzy.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
+  e.debuff.slow.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
+  e.ring = new T.Mesh(geo('ring', 0.62, 0.82, 24), mine ? M.ringMe : M.ringFoe); e.ring.userData.noFlash = true; e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = 0.04; rig.root.add(e.ring);
+  e.starRing = new T.Mesh(geo('ring', 0.78, 1.05, 24), fxMat(0xffd23f, 0.85)); e.starRing.userData.noFlash = true; e.starRing.rotation.x = -Math.PI / 2; e.starRing.position.y = 0.08; e.starRing.visible = false; rig.root.add(e.starRing);
   e.booms = new T.Group(); e.booms.visible = false;
   for (let b = 0; b < 3; b++) {
     const ba = b * (TAU / 3), bg = Gp(e.booms, Math.sin(ba) * 2.9, 1.0, Math.cos(ba) * 2.9);
     P(bg, 'box', [0.75, 0.09, 0.16], 0x5be7ff, 0, 0, 0, 0, ba + Math.PI / 4, 0).castShadow = false;
     P(bg, 'box', [0.16, 0.09, 0.75], 0xffc23d, 0, 0, 0, 0, ba + Math.PI / 4, 0).castShadow = false;
   }
+  e.booms.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
   rig.root.add(e.booms);
   e.tag = document.createElement('div'); e.tag.className = 'ntag' + (mine ? ' me' : ''); e.tag.innerHTML = '<em hidden></em><span></span><i><b></b></i>' + (mine ? '' : '<i class="cast" hidden><b></b></i>');
   e.tag.children[1].textContent = dispName(net.names.get(id) || ''); tagsEl.appendChild(e.tag);
@@ -5897,7 +6222,7 @@ function mpEvent(v) {
       switch (v.k) {
         case 'slash': slashFx(p.x, p.z, v.a, 2.9, 1.05, me ? 0xfff2b0 : 0xffb9a8); sfx.swing(); break;
         case 'cleave': slashFx(p.x, p.z, v.a, 3.8, 1.28, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.2, me ? 0xbfd4ff : 0xffb9a8, 0.25); sfx.swing(); sfx.thud(); break;
-        case 'wall': shockFx(p.x, p.z, 3.6, 0xffd859, 0.45); burst(p.x, 1, p.z, 0xffd859, 16, 5, 0.2, 0.55); sfx.thud(); sfx.horn(); break;
+        case 'wall': shockFx(p.x, p.z, 3.6, 0xffd859, 0.45); burst(p.x, 1, p.z, 0xffd859, 16, 5, 0.2, 0.55); sfx.wall(); sfx.horn(); break;
         case 'spin': slashFx(p.x, p.z, v.a, 3.4, Math.PI, me ? 0xffd27a : 0xff9a8a); shockFx(p.x, p.z, 3.4, me ? 0xfff2b0 : 0xffb9a8); e.spinT = 0.35; sfx.swing(); sfx.thud(); break;
         case 'shoot': sfx.shoot(); break;
         case 'cast': sfx.fire(); break;
@@ -6293,12 +6618,12 @@ function frame(now) {
       }
       loginStage.guards.forEach((g, idx) => {
         const ph = t * 1.9 + idx * 1.7;
-        g.torso.position.y = 0.55 + Math.sin(ph) * 0.022;
-        g.torso.rotation.x = 0.06 + Math.sin(ph) * 0.025;
-        g.head.rotation.y = Math.sin(t * 0.55 + idx * 2.1) * 0.22;
-        g.head.rotation.x = Math.sin(ph * 0.7) * 0.05;
-        g.armL.rotation.x = -0.15 + Math.sin(ph) * 0.04;
-        g.armR.rotation.x = -1.12 + Math.sin(ph * 0.5) * 0.04;
+        if (g.isKayKit) g.body.position.y = 0.8 + Math.sin(ph) * 0.015;
+        else g.torso.position.y = 0.55 + Math.sin(ph) * 0.022;
+        setJ(g.torso, 0.06 + Math.sin(ph) * 0.025, 0, 0);
+        setJ(g.head, Math.sin(ph * 0.7) * 0.05, Math.sin(t * 0.55 + idx * 2.1) * 0.22, 0);
+        setJ(g.armL, -0.15 + Math.sin(ph) * 0.04, 0, 0);
+        setJ(g.armR, -1.12 + Math.sin(ph * 0.5) * 0.04, 0, 0);
       });
       loginStage.torches.forEach((tc, idx) => {
         const flk = 1 + Math.sin(t * 11 + idx * 2.4) * 0.14 + Math.cos(t * 17 + idx) * 0.08;

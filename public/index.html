@@ -2152,17 +2152,17 @@ function buildBlackKnight() {
 
 // All toon parts are baked via shared bake() above into vertex-coloured meshes per bone.
 const HQ_CFG = {
-  knight:      { model: 'Knight', scale: 1.0, guard: true, handR: { m: 'sword_1handed' }, handL: { m: 'shield_badge_color', ry: -Math.PI / 3 } },
-  ranger:      { model: 'Ranger', scale: 1.0, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
-  mage:        { model: 'Mage', scale: 1.0, handR: { m: 'staff' }, staffGlow: true },
-  goblin:      { model: 'Rogue', scale: 0.78, tint: 0x86c24e, handR: { m: 'dagger' } },
-  deepOne:     { model: 'Skeleton_Minion', scale: 0.90, tint: 0x4e8a7d, handR: { m: 'spear_A' } },
-  skeleton:    { model: 'Skeleton_Rogue', scale: 0.96, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
-  orc:         { model: 'Barbarian', scale: 1.32, tint: 0x6ea854, handR: { m: 'axe_2handed' } },
-  cultist:     { model: 'Rogue_Hooded', scale: 1.0, tint: 0x7b52ab, handL: { m: 'spellbook_open', rx: -Math.PI / 4 } },
-  ogre:        { model: 'Barbarian', scale: 2.15, scaleXZ: 1.22, tint: 0xd99b72, handR: { m: 'hammer_C' } },
-  lich:        { model: 'Skeleton_Mage', scale: 1.72, tint: 0x7dffb0, handR: { m: 'Skeleton_Staff' } },
-  blackKnight: { model: 'Skeleton_Warrior', scale: 1.72, tint: 0xc94a5a, guard: true, handR: { m: 'sword_2handed_color' }, handL: { m: 'shield_spikes_color', ry: -Math.PI / 3 } },
+  knight:      { model: 'Knight', norm: 0.66, scale: 1.0, guard: true, handR: { m: 'sword_1handed' }, handL: { m: 'shield_badge_color', ry: -Math.PI / 3 } },
+  ranger:      { model: 'Ranger', norm: 0.68, scale: 1.0, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
+  mage:        { model: 'Mage', norm: 0.66, scale: 1.0, handR: { m: 'staff' }, staffGlow: true },
+  goblin:      { model: 'Rogue', norm: 0.68, scale: 0.74, tint: 0x86c24e, handR: { m: 'dagger' } },
+  deepOne:     { model: 'Skeleton_Minion', norm: 0.68, scale: 0.88, tint: 0x4e8a7d, handR: { m: 'spear_A' } },
+  skeleton:    { model: 'Skeleton_Rogue', norm: 0.68, scale: 0.96, handL: { m: 'bow_withString', rx: -Math.PI / 2, ry: Math.PI } },
+  orc:         { model: 'Barbarian', norm: 0.68, scale: 1.32, tint: 0x6ea854, handR: { m: 'axe_2handed' } },
+  cultist:     { model: 'Rogue_Hooded', norm: 0.68, scale: 1.0, tint: 0x7b52ab, handL: { m: 'spellbook_open', rx: -Math.PI / 4 } },
+  ogre:        { model: 'Barbarian', norm: 0.68, scale: 2.15, scaleXZ: 1.22, tint: 0xd99b72, handR: { m: 'hammer_C' } },
+  lich:        { model: 'Skeleton_Mage', norm: 0.68, scale: 1.72, tint: 0x7dffb0, handR: { m: 'Skeleton_Staff' } },
+  blackKnight: { model: 'Skeleton_Warrior', norm: 0.68, scale: 1.80, tint: 0xc94a5a, guard: true, handR: { m: 'sword_2handed_color' }, handL: { m: 'shield_spikes_color', ry: -Math.PI / 3 } },
 };
 const hqCache = new Map();
 let hqState = 'idle'; // 'idle' | 'loading' | 'ready' | 'error'
@@ -2222,7 +2222,8 @@ function makeKayKitRig(key) {
       o.material = m;
     });
   }
-  if (cfg.scaleXZ) raw.scale.set(cfg.scaleXZ, 1, cfg.scaleXZ);
+  const norm = cfg.norm || 0.68, sxz = norm * (cfg.scaleXZ || 1);
+  raw.scale.set(sxz, norm, sxz);
   root.scale.setScalar(cfg.scale || 1);
 
   const getN = n => raw.getObjectByName(n) || new T.Group();
@@ -2263,8 +2264,9 @@ function makeKayKitRig(key) {
 
 const rigCache = new Map();
 function makeRig(key, build) {
-  if (quality === 'high' && hqState === 'ready' && HQ_CFG[key]) {
-    const hq = makeKayKitRig(key);
+  const hqKey = HQ_CFG[key] ? key : key.replace(/0$/, '');
+  if (quality === 'high' && hqState === 'ready' && HQ_CFG[hqKey]) {
+    const hq = makeKayKitRig(hqKey);
     if (hq) return hq;
   }
   let t = rigCache.get(key);
@@ -5951,7 +5953,8 @@ function mpLeave() { show('wowQueue', false); const ws = net.ws; net.ws = null; 
 function mpClearShots() { for (const p of net.projs.values()) scene.remove(p.mesh); net.projs.clear(); }
 function mpClear() {
   for (const e of net.ents.values()) { scene.remove(e.root); e.tag.remove(); }
-  net.ents.clear(); net.me = null; mpClearShots(); dropMark(net.castMark); net.castMark = null; net.ct = 0;
+  net.ents.clear(); net.me = null; mpClearShots(); dropMark(net.castMark); net.castMark = null; net.ct = 0; net.castChan = false; net.spinDur = 0; net.spinEndAt = 0;
+  $('castBar').hidden = true; $('castBar').className = '';
   for (const k of net.picks.values()) scene.remove(k.g); net.picks.clear();
   for (const c of net.critters.values()) { c.dead = true; scene.remove(c.root); } net.critters.clear();
   net.names.clear(); net.roster = []; net.joined = false; net.phase = 0; net.menu = false; net.hasS = false;
@@ -5993,7 +5996,7 @@ function renderRosterPanel() {
 function mpStart(m) {
   clearWorld();
   if (preview) { scene.remove(preview.rig.root); preview = null; }
-  Object.assign(net, { joined: true, id: m.id, cls: m.cls, room: m.room, cfg: m.cfg, fun: !!m.fun, off: null, seq: 0, sendT: 0, pendB: 0, phase: 0, hitT: 0, killer: '', cd: [0, 0, 0, 0, 0], res: 0, ct: 0, ultPt: null, item: '', itemT: 0, itemCd: 0, itemAim: null, lastShownItem: null, funBuffKey: '' });
+  Object.assign(net, { joined: true, id: m.id, cls: m.cls, room: m.room, cfg: m.cfg, fun: !!m.fun, off: null, seq: 0, sendT: 0, pendB: 0, phase: 0, hitT: 0, killer: '', cd: [0, 0, 0, 0, 0], res: 0, ct: 0, castChan: false, spinDur: 0, spinEndAt: 0, ultPt: null, item: '', itemT: 0, itemCd: 0, itemAim: null, lastShownItem: null, funBuffKey: '' });
   net.lp = { x: m.x, z: m.z, r: 0.5, face: Math.atan2(-m.x, -m.z), dashT: 0, dashX: 0, dashZ: 1, dashSp: 0, hold: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, landT: 0, aimT: 0 };
   const def = CLASSES[m.cls];
   for (const k in hudC) delete hudC[k];
@@ -6154,7 +6157,7 @@ function mpEvent(v) {
     sfxK = Math.hypot(v.x - lp.x, v.z - lp.z) < 12 ? 1 : 0.35; tone(980, 0.08, 'triangle', 0.08, 560); sfxK = 1;
     return;
   }
-  const e = net.ents.get(v.id), me = v.id === net.id; if (!e) return;
+  const e = net.ents.get(v.id), me = !!(e && e.mine && v.id === net.id); if (!e) return;
   const p = mpPos(e);
   sfxK = me || v.by === net.id ? 1 : 0.4;
   switch (v.e) {
@@ -6258,7 +6261,7 @@ function mpEvent(v) {
         case 'shoot': sfx.shoot(); break;
         case 'cast': sfx.fire(); break;
         case 'call': sfx.cast(); break;
-        case 'ult': sfx.horn(); if (me) { dropMark(net.castMark); net.castMark = null; net.ct = 0; castEnd(true); } break;
+        case 'ult': sfx.horn(); if (me && !e.def.ult.self) { dropMark(net.castMark); net.castMark = null; net.ct = 0; net.castChan = false; castEnd(true); } break;
         case 'jump':
           if (me) { const sp = net.cfg.cls[net.cls].speed * (e.flags & 64 ? net.cfg.slowK : 1); lp.air = true; lp.vy = net.cfg.jumpV; lp.jx = ctl.mx * sp; lp.jz = ctl.mz * sp; lp.hold = 0.9; sfx.dash(); }
           break;
@@ -6320,6 +6323,7 @@ function mpSnapshot(m) {
   net.itemT = m.itt || 0;
   net.itemCd = m.itc || 0;
   syncUltItemSlot();
+  for (const a of w.p) if (!net.ents.has(a[0])) mpEnt(a[0], a[6]);
   for (const v of w.ev) mpEvent(v);
   const seen = new Set();
   for (const a of w.p) {

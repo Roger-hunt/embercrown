@@ -39,7 +39,7 @@ const APP_VERSION = (() => { try { return 'v' + String(JSON.parse(fs.readFileSyn
 const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'telemetry.db');
 const SEC_LOG = process.env.SEC_LOG || path.join(DATA_DIR, 'security.log');
 const DEBUG_ON = process.env.DEBUG === '1' || process.env.LOG_LEVEL === 'debug';
-const DEMO_AUTH = process.env.DEMO_AUTH === '1';
+const DEMO_AUTH = process.env.DEMO_AUTH !== '0';
 const ENV_DEMO_PASS = String(process.env.DEMO_PASS || '').trim();
 const DEMO_PASS_AUTO = !ENV_DEMO_PASS;
 const DEMO_PASS = ENV_DEMO_PASS || crypto.randomBytes(9).toString('base64url');

@@ -1,6 +1,6 @@
 {
   "name": "embercrown-arena",
-  "version": "1.7.0patch1",
+  "version": "1.7.0patch2",
   "private": true,
   "description": "烬冠竞技场：低多边形西式奇幻竞技场，单人闯关 + 8 人联机对战",
   "scripts": {

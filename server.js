@@ -60,6 +60,24 @@ const QUEUE_LOAD = Number(process.env.QUEUE_LOAD) || 1.6;
 const QUEUE_TICK_MS = Number(process.env.QUEUE_TICK_MS) || 18;
 const QUEUE_FORCE = process.env.QUEUE_FORCE === '1';
 const REALM_NAME = String(process.env.REALM_NAME || '无尽乌龟').trim();
+// AFK：真人长时间没有任何有效输入就判定挂机。默认 300 秒，最后 60 秒推倒计时。
+// 只认「有操作」的输入包（位移/按键/视角），单纯心跳式空包不续命。
+const AFK_IDLE_SEC = envInt('AFK_IDLE_SEC', 300, 30, 7200);
+const AFK_WARN_SEC = envInt('AFK_WARN_SEC', 60, 5, 600);
+const AFK_IDLE_MS = AFK_IDLE_SEC * 1000;
+// 建房版本闸：低于这个版本的前端不允许创建新房间（加入已有房间不受限）
+const MIN_CREATE_VER = String(process.env.MIN_CREATE_VER || '1.7.0patch2').trim().replace(/^v/, '');
+// 版本号比较：1.7.0patch2 > 1.7.0patch1 > 1.7.0。无法解析返回 null（当作过旧处理）
+function verNum(v) {
+  const m = /^v?(\d+)\.(\d+)\.(\d+)(?:patch(\d+))?/i.exec(String(v || '').trim());
+  return m ? [+m[1], +m[2], +m[3], +m[4] || 0] : null;
+}
+function verCmp(a, b) {
+  const x = verNum(a), y = verNum(b);
+  if (!x || !y) return null;
+  for (let i = 0; i < 4; i++) if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  return 0;
+}
 
 const TICK = 30, DT = 1 / TICK;
 const KILL_TARGET = envInt('KILL_TARGET', 10, 1, 99), ROUND_TIME = envInt('ROUND_TIME', 150, 30, 3600), END_TIME = 9, RESPAWN = 3, SPAWN_PROT = 1.5;
@@ -430,6 +448,7 @@ function sanitizeMp(j) {
       bots: players.length - humans.length, humans: humans.length,
       durSec: soloNum(j.durSec, 0, 3600, 0), round: soloNum(j.round, 0, 999, 0),
       kills: soloNum(j.kills, 0, 9999, 0), input: pickInput(j.input),
+      reason: soloStr(j.reason, 16) || 'end',
       killTarget: soloNum(j.killTarget, 0, 999, 0), players,
     },
   };
@@ -578,7 +597,7 @@ const server = (SSL_CERT && SSL_KEY)
 const rooms = new Map();
 function makeRoom(code, botCount = Math.max(0, BOT_FILL - 1), diff = 'normal', pwd = '', fun = false) {
   const dKey = BOT_DIFF[diff] ? diff : 'normal';
-  const room = { code, pwd: cleanRoomPwd(pwd), fun: !!fun, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], bombs: [], critters: [], critterTimers: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME,
+  const room = { code, pwd: cleanRoomPwd(pwd), fun: !!fun, botCount: clamp(botCount, 0, MAX_PLAYERS - 1), diff: dKey, players: [], proj: [], zones: [], picks: [], bombs: [], critters: [], critterTimers: [], ev: [], time: 0, phase: 'play', phaseT: 0, roundT: ROUND_TIME, humanAct: Date.now(), lastRealAct: 0,
     nextId: 1, nextObj: 1, pickT: fun ? 3 : 6, botT: 0, rosterDirty: true, hasFb: false };
   initCritters(room);
   rooms.set(code, room); return room;
@@ -597,7 +616,7 @@ function randomCode() { const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s; d
 function humans(room) { let n = 0; for (const p of room.players) if (!p.bot) n++; return n; }
 
 function makePlayer(room, name, cls, ws) {
-  const p = { id: room.nextId++, name, cls, ws, bot: !ws, x: 0, z: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, face: 0, hp: CLS[cls].hp, res: 0, calm: 0, kx: 0, kz: 0,
+  const p = { id: room.nextId++, name, cls, ws, bot: !ws, lastAct: Date.now(), afkWarn: 0, x: 0, z: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, face: 0, hp: CLS[cls].hp, res: 0, calm: 0, kx: 0, kz: 0,
     cd: { atk: 0, q: 0, e: 0, u: 0, dodge: 0 }, dashT: 0, dashX: 0, dashZ: 1, dashSp: 0, charging: false, rolling: false, chargeHit: null, chargeTarget: null, chargeTgId: 0, chargeDist: 0,
     cast: 0, castX: 0, castZ: 0, ux: 0, uz: 0,
     inv: 0, prot: 0, stun: 0, stunDR: 0, freeze: 0, slow: 0, dead: false, respawnT: 0, moving: false,
@@ -721,8 +740,11 @@ function kill(room, t, by, o) {
     by.mk = (by.mkT > 0 ? (by.mk || 0) : 0) + 1; by.mkT = 10; mk = by.mk;
     if (!by.dead) { const max = CLS[by.cls].hp, got = Math.min(30, max - by.hp); if (got > 0) { by.hp += got; room.ev.push({ e: 'heal', id: by.id, v: Math.round(got) }); } }
   }
-  logAccess({ ip: credit ? (by.bot ? 'bot' : 'human') : 'env', event: 'combat_kill', room: room.code, name: credit ? by.name : null, cls: credit ? by.cls : null,
-    detail: { src: o && o.sk ? 'skill' : 'atk', killerBot: credit ? (by.bot ? 1 : 0) : 0, victimCls: t.cls, victimBot: t.bot ? 1 : 0, diff: room.diff,
+  // 击杀明细：只要有一方是真人就全量记录；bot 打 bot 只按 1/20 采样。
+  // 挂机房里 7 个 bot 互杀曾经把 access_logs 刷到 99.6%，还会把真人数据从 5 万条滚动窗口里挤掉。
+  const humanInvolved = credit ? (!by.bot || !t.bot) : !t.bot;
+  if (humanInvolved || Math.random() < 0.05) logAccess({ ip: credit ? (by.bot ? 'bot' : 'human') : 'env', event: 'combat_kill', room: room.code, name: credit ? by.name : null, cls: credit ? by.cls : null,
+    detail: { src: o && o.sk ? 'skill' : 'atk', killerBot: credit ? (by.bot ? 1 : 0) : 0, victimCls: t.cls, victimBot: t.bot ? 1 : 0, diff: room.diff, sampled: humanInvolved ? 0 : 1,
       killerIp: credit && !by.bot ? (by.ip || '') : '', victimIp: t.bot ? '' : (t.ip || '') } });
   const ev = { e: 'kill', id: t.id, by: credit ? by.id : 0 };
   if (st >= 2) ev.st = st;
@@ -1369,7 +1391,15 @@ function tickRoom(room) {
   room.time += DT;
   if (Math.floor(room.time / 2) !== prev2s) room.rosterDirty = true;
   room.botT -= DT; if (room.botT <= 0) { room.botT = 1; manageBots(room); }
-  if (room.phase === 'end') { room.phaseT -= DT; if (room.phaseT <= 0) startRound(room); }
+  // 回合闸：真人长时间没有有效输入时不再自动开下一局，避免 7 个 bot 自己把房间一直续下去
+  if (room.phase === 'end') {
+    const idle = !room.humanAct || Date.now() - room.humanAct > AFK_IDLE_MS;
+    if (idle) room.phaseT = 0;
+    else {
+      if (room.phaseT <= 0) room.phaseT = END_TIME;
+      room.phaseT -= DT; if (room.phaseT <= 0) startRound(room);
+    }
+  }
   else {
     if (room.players.length >= 2) { room.roundT -= DT; if (room.roundT <= 0) endRound(room); }
     for (const p of room.players.slice()) updatePlayer(room, p);
@@ -1393,7 +1423,8 @@ function broadcast(room) {
         (p.dead ? 1 : 0) | (p.inv > 0 ? 2 : 0) | (p.dashT > 0 && p.rolling ? 4 : 0) | (p.dashT > 0 && p.charging ? 8 : 0) | (p.freeze > 0 ? 16 : 0) |
         (p.stun > 0 ? 32 : 0) | (p.slow > 0 ? 64 : 0) | (p.prot > 0 ? 128 : 0) | (p.moving ? 256 : 0) | (p.air ? 512 : 0) | (p.cast > 0 ? 1024 : 0) |
         (fn.star > 0 ? 2048 : 0) | (fn.giant > 0 ? 4096 : 0) | (fn.mini > 0 ? 8192 : 0) | (fn.haste > 0 ? 16384 : 0) |
-        (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0) | (p.wallT > 0 ? 262144 : 0),
+        (fn.boom > 0 ? 32768 : 0) | (fn.dizzy > 0 ? 65536 : 0) | (fn.snail > 0 ? 131072 : 0) | (p.wallT > 0 ? 262144 : 0) |
+        (p.spinUltT > 0 ? 524288 : 0),
         CLS_IDS.indexOf(p.cls), r2(p.y)];
     }),
     k: room.picks.map(k => [k.id, r2(k.x), r2(k.z), k.k || 'heal']),
@@ -1439,6 +1470,14 @@ function admitJoin(ws, ip, ua, m) {
   const input = ['touch', 'pad', 'kbm'].includes(m.input) ? m.input : '';
   let room, created = false;
   if (m.create) {                                    // DEMO 禁止自定义房间号：创建房间一律由服务器随机生成 4 位房间号
+    // 版本闸：只拦「创建新房间」。加入已有房间不受限，避免旧页面玩家被直接踢出游戏
+    const vc = verCmp(m.ver, MIN_CREATE_VER);
+    if (vc === null || vc < 0) {
+      logAccess({ ip, ua, event: 'ver_stale', status: 4003, detail: { ver: cleanText(m.ver, 32) || '', min: MIN_CREATE_VER } });
+      send(ws, JSON.stringify({ t: 'denied', code: 'verold', ver: APP_VERSION, min: 'v' + MIN_CREATE_VER, msg: '版本过旧，请刷新页面后重新创建房间' }));
+      ws.close(4003);
+      return;
+    }
     if (rooms.size >= MAX_ROOMS) { send(ws, '{"t":"full"}'); ws.close(1013); return; }
     room = makeRoom(randomCode(), bots, diff, roomPwd, fun); created = true;
   } else if (code) {                                 // 仅允许加入已存在的房间，不允许通过自定义房间号新建房间
@@ -1524,8 +1563,14 @@ wss.on('connection', (ws, req) => {
       const p = ws.player; if (!p) return;
       const s = m.s | 0; if (s <= p.seq) return; p.seq = s;
       let mx = num(m.mx), mz = num(m.mz); const l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
-      p.mx = mx; p.mz = mz; p.a = num(m.a) % TAU; p.ax = clamp(num(m.ax), -R, R); p.az = clamp(num(m.az), -R, R);
+      const a0 = p.a || 0, a1 = num(m.a) % TAU;
+      p.mx = mx; p.mz = mz; p.a = a1; p.ax = clamp(num(m.ax), -R, R); p.az = clamp(num(m.az), -R, R);
       const b = (m.b | 0) & 255;                        // 1 普攻 2/4 技能 8 翻滚 16 跳跃 32 大招/道具 64 取消读条 128 丢弃道具
+      // AFK：只有真实操作才续命。空包（无位移、无按键、视角不动）不算，否则挂机客户端每帧发空包就能永久保活
+      if (Math.abs(mx) > 0.05 || Math.abs(mz) > 0.05 || Math.abs(a1 - a0) > 0.02 || b) {
+        p.lastAct = Date.now(); if (p.afkWarn) p.afkWarn = 0;
+        if (ws.room) ws.room.humanAct = p.lastAct;
+      }
       if (b & 32) { p.ux = p.ax; p.uz = p.az; }         // 记住选定的位置，免得被后面的输入包覆盖
       if (b & 8) p.chargeTgId = m.tg | 0;
       p.pend |= b;
@@ -1559,11 +1604,37 @@ setInterval(() => {
   for (const [ip, rec] of authFailures) if (now > rec.resetAt) authFailures.delete(ip);
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; try { ws.ping(); } catch (e) {} }
 }, 15000);
+// AFK 巡检：真人长时间无有效输入就踢出。进入预警窗口后每秒推一次剩余秒数，前端据此显示倒计时。
+// 这里只处理真人；bot 的 lastAct 不刷新，但 bot 不参与判断。
+setInterval(() => {
+  const now = Date.now();
+  for (const ws of wss.clients) {
+    const p = ws.player;
+    if (!p || p.bot) continue;
+    const idle = now - (p.lastAct || now);
+    const left = Math.ceil((AFK_IDLE_MS - idle) / 1000);
+    if (left <= 0) {
+      logAccess({ ip: p.ip, event: 'afk_kick', room: ws.room ? ws.room.code : null, name: p.name, cls: p.cls, detail: { idleSec: Math.round(idle / 1000) } });
+      send(ws, JSON.stringify({ t: 'afk', left: 0, sec: AFK_IDLE_SEC, kicked: 1 }));
+      try { ws.close(4002, 'afk'); } catch (e) {}
+      continue;
+    }
+    if (left <= AFK_WARN_SEC && left !== p.afkWarn) {
+      p.afkWarn = left;
+      send(ws, JSON.stringify({ t: 'afk', left, sec: AFK_IDLE_SEC }));
+    }
+  }
+}, 1000);
 setInterval(() => { sampleLoad(); }, 30000);
 setInterval(() => {
   try {
     db.exec(`
-      DELETE FROM access_logs WHERE id NOT IN (SELECT id FROM access_logs ORDER BY id DESC LIMIT 50000);
+      -- 分事件保留：combat_kill 量大且价值低，单独限 2 万条；其余事件（访问/进房/回合/安全）保留 5 万条。
+      -- 以前按总量 5 万滚动，挂机房的击杀明细会把真人访问数据整段挤掉。
+      DELETE FROM access_logs WHERE IFNULL(event,'') = 'combat_kill'
+        AND id NOT IN (SELECT id FROM access_logs WHERE IFNULL(event,'') = 'combat_kill' ORDER BY id DESC LIMIT 20000);
+      DELETE FROM access_logs WHERE IFNULL(event,'') <> 'combat_kill'
+        AND id NOT IN (SELECT id FROM access_logs WHERE IFNULL(event,'') <> 'combat_kill' ORDER BY id DESC LIMIT 50000);
       DELETE FROM load_metrics WHERE id NOT IN (SELECT id FROM load_metrics ORDER BY id DESC LIMIT 20000);
       DELETE FROM debug_logs WHERE id NOT IN (SELECT id FROM debug_logs ORDER BY id DESC LIMIT 20000);
       DELETE FROM solo_runs WHERE substr(ts,1,10) < date('now','-180 days');  -- 单人遥测只留 180 天

@@ -3,7 +3,9 @@
 // 被 server.js 直接 require，并由 scripts/build.mjs 注入 public/index.html (P2PHost)
 
 const ROLL = { cd: 2.8, dur: 0.26, sp: 22, inv: 0.34 };
-const CHARGE = { dur: 0.28, sp: 30, maxDist: 18, maxGap: 20 };
+// lockGap：目标近于该距离 → 锁定冲锋、撞到即停；远于该距离 → 朝目标方向贯穿冲刺
+// （冲刺距离 = min(目标距离, maxDist)，沿途敌人全吃伤害；无目标时朝面向冲 dur）
+const CHARGE = { dur: 0.28, sp: 30, maxDist: 18, maxGap: 20, lockGap: 3.5 };
 const MOVE = {
   knight: { k: 'charge', cd: 5 },
   ranger: { k: 'roll', cd: ROLL.cd },

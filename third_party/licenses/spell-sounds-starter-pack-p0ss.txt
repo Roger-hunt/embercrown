@@ -1,0 +1,36 @@
+Spell Sounds Starter Pack
+=========================
+
+Author : p0ss  (OpenGameArt.org user)
+Source : https://opengameart.org/content/spell-sounds-starter-pack
+Date   : 2011-03-03
+License: Creative Commons Attribution-ShareAlike 3.0 Unported (CC-BY-SA 3.0)
+         (the pack also carries GPL 3.0 / GPL 2.0 options)
+License URI: https://creativecommons.org/licenses/by-sa/3.0/
+
+Attribution (required)
+----------------------
+Spell sound effects by p0ss, via OpenGameArt.org,
+licensed under CC-BY-SA 3.0 — https://creativecommons.org/licenses/by-sa/3.0/
+
+What this project uses
+----------------------
+22 sound effects were taken from this pack, trimmed, fade-in/out, peak-normalized
+and re-encoded to mono AAC (.m4a). They are derivative works and are distributed
+under CC-BY-SA 3.0 as well. The exact source-file mapping is listed in
+CREDITS.md §3.1:
+
+  swing, cleave, volley, dash, fire, inferno, meteor, boom, freeze, storm, wall,
+  cast, blink, shoot, boon, pickup, box, curse, confusion, dead, horn, cheer
+  (public/assets/sfx/*.m4a)
+
+Scope
+-----
+The ShareAlike obligation applies to these audio files (and to modifications of
+them). It does not extend to the rest of the game, which is a separate collective
+work: game code, models, other audio and art remain under their own licenses.
+
+Note
+----
+Files inside the original zip are RIFF/WAVE data despite the .ogg extension; this
+project converts them rather than redistributing the originals.

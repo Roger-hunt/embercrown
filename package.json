@@ -1,8 +1,10 @@
 {
   "name": "embercrown-arena",
-  "version": "1.7.0patch2",
+  "version": "1.7.0patch3",
   "private": true,
   "description": "烬冠竞技场：低多边形西式奇幻竞技场，单人闯关 + 8 人联机对战",
+  "license": "MIT",
+  "author": "Roger-hunt",
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check src/sim/combat.js",
@@ -12,5 +14,9 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1",
     "ws": "^8.22.2"
+  },
+  "devDependencies": {
+    "eslint-scope": "9.1.2",
+    "espree": "11.2.0"
   }
 }

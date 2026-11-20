@@ -870,7 +870,7 @@ body.touch:not(.pad) #btnKeybinds{display:none}
       <button type="button" class="login-enter" id="btnEnterGame" disabled>进入游戏</button>
     </div>
     <div class="login-foot">
-      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.7.0patch2（最近更新）</button>
+      <button type="button" class="login-ver-btn" id="btnVer">版本 v1.7.0patch3（最近更新）</button>
       <div class="login-links">
         <button type="button" class="mini-btn" id="btnLoginQuality">画质：标准</button>
         <button type="button" class="mini-btn" id="btnAbout">关于</button>
@@ -881,16 +881,16 @@ body.touch:not(.pad) #btnKeybinds{display:none}
 
   <div id="verModal" class="screen center login-modal" hidden>
     <div class="plate card login-card">
-      <h2 id="verTitle">版本 v1.7.0patch2 · 最近更新</h2>
+      <h2 id="verTitle">版本 v1.7.0patch3 · 最近更新</h2>
       <p id="verStale" class="ver-stale" hidden><span id="verStaleText"></span></p>
       <ul id="verList">
-        <li>联机施法条修复：自己释放旋转类大招时现在会正常显示引导条；他人开盾或放大招不再错误点亮自己的施法条（此前「减伤护盾」与「旋转大招」共用同一个标志位）。</li>
-        <li>联机挂机管理：连续 5 分钟没有任何操作会自动离开房间，最后 60 秒在画面顶部倒计时提示。</li>
-        <li>建房版本校验：旧版本页面试图创建新房间会被拒绝并提示刷新，避免用缺少修复的旧前端开局。</li>
+        <li>联机房间自动回收：真人全部断线、或连续 10 分钟没有有效操作，房间会被整间关停，不再出现「人早走了，7 个 bot 自己一局接一局打到天亮」的挂机房。</li>
+        <li>骑士 5 号位移（冲锋）手感：目标 3.5 米内锁定撞停、更远则朝目标方向贯穿冲刺（最远 18 米），沿途敌人全部吃 38 伤害 + 击退 + 眩晕，怒气总共 +25。</li>
+        <li>破釜沉舟护盾特效：骑士开 E 时角色身上出现半透明能量罩，随盾墙张开、剩余 0.3 秒淡出，自己和其他玩家都能看到。</li>
+        <li>联机房间列表只显示当前所选服务器的房间，不再混入其他服务器，也不会静默切服。</li>
+        <li>上一版 v1.7.0patch2 联机修复：自己放旋转大招会正常显示引导条，他人开盾 / 放大招不再错误点亮自己的施法条；连续 5 分钟无操作自动离开房间（最后 60 秒倒计时）；低版本页面无法创建新房间。</li>
         <li>上一版 v1.7.0patch1 法师重做：U「炼狱火海」改为瞬发原地引导 1.8 秒（可被打断），新增 0.9 秒减速并下调击退，伤害按停留时间递增（0.55x → 1.45x）。</li>
-        <li>上一版 v1.7.0patch1 读条与体验：联机敌方头顶小血条下方新增施法/引导读条，移除左上角施法条与「破釜沉舟」浮字背景；手柄支持 X/Y 互换、自定义及摇杆调键，移动端新增隐藏跳跃键，遥测改为统计主用输入。</li>
         <li>上一版 v1.7.0 骑士重做：普攻「重斩」（0 层武艺纯单体回怒）、Q「顺劈斩」（18 怒扇形群攻）、E「破釜沉舟」（3 秒 80%/55% 减伤盾墙）、U「旋风斩」（瞬发移动旋转吸血）。</li>
-        <li>上一版 v1.7.0 武艺与联机：骑士重斩额外溅射 +1 副目标（单挑 +15%/层），法师火球范围 +25%/层且法术伤害 +15%/层；混战 10 杀 / 150 秒，快速匹配优先合并同模式房间，修复切后台漏报。</li>
       </ul>
       <button type="button" class="go" id="btnVerReload" hidden>刷新页面</button>
       <button type="button" class="go" id="btnVerClose">确定</button>
@@ -907,7 +907,7 @@ body.touch:not(.pad) #btnKeybinds{display:none}
       <div class="about-pane" id="aboutPaneInfo" role="tabpanel" aria-labelledby="aboutTabInfo">
       <p id="aboutDesc">低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。</p>
       <p id="aboutServerNote" style="color:var(--gold)">正在读取官服到期时间…</p>
-      <p id="aboutDownload">单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch2/embercrown-solo-v1.7.0patch2.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch2 单机离线版 (ZIP)</a></p>
+      <p id="aboutDownload">单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch3/embercrown-solo-v1.7.0patch3.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch3 单机离线版 (ZIP)</a></p>
       <p>GitHub：<a href="https://github.com/Roger-hunt/embercrown" target="_blank" rel="noopener noreferrer">https://github.com/Roger-hunt/embercrown</a></p>
       <p id="aboutThanks">致谢：<a href="https://linux.do/" target="_blank" rel="noopener noreferrer">linux.do</a> 社区</p>
       </div>
@@ -2604,6 +2604,56 @@ function shockFx(x, z, r, color, life = 0.38) {
   const m = new T.Mesh(geo('ring', 0.78, 1, 40), fxMat(color, 0.9)); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.1, z);
   addFx(m, life, k => { m.scale.setScalar(r * (0.25 + 0.85 * Math.sqrt(k))); m.material.opacity = 0.9 * (1 - k); });
 }
+/* ---- 破釜沉舟：贴身透明护盾罩（加法混合 + 菲涅尔边缘 + 缓慢流动的蜂窝格） ---- */
+const WALL_DOME_GEO = new T.SphereGeometry(1, 28, 18);
+const WALL_DOME_VS = [
+  'varying vec3 vN; varying vec3 vV; varying vec3 vP;',
+  'void main() {',
+  '  vP = position;',
+  '  vN = normalize(normalMatrix * normal);',
+  '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+  '  vV = normalize(-mv.xyz);',
+  '  gl_Position = projectionMatrix * mv;',
+  '}',
+].join('\n');
+const WALL_DOME_FS = [
+  'uniform float uT; uniform float uA; uniform vec3 uC;',
+  'varying vec3 vN; varying vec3 vV; varying vec3 vP;',
+  'void main() {',
+  '  vec3 n = normalize(vP);',
+  '  float rim = pow(1.0 - clamp(dot(normalize(vN), normalize(vV)), 0.0, 1.0), 2.0);',
+  '  float lon = atan(n.z, n.x) * 0.15915494 + 0.5;',
+  '  float lat = asin(clamp(n.y, -1.0, 1.0)) * 0.31830989 + 0.5;',
+  '  vec2 g = vec2(lon * 24.0, lat * 14.0 + uT * 0.5);',
+  '  g.x += step(1.0, mod(g.y, 2.0)) * 0.5;',
+  '  vec2 f = abs(fract(g) - 0.5);',
+  '  float cell = smoothstep(0.42, 0.5, max(f.x, f.y));',
+  '  float pulse = 0.55 + 0.45 * sin(uT * 4.0 - lat * 12.0);',
+  '  float a = (0.025 + rim * 0.15 + cell * 0.09 * pulse) * uA;',
+  '  vec3 col = mix(uC, vec3(1.0), rim * 0.35) * (0.9 + 0.4 * cell);',
+  '  gl_FragColor = vec4(col, clamp(a, 0.0, 0.42));',
+  '}',
+].join('\n');
+function makeWallDome() {
+  const mat = new T.ShaderMaterial({
+    uniforms: { uT: { value: 0 }, uA: { value: 0 }, uC: { value: new T.Color(0xffd859) } },
+    vertexShader: WALL_DOME_VS, fragmentShader: WALL_DOME_FS,
+    transparent: true, depthWrite: false, side: T.DoubleSide, blending: T.NormalBlending,
+  });
+  const m = new T.Mesh(WALL_DOME_GEO, mat);
+  m.userData.noFlash = true; m.visible = false; m.renderOrder = 4; m.frustumCulled = false;
+  m.position.y = 0.95; m.scale.set(1.24, 1.5, 1.24);
+  return m;
+}
+/* on=false 收起；grow 0→1 控制刚架起时的张开；fade 控制收招淡出 */
+function syncWallDome(m, on, t, grow = 1, fade = 1) {
+  if (!m) return;
+  m.visible = !!on;
+  if (!on) return;
+  const u = m.material.uniforms; u.uT.value = t; u.uA.value = fade;
+  const s = 0.82 + 0.18 * clamp(grow, 0, 1);
+  m.scale.set(1.24 * s, 1.5 * s, 1.24 * s);
+}
 function lineFx(x, z, a, len, w, life) {
   const m = new T.Mesh(geo('plane', 1, 1), fxMat(0xff3b3b, 0.2)); m.rotation.order = 'YXZ'; m.rotation.set(-Math.PI / 2, a, 0);
   m.scale.set(w, len, 1); m.position.set(x + Math.sin(a) * len / 2, 0.07, z + Math.cos(a) * len / 2);
@@ -2856,7 +2906,7 @@ const game = {
 };
 /* 页面自认为的版本。与 wrangler.jsonc 的 vars.APP_VERSION、package.json 的 version 三处保持一致。
    加载后若服务器上的版本比它新，左下角版本按钮变成「待更新」——只改文案，不弹窗、不打断。 */
-const APP_VER = 'v1.7.0patch2';
+const APP_VER = 'v1.7.0patch3';
 let verStale = false, verNew = '', verProbedAt = 0;
 /* 非侵入式版本检查：只拉一个字符串，版本不同才把左下角文案换成「待更新」。
    不弹窗、不打断、不写遥测；失败静默（离线版 file:// 与没有 /version 的官服会自动忽略）。
@@ -2897,7 +2947,7 @@ function inpMode() {
 /* ================= 单人难度遥测（每局一包，POST /telemetry/solo） =================
    目的：给 BALANCE-SOLO.md 的难度曲线提供真实数据（每波耗时/受伤/残血、小怪击杀构成、
    首领 TTK、死亡波次、祝福组合）。单机离线版（file://）只写本地 localStorage 不上报。   */
-const TP_BUILD = 'v1.7.0patch2', TP_KEY = 'ec_solo_log_v1';
+const TP_BUILD = 'v1.7.0patch3', TP_KEY = 'ec_solo_log_v1';
 // 上报一律走「页面自己的源」：CF 版由 Workers 收下写进 D1，官服版由 server.js 写进本地 sqlite。
 // 2026-11-23 官服到期后只剩 CF 这条链路，所以这里不能写死绝对地址。
 function tpUrl() { return '/telemetry/solo'; }
@@ -3169,8 +3219,9 @@ function banner(h, sub = '') {
 function makePlayer(cls) {
   const def = CLASSES[cls], rig = makeRig(def.id, def.build);
   scene.add(rig.root);
+  const shield = makeWallDome(); rig.root.add(shield);
   return {
-    def, rig, root: rig.root, meshes: collectMeshes(rig.root), x: 0, z: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, landT: 0, face: Math.PI, r: 0.5, kx: 0, kz: 0,
+    def, rig, root: rig.root, shield, meshes: collectMeshes(rig.root), x: 0, z: 0, y: 0, vy: 0, air: false, jx: 0, jz: 0, landT: 0, face: Math.PI, r: 0.5, kx: 0, kz: 0,
     hp: def.hp, maxHp: def.hp, speed: def.speed, dmgMul: 1, atkMul: 1, crit: 0.05, cdr: 1, killHeal: 0, armor: def.armor ?? 1, mastery: 0, dodgeMul: 1, boons: [],
     res: RES[def.res].start, calm: RES.rage.calm, cast: null, casting: false, aimT: 0, aimA: Math.PI,
     cds: { atk: 0, q: 0, e: 0, u: 0, dodge: 0 }, cdMax: { atk: 1, q: 1, e: 1, u: 1, dodge: 1 },
@@ -3195,6 +3246,7 @@ function hurtPlayer(dmg, sx, sz, kb = 7) {
   game.shake = Math.max(game.shake, 0.4);
   const vg = $('vig'); vg.classList.add('hit'); setTimeout(() => vg.classList.remove('hit'), 90);
   sfx.hurt(); floatText(p.x, 2.2 + p.y, p.z, '-' + v, 'hurt'); burst(p.x, 1, p.z, 0xe8434f, 7);
+  if (p.wallT > 0) shockFx(p.x, p.z, 1.7, 0xffe08a, 0.3);   // 伤害被盾墙吃掉时，罩面荡开一圈涟漪
   if (p.hp <= 0) { p.hp = 0; killPlayer(); }
 }
 function killPlayer() {
@@ -3337,11 +3389,22 @@ function useSkill(p, slot, fa) {
   }
 }
 /* ---- 5 号位移技能：骑士冲锋 / 游侠翻滚 / 法师闪现 ---- */
-function heroCharge(p, fa, tg) {
+/* ---- 冲锋锁定判定：近身(< CHARGE_LOCK)锁定、撞到即停；远距离朝目标方向贯穿冲刺，
+   冲刺距离 = min(目标距离, CHARGE_MAX)，太远就冲到最远距离停；沿途敌人全吃伤害。 */
+const CHARGE_LOCK = 3.5, CHARGE_MAX = 18;
+function chargeAim(p, fa, tg) {
+  if (!tg || tg.dead) return { tg: null, a: fa, dur: 0.28 };              // 无目标：朝面向普通冲
+  const gap = Math.hypot(tg.x - p.x, tg.z - p.z), a = Math.atan2(tg.x - p.x, tg.z - p.z);
+  if (gap < CHARGE_LOCK) return { tg, a, dur: 0.6 };                     // 近身：锁定，撞到即停
+  return { tg: null, a, dur: Math.min(gap, CHARGE_MAX) / 30 };           // 贯穿：冲到目标/最远距离
+}
+function heroCharge(p, a, tg, dur) {
   ctl.aiming = false;
-  const valid = tg && !tg.dead && Math.hypot(tg.x - p.x, tg.z - p.z) <= 18 ? tg : null;
-  const ca = valid ? Math.atan2(valid.x - p.x, valid.z - p.z) : fa;
-  p.chargeTarget = valid; p.chargeDist = 0; p.dashT = p.dashDur = valid ? 0.6 : 0.28; p.dashSpeed = 30; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.chargeRaged = false; p.inv = Math.max(p.inv, 0.55); sfx.dash();
+  p.chargeTarget = tg; p.chargeDist = 0;
+  p.dashT = p.dashDur = dur || 0.28; p.dashSpeed = 30;
+  p.dashX = Math.sin(a); p.dashZ = Math.cos(a);
+  p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.chargeRaged = false;   // chargeRaged：怒气总共只给 25
+  p.inv = Math.max(p.inv, 0.55); sfx.dash();
 }
 function blinkFx(x0, z0, x1, z1) {
   for (const [x, z] of [[x0, z0], [x1, z1]]) { burst(x, 1, z, 0xb9a8ff, 14, 5, 0.2, 0.5); shockFx(x, z, 1.6, 0xb9a8ff, 0.3); }
@@ -3501,15 +3564,15 @@ function updatePlayer(dt) {
       p.aimA = Math.atan2(p.dashX, p.dashZ); p.aimT = 0.2;
       for (const e of game.enemies.slice()) if (!p.chargeHit.has(e) && Math.hypot(e.x - p.x, e.z - p.z) < p.r + e.r + 0.95) {
         p.chargeHit.add(e); hurtEnemy(e, 38, { kb: 10, fx: p.x - p.dashX, fz: p.z - p.dashZ, stun: 1.4, sk: 1 }); game.hitstop = 0.04;
-        if (!p.chargeRaged) { p.chargeRaged = true; gainRage(p, 25); }
-        if (e === p.chargeTarget) { p.dashT = 0; break; }
+        if (!p.chargeRaged) { p.chargeRaged = true; gainRage(p, 25); }      // 怒气总共只给一次
+        if (e === p.chargeTarget) p.dashT = 0;                             // 撞到锁定目标即停，但本帧其余敌人照样结算
       }
-      if (p.dashT > 0) for (const c of game.critters.slice()) if (!p.chargeHit.has(c) && Math.hypot(c.x - p.x, c.z - p.z) < p.r + c.r + 0.95) {
+      for (const c of game.critters.slice()) if (!p.chargeHit.has(c) && Math.hypot(c.x - p.x, c.z - p.z) < p.r + c.r + 0.95) {
         p.chargeHit.add(c); killCritter(c); game.hitstop = 0.03;
         if (!p.chargeRaged) { p.chargeRaged = true; gainRage(p, 25); floatText(p.x, 2.2 + p.y, p.z, '+25', 'crit'); }
-        if (c === p.chargeTarget) { p.dashT = 0; break; }
+        if (c === p.chargeTarget) p.dashT = 0;
       }
-      if (p.chargeDist >= 18 || (!p.chargeTarget && p.chargeDist >= 8.4)) p.dashT = 0;
+      if (p.chargeDist >= CHARGE_MAX) p.dashT = 0;
     }
     if (p.dashT <= 0) { if (p.charging) p.inv = Math.min(p.inv, 0.08); p.charging = false; p.rolling = false; p.chargeTarget = null; }
   } else {
@@ -3553,7 +3616,7 @@ function updatePlayer(dt) {
       if (cineLock) {}
       else if (held('dodge') && p.cds.dodge <= 0 && p.dashT <= 0 && mvd.kind !== 'roll') {
         p.cds.dodge = p.cdMax.dodge = mvd.cd * p.dodgeMul;
-        if (mvd.kind === 'charge') { const tg = validTarget(ctl.target) ? ctl.target : null; p.aimA = tg ? Math.atan2(tg.x - p.x, tg.z - p.z) : fa; p.aimT = 0.45; heroCharge(p, fa, tg); }
+        if (mvd.kind === 'charge') { const cr = chargeAim(p, fa, validTarget(ctl.target) ? ctl.target : null); p.aimA = cr.a; p.aimT = 0.45; heroCharge(p, cr.a, cr.tg, cr.dur); }
         else {
           const dx = ml > 0.15 ? mx / ml : Math.sin(ctl.yaw), dz = ml > 0.15 ? mz / ml : Math.cos(ctl.yaw), x0 = p.x, z0 = p.z;
           p.x += dx * mvd.dist; p.z += dz * mvd.dist; confine(p); p.kx = p.kz = 0; p.inv = Math.max(p.inv, 0.3); blinkFx(x0, z0, p.x, p.z);
@@ -3577,7 +3640,9 @@ function updatePlayer(dt) {
   else if (p.spinT > 0) { p.spinT -= dt; p.root.rotation.y = p.face + (1 - p.spinT / 0.35) * TAU; }
   else p.root.rotation.y = p.face;
   p.root.position.set(p.x, p.y, p.z);
-  p.root.visible = !(p.inv > 0 && p.dashT <= 0 && Math.floor(game.time * 22) % 2 === 0);
+  // 盾墙期间不闪白：护盾罩本身承担受击反馈，罩体跟着淡出
+  syncWallDome(p.shield, p.wallT > 0 && !p.dead, game.time, (3.0 - p.wallT) / 0.16, p.wallT < 0.3 ? p.wallT / 0.3 : 1);
+  p.root.visible = !(p.inv > 0 && p.dashT <= 0 && p.wallT <= 0 && Math.floor(game.time * 22) % 2 === 0);
 }
 
 /* ================= enemies ================= */
@@ -5555,27 +5620,27 @@ function applyI18n() {
   if ($('verStale')) $('verStale').hidden = !verStale;
   if ($('btnVerReload')) $('btnVerReload').hidden = !verStale;
   setH('#verList',
-    '<li>联机施法条修复：自己释放旋转类大招时现在会正常显示引导条；他人开盾或放大招不再错误点亮自己的施法条（此前「减伤护盾」与「旋转大招」共用同一个标志位）。</li>' +
-    '<li>联机挂机管理：连续 5 分钟没有任何操作会自动离开房间，最后 60 秒在画面顶部倒计时提示。</li>' +
-    '<li>建房版本校验：旧版本页面试图创建新房间会被拒绝并提示刷新，避免用缺少修复的旧前端开局。</li>' +
+    '<li>联机房间自动回收：真人全部断线、或连续 10 分钟没有有效操作，房间会被整间关停，不再出现「人早走了，7 个 bot 自己一局接一局打到天亮」的挂机房。</li>' +
+    '<li>骑士 5 号位移（冲锋）手感：目标 3.5 米内锁定撞停、更远则朝目标方向贯穿冲刺（最远 18 米），沿途敌人全部吃 38 伤害 + 击退 + 眩晕，怒气总共 +25。</li>' +
+    '<li>破釜沉舟护盾特效：骑士开 E 时角色身上出现半透明能量罩，随盾墙张开、剩余 0.3 秒淡出，自己和其他玩家都能看到。</li>' +
+    '<li>联机房间列表只显示当前所选服务器的房间，不再混入其他服务器，也不会静默切服。</li>' +
+    '<li>上一版 v1.7.0patch2 联机修复：自己放旋转大招会正常显示引导条，他人开盾 / 放大招不再错误点亮自己的施法条；连续 5 分钟无操作自动离开房间（最后 60 秒倒计时）；低版本页面无法创建新房间。</li>' +
     '<li>上一版 v1.7.0patch1 法师重做：U「炼狱火海」改为瞬发原地引导 1.8 秒（可被打断），新增 0.9 秒减速并下调击退，伤害按停留时间递增（0.55x → 1.45x）。</li>' +
-    '<li>上一版 v1.7.0patch1 读条与体验：联机敌方头顶小血条下方新增施法/引导读条，移除左上角施法条与「破釜沉舟」浮字背景；手柄支持 X/Y 互换、自定义及摇杆调键，移动端新增隐藏跳跃键，遥测改为统计主用输入。</li>' +
-    '<li>上一版 v1.7.0 骑士重做：普攻「重斩」（0 层武艺纯单体回怒）、Q「顺劈斩」（18 怒扇形群攻）、E「破釜沉舟」（3 秒 80%/55% 减伤盾墙）、U「旋风斩」（瞬发移动旋转吸血）。</li>' +
-    '<li>上一版 v1.7.0 武艺与联机：骑士重斩额外溅射 +1 副目标（单挑 +15%/层），法师火球范围 +25%/层且法术伤害 +15%/层；混战 10 杀 / 150 秒，快速匹配优先合并同模式房间，修复切后台漏报。</li>',
-    '<li>MP cast-bar fix: your own spin ultimates now show the channel bar correctly, and other players\' shields or ultimates no longer light up your own cast bar (shield and spin ult had shared one flag bit).</li>' +
-    '<li>Idle handling: 5 minutes without any input now leaves the room automatically, with a 60-second countdown at the top of the screen.</li>' +
-    '<li>Room-creation version gate: outdated pages can no longer create new rooms and are prompted to refresh.</li>' +
+    '<li>上一版 v1.7.0 骑士重做：普攻「重斩」（0 层武艺纯单体回怒）、Q「顺劈斩」（18 怒扇形群攻）、E「破釜沉舟」（3 秒 80%/55% 减伤盾墙）、U「旋风斩」（瞬发移动旋转吸血）。</li>',
+    '<li>Idle rooms are now reclaimed: once every human has left, or nobody has given any real input for 10 minutes, the room is shut down — no more rooms where bots keep farming rounds all night.</li>' +
+    '<li>Knight Charge (slot 5) feel: within 3.5m the charge locks on and stops on impact; farther targets are skewered along the line (up to 18m). Every enemy along the path takes 38 damage + knockback + stun, with 25 Rage total.</li>' +
+    '<li>Last Stand shield VFX: a translucent energy dome wraps the knight while E is active, unfolding with the shield wall and fading in the last 0.3s — visible to everyone.</li>' +
+    '<li>The multiplayer room list now only shows rooms on the currently selected realm, with no silent realm switching.</li>' +
+    '<li>Previous v1.7.0patch2 MP fixes: your own spin ultimate shows its channel bar, other players\' shields/ultimates no longer light up your cast bar; 5 minutes idle leaves the room (60s countdown); outdated builds cannot create rooms.</li>' +
     '<li>Previous v1.7.0patch1 Mage rework: Inferno is now an instant 1.8s stationary channel (interruptible) with 0.9s slow, lighter knockback, and escalating damage the longer foes stay (0.55x to 1.45x).</li>' +
-    '<li>Previous v1.7.0patch1 UI &amp; controls: Added enemy overhead cast/channel bars, removed top-left cast bar and Last Stand card bg; swapped gamepad X/Y with full controller rebinding, touch jump-button toggle, and dominant-input telemetry.</li>' +
-    '<li>Previous v1.7.0 Knight rework: Heavy Strike (single-target +14 Rage), Q Cleave (18 Rage, 2.2s CD AoE), E Last Stand (3s 80%/55% shield wall), and U Whirlwind (instant moving spin with lifesteal).</li>' +
-    '<li>Previous v1.7.0 Mastery &amp; MP: Knight Heavy Strike cleaves +1 extra target (+15%/stack solo DMG), Mage Fireball blast +25% and spell DMG +15%/stack; 10-kill / 150s FFA, same-mode quick-match fallback, and hide telemetry fix.</li>'
+    '<li>Previous v1.7.0 Knight rework: Heavy Strike (single-target +14 Rage), Q Cleave (18 Rage, 2.2s CD AoE), E Last Stand (3s 80%/55% shield wall), and U Whirlwind (instant moving spin with lifesteal).</li>'
   );
   setQ('#aboutTitle', '关于烬冠竞技场', 'About Embercrown Arena');
   setQ('#aboutDesc', '低多边形西式奇幻竞技场，支持单人无尽波次闯关与 8 人联机自由混战。', 'A low-poly dark fantasy arena featuring endless solo waves and 8-player online FFA.');
   setQ('#aboutServerNote', '联机服务器还有6天到期。', 'Notice: The multiplayer server expires in 6 days.');
   setH('#aboutDownload',
-    '单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch2/embercrown-solo-v1.7.0patch2.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch2 单机离线版 (ZIP)</a>',
-    'Solo Download: <a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch2/embercrown-solo-v1.7.0patch2.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch2 Offline Solo (ZIP)</a>'
+    '单机版下载：<a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch3/embercrown-solo-v1.7.0patch3.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch3 单机离线版 (ZIP)</a>',
+    'Solo Download: <a href="https://github.com/Roger-hunt/embercrown/releases/download/v1.7.0patch3/embercrown-solo-v1.7.0patch3.zip" target="_blank" rel="noopener noreferrer">v1.7.0patch3 Offline Solo (ZIP)</a>'
   );
   setQ('#btnVerClose', '确定', 'Close');
   setQ('#btnAboutClose', '确定', 'Close');
@@ -5798,7 +5863,7 @@ const FUN_BUFFS = [
 const net = {
   ws: null, joined: false, full: false, id: 0, cls: 'knight', room: '', cfg: null, fun: false,
   ents: new Map(), projs: new Map(), picks: new Map(), critters: new Map(), names: new Map(), roster: [],
-  lp: null, me: null, off: null, seq: 0, sendT: 0, pendB: 0, cd: [0, 0, 0, 0, 0], res: 0, ct: 0, ultPt: null, castMark: null, castDur: 1, rs: 0, rt: 0, phase: 0, afkKicked: false,
+  lp: null, me: null, off: null, seq: 0, sendT: 0, pendB: 0, cd: [0, 0, 0, 0, 0], res: 0, ct: 0, ultPt: null, castMark: null, castDur: 1, rs: 0, rt: 0, phase: 0, afkKicked: false, closedWhy: '',
   item: '', itemT: 0, itemCd: 0, itemAim: null, lastShownItem: null, funBuffKey: '',
   sx: 0, sz: 0, hasS: false, hitT: 0, menu: false, killer: '',
 };
@@ -6136,6 +6201,7 @@ function mpConnect(roomArg, botsArg, diffArg, createArg, pwdArg, funArg) {
     let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (m.t === 'welcome') { try { sessionStorage.removeItem('ec_verold_once'); } catch (e) {} show('wowQueue', false); mpStart(m); }
     else if (m.t === 'afk') { if (m.kicked) net.afkKicked = true; showAfk(m.left, m.kicked); }
+    else if (m.t === 'closed') { net.closedWhy = m.why || 'idle'; }
     else if (m.t === 'queue') showWowQueue(m);
     else if (m.t === 'denied') {
       net.full = true; ws.close();
@@ -6165,8 +6231,8 @@ function mpConnect(roomArg, botsArg, diffArg, createArg, pwdArg, funArg) {
     if (net.ws !== ws) return;
     const was = net.joined; net.ws = null;
     if (game.state === 'mp') { toMenu(); openLobby(); }
-    if (!net.full) mpStatus(net.afkKicked ? t('长时间无操作，已自动离开房间。', 'You were idle for too long and left the room.') : (was ? t('与服务器的连接断开了。', 'Disconnected from the server.') : t('连不上服务器，请确认服务器已经启动。', 'Cannot reach the server — make sure it is running.')), true);
-    net.afkKicked = false;
+    if (!net.full) mpStatus(net.afkKicked ? t('长时间无操作，已自动离开房间。', 'You were idle for too long and left the room.') : net.closedWhy ? t('房间已因长时间无人操作而关闭。', 'The room was closed after a long idle period.') : (was ? t('与服务器的连接断开了。', 'Disconnected from the server.') : t('连不上服务器，请确认服务器已经启动。', 'Cannot reach the server — make sure it is running.')), true);
+    net.afkKicked = false; net.closedWhy = '';
   };
   ws.onerror = () => {};
 }
@@ -6245,6 +6311,7 @@ function mpEnt(id, ci) {
   e.debuff.dizzy.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
   e.debuff.slow.traverse(o => { if (o.isMesh) o.userData.noFlash = true; });
   e.ring = new T.Mesh(geo('ring', 0.62, 0.82, 24), mine ? M.ringMe : M.ringFoe); e.ring.userData.noFlash = true; e.ring.rotation.x = -Math.PI / 2; e.ring.position.y = 0.04; rig.root.add(e.ring);
+  e.shield = makeWallDome(); rig.root.add(e.shield);
   e.starRing = new T.Mesh(geo('ring', 0.78, 1.05, 24), fxMat(0xffd23f, 0.85)); e.starRing.userData.noFlash = true; e.starRing.rotation.x = -Math.PI / 2; e.starRing.position.y = 0.08; e.starRing.visible = false; rig.root.add(e.starRing);
   e.booms = new T.Group(); e.booms.visible = false;
   for (let b = 0; b < 3; b++) {
@@ -6500,6 +6567,7 @@ function mpEvent(v) {
           if (me) {                                   // the dash starts when the server confirms it, so the two never disagree
             const c = net.cfg, ch = v.k === 'charge';
             lp.dashT = ch ? (v.dur || c.chargeDur) : c.rollDur; lp.dashSp = ch ? c.chargeSp : c.rollSp; lp.dashX = Math.sin(v.a); lp.dashZ = Math.cos(v.a); lp.hold = lp.dashT + 0.25;
+            lp.dashAt = performance.now(); lp.dashKind = ch ? 'charge' : 'roll';   // 记录起手时刻，供「服务端已结束」校正用
           }
           break;
         case 'rocket':
@@ -6507,6 +6575,7 @@ function mpEvent(v) {
           burst(p.x, 0.6, p.z, 0xff6f3c, 16, 7, 0.22, 0.5);
           if (me) {
             lp.dashT = 0.40; lp.dashSp = 34; lp.dashX = Math.sin(v.a); lp.dashZ = Math.cos(v.a); lp.hold = 0.55;
+            lp.dashAt = performance.now(); lp.dashKind = 'rocket';
           }
           break;
       }
@@ -6637,6 +6706,7 @@ function mpUpdate(dt) {
   if (net.hitT > 0) net.hitT -= dt; if (lp.hold > 0) lp.hold -= dt;
   let moving = false;
   if (lp.air) { lp.vy -= cfg.jumpG * dt; lp.y += lp.vy * dt; if (lp.y <= 0 || dead) { lp.y = 0; lp.vy = 0; lp.air = false; lp.landT = 0.16; } }
+  if (lp.dashT > 0 && net.hasS && (lp.dashKind === 'charge' || lp.dashKind === 'roll') && !(f & 12) && performance.now() - (lp.dashAt || 0) > 150) lp.dashT = 0;   // 服务端已收招（charging/rolling 位清零）→ 本地别再滑
   if (dead || cc || net.phase === 1) lp.dashT = 0;
   else if (net.ct > 0) { lp.face += clamp(angDiff(fa, lp.face), -14 * dt, 14 * dt); }           // 读条时站定
   else if (lp.dashT > 0) { const step = Math.min(dt, lp.dashT); lp.dashT -= dt; lp.x += lp.dashX * lp.dashSp * step; lp.z += lp.dashZ * lp.dashSp * step; }
@@ -6683,6 +6753,7 @@ function mpUpdate(dt) {
     e.booms.visible = !!(e.flags & 32768) && !e.dead;
     if (e.booms.visible) { e.booms.rotation.y += dt * 4.8; e.booms.children.forEach(b => { b.rotation.y += dt * 9; }); }
     e.starRing.visible = !!(e.flags & (2048 | 262144 | 524288)) && !e.dead;   // 星星道具 / 护盾 / 旋转大招都保留光环
+    syncWallDome(e.shield, !!(e.flags & 262144) && !e.dead, game.time, 1, 1);   // 262144 = 服务端 wallT（破釜沉舟盾墙）
     if (e.starRing.visible) { e.starRing.rotation.z += dt * 6; e.starRing.material.color.setHSL((game.time * 1.8) % 1, 0.95, 0.62); }
     syncDebuffFx(e.debuff, !!(e.flags & 32) && !e.dead, !!(e.flags & 16) && !e.dead, !!(e.flags & 64) && !e.dead, game.time);
     if (e.dead) {

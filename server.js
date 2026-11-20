@@ -65,6 +65,11 @@ const REALM_NAME = String(process.env.REALM_NAME || '无尽乌龟').trim();
 const AFK_IDLE_SEC = envInt('AFK_IDLE_SEC', 300, 30, 7200);
 const AFK_WARN_SEC = envInt('AFK_WARN_SEC', 60, 5, 600);
 const AFK_IDLE_MS = AFK_IDLE_SEC * 1000;
+// 房间回收：真人全部断线、或在场但没有有效输入超过这个时长，就整间关掉。
+// 光靠「没人了就删」不够——移动端切后台时 WebSocket 能被协议层自动 pong 吊住，
+// 人早走了、socket 却还在，房间就会带着 bot 自己一局接一局地打下去（WR8Y 空转 9.5 小时、446 局）。
+const ROOM_IDLE_SEC = envInt('ROOM_IDLE_CLOSE_SEC', 600, 5, 86400);
+const ROOM_IDLE_MS = ROOM_IDLE_SEC * 1000;
 // 建房版本闸：低于这个版本的前端不允许创建新房间（加入已有房间不受限）
 const MIN_CREATE_VER = String(process.env.MIN_CREATE_VER || '1.7.0patch2').trim().replace(/^v/, '');
 // 版本号比较：1.7.0patch2 > 1.7.0patch1 > 1.7.0。无法解析返回 null（当作过旧处理）
@@ -631,6 +636,21 @@ function removePlayer(room, p) {
   room.players.splice(i, 1); room.rosterDirty = true;
   if (!humans(room)) rooms.delete(room.code);
 }
+// 整间关停：先摘出 rooms 表，再逐个通知真人并断开。关掉的房间不再进 tick，bot 也随之消失。
+function closeRoom(room, why) {
+  if (!rooms.has(room.code)) return;
+  rooms.delete(room.code);
+  const hs = room.players.filter(p => !p.bot && p.ws);
+  const idleSec = Math.round((Date.now() - (room.humanAct || 0)) / 1000);
+  logAccess({ ip: hs.length ? hs[0].ip : null, event: 'room_closed', room: room.code, detail: { why, humans: hs.length, idleSec } });
+  logDebug('INFO', 'room', '房间 ' + room.code + ' 已关闭（' + why + '，空闲 ' + idleSec + 's）', { room: room.code, why, humans: hs.length, idleSec });
+  for (const p of hs) {
+    const ws = p.ws; p.ws = null;
+    try { send(ws, JSON.stringify({ t: 'closed', why })); } catch (e) {}
+    try { ws.close(4003, why); } catch (e) {}
+  }
+  room.players.length = 0;
+}
 function addBot(room) {
   const used = new Set(room.players.map(p => p.name)), free = BOT_NAMES.filter(n => !used.has(n));
   const counts = { knight: 0, ranger: 0, mage: 0 };
@@ -802,13 +822,17 @@ function skill(room, p, slot) {
     }
     hitCrittersInArc(room, p.x, p.z, a, 3.6, 1.25, p);
   } else if (slot === 2) {                             // 冲锋（骑士的 5 号位移技能）
-    const tg = p.chargeTgId ? (foes(room, p).find(o => o.id === p.chargeTgId && Math.hypot(o.x - p.x, o.z - p.z) <= CHARGE.maxDist)
-      || (room.critters || []).find(c => c.id === p.chargeTgId && Math.hypot(c.x - p.x, c.z - p.z) <= CHARGE.maxDist)) : null;
+    // 有目标就朝它冲（不限距离，太远就冲到 maxDist 停）：近身(< lockGap)锁定撞停，远距离贯穿
+    const tg = p.chargeTgId ? ((foes(room, p).find(o => o.id === p.chargeTgId)
+      || (room.critters || []).find(c => c.id === p.chargeTgId)) || null) : null;
+    const gap = tg ? Math.hypot(tg.x - p.x, tg.z - p.z) : Infinity;
     const ca = tg ? Math.atan2(tg.x - p.x, tg.z - p.z) : a;
-    p.chargeTarget = tg; p.chargeTgId = 0; p.chargeDist = 0;
-    p.dashT = tg ? 0.6 : CHARGE.dur; p.dashSp = CHARGE.sp; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.inv = Math.max(p.inv, 0.45);
-    gain(p, RES.rage.charge); p.calm = RES.rage.calm;                       // 冲锋不耗怒气，反而攒怒气
-    room.ev.push({ e: 'atk', id: p.id, k: 'charge', a: r2(ca), ...(tg ? { tg: tg.id, dur: 0.6 } : {}) });
+    const lock = !!tg && gap < CHARGE.lockGap;
+    const dur = !tg ? CHARGE.dur : (lock ? 0.6 : Math.min(gap, CHARGE.maxDist) / CHARGE.sp);
+    p.chargeTarget = lock ? tg : null; p.chargeTgId = 0; p.chargeDist = 0;
+    p.dashT = dur; p.dashSp = CHARGE.sp; p.dashX = Math.sin(ca); p.dashZ = Math.cos(ca); p.charging = true; p.rolling = false; p.chargeHit = new Set(); p.inv = Math.max(p.inv, 0.45);
+    gain(p, RES.rage.charge); p.calm = RES.rage.calm;                       // 冲锋不耗怒气，反而攒怒气（每跳 25，只给一次）
+    room.ev.push({ e: 'atk', id: p.id, k: 'charge', a: r2(ca), dur: r2(dur) });
   } else if (p.cls === 'knight') {                     // 破釜沉舟：80% 减伤 3.0s
     p.wallT = 3.0;
     room.ev.push({ e: 'atk', id: p.id, k: 'wall', a: r2(a) });
@@ -901,13 +925,13 @@ function updatePlayer(room, p) {
       p.face = Math.atan2(p.dashX, p.dashZ);
       for (const o of foes(room, p)) if (!p.chargeHit.has(o) && Math.hypot(o.x - p.x, o.z - p.z) < PR * 2 + 0.95) {
         p.chargeHit.add(o); damage(room, o, 28, p, { kb: 10, fx: p.x - p.dashX, fz: p.z - p.dashZ, stun: 0.85, sk: 1 });
-        if (o === p.chargeTarget) { p.dashT = 0; break; }
+        if (o === p.chargeTarget) p.dashT = 0;                              // 撞到锁定目标即停，但本帧其余敌人照样结算
       }
-      if (p.dashT > 0) for (const c of (room.critters || []).slice()) if (!p.chargeHit.has(c) && Math.hypot(c.x - p.x, c.z - p.z) < PR + CRITTER_R + 0.95) {
+      for (const c of (room.critters || []).slice()) if (!p.chargeHit.has(c) && Math.hypot(c.x - p.x, c.z - p.z) < PR + CRITTER_R + 0.95) {
         p.chargeHit.add(c); killCritter(room, c, p);
-        if (c === p.chargeTarget) { p.dashT = 0; break; }
+        if (c === p.chargeTarget) p.dashT = 0;
       }
-      if (p.chargeDist >= CHARGE.maxDist || (!p.chargeTarget && p.chargeDist >= CHARGE.dur * CHARGE.sp)) p.dashT = 0;
+      if (p.chargeDist >= CHARGE.maxDist) p.dashT = 0;
     } else if (p.rocket) {
       p.face = Math.atan2(p.dashX, p.dashZ);
       for (const o of foes(room, p)) if (!p.rocketHit.has(o) && Math.hypot(o.x - p.x, o.z - p.z) < PR * 2 + 1.0) {
@@ -1626,6 +1650,24 @@ setInterval(() => {
   }
 }, 1000);
 setInterval(() => { sampleLoad(); }, 30000);
+// 房间回收巡检：
+//   1. 先清「僵尸真人」——已经断线但 close 回调没跑到（移动端切后台、进程被杀）的玩家对象，
+//      它会让 humans() 恒为 1，房间因此永远不删；
+//   2. 一个真人都不剩 → 立刻关房；
+//   3. 还有人在线但整间超过 ROOM_IDLE_MS 没有有效输入 → 一样关房，避免 7 个 bot 自己续局。
+setInterval(() => {
+  const now = Date.now();
+  for (const room of [...rooms.values()]) {
+    for (const p of room.players.slice()) {
+      if (p.bot) continue;
+      const ws = p.ws;
+      if (!ws || ws.readyState !== 1) removePlayer(room, p);
+    }
+    if (!rooms.has(room.code)) continue;
+    if (humans(room) === 0) { closeRoom(room, 'nohuman'); continue; }
+    if (now - (room.humanAct || 0) >= ROOM_IDLE_MS) closeRoom(room, 'idle');
+  }
+}, 5000);
 setInterval(() => {
   try {
     db.exec(`

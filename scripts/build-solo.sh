@@ -76,6 +76,12 @@ cp "$SRC/vendor/three.min.js" "$DEST/vendor/three.min.js"
 [ -d "$SRC/assets" ] && cp -R "$SRC/assets" "$DEST/assets"
 cp "$SRC/greta_yell.mp3" "$DEST/greta_yell.mp3"
 cp "$SRC/godlike.mp3" "$DEST/godlike.mp3"
+# 素材声明：音效含 CC-BY-SA 3.0 素材，分发时必须随包附带署名与许可证原文
+cp "$REPO/LICENSE" "$DEST/LICENSE"
+cp "$REPO/CREDITS.md" "$DEST/CREDITS.md"
+if [ -d "$REPO/third_party/licenses" ]; then
+  cp -R "$REPO/third_party/licenses" "$DEST/licenses"
+fi
 
 cat > "$DEST/README.txt" <<EOF
 烬冠竞技场 (Embercrown Arena) v$VER · 单机离线版
@@ -94,6 +100,11 @@ cat > "$DEST/README.txt" <<EOF
 
 版本说明：
 - 本版为 v${VER}，更新内容见游戏登录页左下角「版本 v${VER}（最近更新）」。
+
+素材声明：
+- 3D 模型与多数音效来自 CC0 免费素材包（KayKit / Quaternius / Kenney）；
+  部分施法音效来自 p0ss 的 Spell Sounds Starter Pack，按 CC-BY-SA 3.0 使用。
+- 完整署名与许可证见包内 CREDITS.md 与 licenses/ 目录。
 
 GitHub: https://github.com/Roger-hunt/embercrown
 在线版: https://game.needcoffee.icu
